@@ -89,6 +89,34 @@ body::before{
 .load-spinner{width:38px;height:38px;border:3px solid var(--mauve-pale);border-top-color:var(--wine);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-txt{font-size:13px;color:var(--mauve);font-weight:400}
+/* código de cita + WhatsApp */
+#apptCodeBar{margin:0 0 16px}
+.code-row{display:flex;align-items:center;gap:12px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:11px 14px}
+.code-info{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+.code-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mauve);font-weight:600}
+.code-val{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;color:var(--wine);letter-spacing:1px}
+.wa-btn{display:flex;align-items:center;gap:6px;background:#25D366;color:#fff;border:none;border-radius:11px;padding:9px 14px;font-family:'Jost';font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.wa-btn:active{transform:scale(.96)}
+/* Hoja de acciones */
+.acc-sub{font-size:13px;color:var(--muted);margin:-8px 0 18px;line-height:1.5}
+.acc-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.acc-item{display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:15px;padding:14px 15px;cursor:pointer;transition:.15s;font-family:'Jost'}
+.acc-item:active{transform:scale(.98);background:var(--mauve-pale)}
+.acc-ic{font-size:21px;flex:0 0 auto}
+.acc-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.acc-tx b{font-size:14.5px;font-weight:600;color:var(--ink)}
+.acc-tx small{font-size:12px;color:var(--muted)}
+.acc-check{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink);margin:4px 0 6px;cursor:pointer}
+.acc-check input{width:17px;height:17px;accent-color:var(--wine)}
+/* cobro real / descuento */
+.cobro-box{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:13px 14px}
+.cobro-row{display:flex;gap:12px}
+.cobro-mini{flex:1;display:flex;flex-direction:column;gap:5px}
+.cobro-mini span{font-size:11px;letter-spacing:.5px;color:var(--mauve);font-weight:600;text-transform:uppercase}
+.cobro-mini input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:15px;color:var(--ink);background:var(--card);outline:none}
+.cobro-mini input:focus{border-color:var(--gold)}
+.cobro-info{font-size:13px;color:var(--wine);font-weight:500;margin-top:10px;min-height:18px}
+.cobro-info .strike{color:var(--muted);text-decoration:line-through;font-weight:400;margin-right:6px}
 
 /* ---------- VIEWS ---------- */
 .view{display:none;padding:18px 16px 0;position:relative;z-index:1;animation:fade .35s ease}
@@ -443,12 +471,15 @@ body::before{
 .cr-btn.pay{border-color:var(--green);color:var(--green)}
 .cr-btn.re{border-color:var(--gold);color:#8a6a1e}
 .cr-btn.cx{border-color:var(--red);color:var(--red)}
+.cr-btn.wa{border-color:#25D366;color:#1c9e4d}
 .cr-comp{margin-top:9px}
 .cr-comp .comp-link{font-size:12px;color:var(--wine);font-weight:500;cursor:pointer;background:var(--cream);border:1px solid var(--line);border-radius:9px;padding:6px 11px;display:inline-block}
 .comp-up{display:inline-block;background:var(--cream);border:1.5px dashed var(--mauve);border-radius:11px;padding:11px 14px;font-size:13px;color:var(--wine);cursor:pointer;font-weight:500;text-align:center;width:100%}
 #compPreview img{max-width:100%;border-radius:11px;margin-bottom:9px;border:1px solid var(--line)}
 #compPreview .rm{font-size:12px;color:var(--red);cursor:pointer;display:inline-block;margin-bottom:9px}
 .pill.metodo{background:#EDE6E8;color:var(--wine)}
+.pill.desc{background:var(--gold-soft);color:#8a6a1e}
+.amt-strike{color:var(--muted);text-decoration:line-through;font-size:13px;font-weight:400;margin-right:3px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -630,6 +661,15 @@ body::before{
 <div class="sheet" id="apptSheet">
   <div class="grab"></div>
   <h3 id="apptSheetTitle">Nueva cita</h3>
+  <div id="apptCodeBar" style="display:none">
+    <div class="code-row">
+      <div class="code-info"><span class="code-lbl">Código de cita</span><span class="code-val" id="apptCodeVal">—</span></div>
+      <button class="wa-btn" onclick="openAccionesFromAppt()">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.587zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+        Acciones
+      </button>
+    </div>
+  </div>
   <input type="hidden" id="apptId">
   <div class="field">
     <label>Clienta</label>
@@ -677,6 +717,16 @@ body::before{
     <div class="chips" id="pagoChips">
       <div class="chip sel" data-pg="pagado">Pagado</div>
       <div class="chip" data-pg="deuda">Pendiente</div>
+    </div>
+  </div>
+  <div class="field" id="cobroWrap" style="display:none">
+    <label>Cobro real (si hubo descuento)</label>
+    <div class="cobro-box">
+      <div class="cobro-row">
+        <div class="cobro-mini"><span>Cobrado $</span><input type="number" id="apptCobrado" placeholder="igual al total" inputmode="numeric" oninput="onCobradoInput()"></div>
+        <div class="cobro-mini"><span>Desc. %</span><input type="number" id="apptDescPct" placeholder="0" inputmode="numeric" max="100" oninput="onDescPctInput()"></div>
+      </div>
+      <div class="cobro-info" id="cobroInfo"></div>
     </div>
   </div>
   <div class="field" id="metodoWrap" style="display:none">
@@ -754,7 +804,45 @@ body::before{
   <div class="field" style="margin-top:16px"><label>Notas de la clienta</label><textarea id="cliNotes" placeholder="Tono favorito, alergias, observaciones…" onblur="saveCliNotes()"></textarea></div>
   <div class="divider">Historial</div>
   <div id="cliHist"></div>
-  <button class="btn btn-line" style="margin-top:18px" onclick="closeSheet()">Cerrar</button>
+  <button class="btn btn-primary" style="margin-top:18px" onclick="openAcciones(openCliId,null)">Acciones · Comunicarme</button>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
+</div>
+
+<!-- HOJA DE ACCIONES (reutilizable) -->
+<div class="sheet" id="accionesSheet">
+  <div class="grab"></div>
+  <h3>Acciones</h3>
+  <div class="acc-sub" id="accSub">Comunícate con la clienta por WhatsApp.</div>
+  <div class="acc-list">
+    <button class="acc-item" onclick="accContactar()">
+      <span class="acc-ic">💬</span>
+      <span class="acc-tx"><b>Comunicarme con la clienta</b><small>Abre un chat de WhatsApp</small></span>
+    </button>
+    <button class="acc-item" id="accCitaBtn" onclick="accInfoCita()" style="display:none">
+      <span class="acc-ic">📅</span>
+      <span class="acc-tx"><b>Enviar información de la cita</b><small>Fecha, servicio, total y código</small></span>
+    </button>
+    <button class="acc-item" id="accCobroBtn" onclick="accRecordatorioPago()" style="display:none">
+      <span class="acc-ic">💵</span>
+      <span class="acc-tx"><b>Enviar recordatorio de pago</b><small>Incluye ID, info de la cita y lo que debe</small></span>
+    </button>
+    <button class="acc-item" onclick="accCortesia()">
+      <span class="acc-ic">🎁</span>
+      <span class="acc-tx"><b>Enviar cortesía / promoción</b><small>Mensaje especial editable</small></span>
+    </button>
+  </div>
+  <button class="btn btn-line" style="margin-top:6px" onclick="closeSheet()">Cerrar</button>
+</div>
+
+<!-- HOJA DE CORTESÍA -->
+<div class="sheet" id="cortesiaSheet">
+  <div class="grab"></div>
+  <h3>Cortesía / promoción</h3>
+  <div class="acc-sub">Escribe el mensaje. Se guarda como plantilla para reusarlo, y puedes editarlo antes de enviar.</div>
+  <div class="field"><label>Mensaje</label><textarea id="cortesiaText" rows="5" placeholder="Ej: ¡Hola! Esta semana tenemos 15% en extensiones 💅 ¿Te aparto un espacio?"></textarea></div>
+  <label class="acc-check"><input type="checkbox" id="cortesiaSave" checked> Guardar como plantilla</label>
+  <button class="btn btn-primary" onclick="accEnviarCortesia()">Enviar por WhatsApp</button>
+  <button class="btn btn-line" onclick="backToAcciones()">Volver</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -779,6 +867,7 @@ const DEFAULT_SVCS=[
    Cada registro guarda su id real de Supabase en .id (uuid). */
 let DB={servicios:[],clientas:[],citas:[]};
 let NEGOCIO_ID=null;
+let PROMO_TEMPLATE='';
 let onlineState=navigator.onLine;
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 
@@ -787,8 +876,8 @@ function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),costoReal:
 function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
 function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||''}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
-function rowToCita(r){return {id:r.id,clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
-function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
+function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
+function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
 
 /* ---- carga inicial completa desde Supabase ---- */
 async function loadAll(){
@@ -820,6 +909,8 @@ const MON=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Di
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function fmtMoney(n){return '$'+Number(n||0).toLocaleString('es-MX')}
 function citaItems(c){if(c.items&&c.items.length)return c.items;const s=DB.servicios.find(x=>x.id===c.servicioId);return [{id:c.servicioId||'',n:(s?s.n:(c.svcName||'Servicio')),p:Number(c.precio||0)}]}
+/* monto realmente cobrado: usa 'cobrado' si la dueña aplicó descuento, si no el precio */
+function montoCita(c){return (c.cobrado!=null&&!isNaN(c.cobrado))?Number(c.cobrado):Number(c.precio||0)}
 function svcDisplay(c){const it=citaItems(c);if(it.length<=1)return it[0]?it[0].n:(c.svcName||'Servicio');return it[0].n+' +'+(it.length-1)}
 function svcFull(c){return citaItems(c).map(i=>i.n).join(' · ')}
 function fmt12(t){if(!t)return '';let[h,m]=t.split(':').map(Number);const ap=h>=12?'PM':'AM';h=h%12||12;return {h:h+':'+String(m).padStart(2,'0'),ap}}
@@ -1013,8 +1104,8 @@ function renderVentas(){
     if(endKey<startKey){const t=startKey;startKey=endKey;endKey=t;}
   }else{startKey=rangeStart(ventasPeriod);endKey=today;}
   const sales=DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=startKey&&c.fecha<=endKey);
-  const total=sales.reduce((s,c)=>s+Number(c.precio||0),0);
-  const cobrado=sales.filter(c=>c.pago!=='deuda').reduce((s,c)=>s+Number(c.precio||0),0);
+  const total=sales.reduce((s,c)=>s+montoCita(c),0);
+  const cobrado=sales.filter(c=>c.pago!=='deuda').reduce((s,c)=>s+montoCita(c),0);
   const deuda=sales.filter(c=>c.pago==='deuda').reduce((s,c)=>s+Number(c.precio||0),0);
   document.getElementById('ventasStats').innerHTML=`
     <div class="stat wide"><div class="lbl">Total atendido</div><div class="val">${fmtMoney(total)}</div><div class="sub">${sales.length} servicio${sales.length!==1?'s':''}</div></div>
@@ -1130,7 +1221,7 @@ function renderCitas(){
   }).sort((a,b)=>(b.fecha+(b.hora||'')).localeCompare(a.fecha+(a.hora||'')));
   // summary
   const atend=list.filter(c=>c.estado==='atendida');
-  const cobrado=atend.filter(c=>c.pago==='pagado').reduce((s,c)=>s+Number(c.precio||0),0);
+  const cobrado=atend.filter(c=>c.pago==='pagado').reduce((s,c)=>s+montoCita(c),0);
   const pend=atend.filter(c=>c.pago==='deuda').reduce((s,c)=>s+Number(c.precio||0),0);
   document.getElementById('citasCount').textContent=list.length?list.length+' citas':'';
   document.getElementById('citasSummary').innerHTML=`
@@ -1148,19 +1239,23 @@ function renderCitas(){
     let payPill='';
     if(c.estado==='atendida')payPill=isDeuda?`<span class="pill deuda">debe ${fmtMoney(c.precio)}</span>`:`<span class="pill pagado">pagado</span>`;
     const metPill=(c.estado==='atendida'&&c.pago==='pagado'&&c.metodo)?`<span class="pill metodo">${metodoLabel(c.metodo)}</span>`:'';
+    const tieneDesc=(c.cobrado!=null&&!isNaN(c.cobrado)&&Number(c.cobrado)!==Number(c.precio));
+    const descPill=tieneDesc?`<span class="pill desc">${c.descPct?c.descPct+'% desc':'desc'}</span>`:'';
+    const amtHtml=tieneDesc?`<span class="cr-amt"><span class="amt-strike">${fmtMoney(c.precio)}</span> ${fmtMoney(c.cobrado)}</span>`:`<span class="cr-amt">${fmtMoney(c.precio)}</span>`;
     const compThumb=c.comprobante?`<div class="cr-comp"><span class="comp-link" onclick="event.stopPropagation();viewComp('${c.id}')">📎 Ver comprobante</span></div>`:'';
     const acts=[];
     if(isDeuda)acts.push(`<div class="cr-btn pay" onclick="event.stopPropagation();marcarPagada('${c.id}')">Marcar pagada</div>`);
     if(c.estado==='agendada')acts.push(`<div class="cr-btn pay" onclick="event.stopPropagation();marcarAtendida('${c.id}')">Atendida</div>`);
     if(c.estado!=='cancelada')acts.push(`<div class="cr-btn re" onclick="event.stopPropagation();reagendar('${c.id}')">Reagendar</div>`);
     if(c.estado!=='cancelada')acts.push(`<div class="cr-btn cx" onclick="event.stopPropagation();cancelarCita('${c.id}')">Cancelar</div>`);
+    if(c.estado!=='cancelada'&&c.clientaId)acts.push(`<div class="cr-btn wa" onclick="event.stopPropagation();openAcciones('${c.clientaId}','${c.id}')">Acciones</div>`);
     return `<div class="citarow ${rowCls}">
       <div class="cr-top" onclick="editAppt('${c.id}')">
         <div class="cr-date"><div class="dd">${d.getDate()}</div><div class="dm">${MON[d.getMonth()]} ${d.getFullYear()}${c.hora?' · '+fmt12(c.hora).h+fmt12(c.hora).ap:''}</div></div>
         <div class="cr-body">
           <div class="cr-cli">${cli?cli.nombre:'Clienta'}</div>
           <div class="cr-svc">${svcFull(c)}</div>
-          <div class="cr-meta"><span class="cr-amt">${fmtMoney(c.precio)}</span>${estPill}${payPill}${metPill}</div>
+          <div class="cr-meta">${amtHtml}${estPill}${payPill}${metPill}${descPill}</div>
           ${compThumb}
         </div>
       </div>
@@ -1203,7 +1298,7 @@ document.getElementById('intelSeg').addEventListener('click',e=>{
   renderInteligencia();
 });
 function atendidasEntre(a,b){return DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=a&&c.fecha<=b)}
-function sumP(arr){return arr.reduce((s,c)=>s+Number(c.precio||0),0)}
+function sumP(arr){return arr.reduce((s,c)=>s+montoCita(c),0)}
 function bucketsFor(start,end){
   const days=Math.round((end-start)/86400000)+1,out=[];
   if(days<=14){
@@ -1296,7 +1391,7 @@ function normTxt(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u03
 function matchCli(c,q){q=normTxt(q);if(!q)return true;const num=c.num?('#'+String(c.num).padStart(3,'0')+' '+c.num):'';return normTxt(c.nombre).includes(q)||normTxt(c.telefono).includes(q)||normTxt(c.email).includes(q)||num.includes(q);}
 function clientStats(id){
   const cs=DB.citas.filter(c=>c.clientaId===id&&c.estado==='atendida');
-  const spent=cs.reduce((s,c)=>s+Number(c.precio||0),0);
+  const spent=cs.reduce((s,c)=>s+montoCita(c),0);
   const debtCitas=cs.filter(c=>c.pago==='deuda');
   const debt=debtCitas.reduce((s,c)=>s+Number(c.precio||0),0);
   const last=cs.map(c=>c.fecha).sort().pop();
@@ -1626,6 +1721,36 @@ function updateMetodoVis(){
   const show=(curEstado==='atendida'&&curPago==='pagado');
   document.getElementById('metodoWrap').style.display=show?'block':'none';
   document.getElementById('compWrap').style.display=(curEstado==='atendida')?'block':'none';
+  document.getElementById('cobroWrap').style.display=show?'block':'none';
+  if(show)updateCobroInfo();
+}
+function precioBase(){return Number(document.getElementById('apptPrice').value)||0;}
+function onCobradoInput(){
+  const base=precioBase();const cob=Number(document.getElementById('apptCobrado').value);
+  const pctEl=document.getElementById('apptDescPct');
+  if(base>0&&document.getElementById('apptCobrado').value!==''&&cob>=0){
+    const pct=Math.round((1-cob/base)*100);
+    pctEl.value=pct>0?pct:'';
+  }
+  updateCobroInfo();
+}
+function onDescPctInput(){
+  const base=precioBase();let pct=Number(document.getElementById('apptDescPct').value);
+  const cobEl=document.getElementById('apptCobrado');
+  if(pct<0)pct=0;if(pct>100)pct=100;
+  if(base>0&&document.getElementById('apptDescPct').value!==''){
+    cobEl.value=Math.round(base*(1-pct/100));
+  }
+  updateCobroInfo();
+}
+function updateCobroInfo(){
+  const base=precioBase();
+  const cobRaw=document.getElementById('apptCobrado').value;
+  const info=document.getElementById('cobroInfo');
+  if(cobRaw===''||Number(cobRaw)===base||base===0){info.innerHTML='';return;}
+  const cob=Number(cobRaw);
+  const pct=Math.round((1-cob/base)*100);
+  info.innerHTML=`<span class="strike">$${base}</span> Se cobra <b>$${cob}</b>${pct>0?` · ${pct}% desc.`:''}`;
 }
 let curComp='';
 function renderCompPreview(){
@@ -1667,6 +1792,7 @@ function openApptSheet(){
   editingId=null;
   document.getElementById('apptSheetTitle').textContent='Nueva cita';
   document.getElementById('apptDelBtn').style.display='none';
+  document.getElementById('apptCodeBar').style.display='none';
   document.getElementById('apptCli').value='';
   selectedSvcIds=[];renderSvcPicker();
   apptSelectedCliId=null;document.getElementById('apptCliResults').innerHTML='';
@@ -1675,6 +1801,9 @@ function openApptSheet(){
   document.getElementById('apptDur').value='60';
   document.getElementById('apptPrice').value='';
   document.getElementById('apptNotes').value='';
+  document.getElementById('apptCobrado').value='';
+  document.getElementById('apptDescPct').value='';
+  document.getElementById('cobroInfo').innerHTML='';
   curColor='rosa';renderColorChips();
   curMetodo='efectivo';setMetodo('efectivo');
   curComp='';renderCompPreview();
@@ -1687,6 +1816,9 @@ function editAppt(id){
   editingId=id;
   document.getElementById('apptSheetTitle').textContent='Editar cita';
   document.getElementById('apptDelBtn').style.display='block';
+  const bar=document.getElementById('apptCodeBar');
+  if(c.codigo){document.getElementById('apptCodeVal').textContent=c.codigo;bar.style.display='block';}
+  else bar.style.display='none';
   selectedSvcIds=citaItems(c).map(i=>i.id).filter(Boolean);renderSvcPicker();
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
   document.getElementById('apptCli').value=cli?cli.nombre:'';
@@ -1700,8 +1832,122 @@ function editAppt(id){
   curMetodo=c.metodo||'efectivo';setMetodo(curMetodo);
   curComp=c.comprobante||'';renderCompPreview();
   setEstado(c.estado);setPago(c.pago||'pagado');
+  document.getElementById('apptCobrado').value=(c.cobrado==null||c.cobrado===c.precio)?'':c.cobrado;
+  document.getElementById('apptDescPct').value=(c.descPct==null||c.descPct===0)?'':c.descPct;
+  updateCobroInfo();
   renderAssist();
   showSheet('apptSheet');
+}
+/* ====== WhatsApp helpers reutilizables ====== */
+function waTel(cli){let tel=(cli&&cli.telefono?cli.telefono:'').replace(/\D/g,'');if(tel.length===10)tel='52'+tel;return tel;}
+function waOpen(cli,msg){
+  const tel=waTel(cli);
+  const url=(tel?`https://wa.me/${tel}`:`https://wa.me/`)+`?text=${encodeURIComponent(msg)}`;
+  window.open(url,'_blank');
+}
+const PORTAL_URL='https://rheud-app.netlify.app/portal.html';
+function msgInfoCita(c,cli){
+  const servicios=citaItems(c).map(i=>i.n).join(', ')||c.svcName||'tu servicio';
+  const fechaHora=fmtFechaCompleta(c.fecha,c.hora);
+  let msg=`¡Hola${cli?' '+cli.nombre.split(' ')[0]:''}! 💅✨\n\n`;
+  msg+=`Tu cita en *Rhēud Beauty*:\n\n`;
+  msg+=`📅 ${fechaHora}\n`;
+  msg+=`💖 ${servicios}\n`;
+  if(c.precio)msg+=`💵 Total: $${c.precio}\n`;
+  msg+=`\n🔖 Código de tu cita: *${c.codigo||'—'}*\n`;
+  if(c.codigo)msg+=`\nConsulta el estado de tu cita aquí:\n${PORTAL_URL}?c=${c.codigo}\n`;
+  msg+=`\n¡Te esperamos! 🤍`;
+  return msg;
+}
+function msgRecordatorioPago(c,cli){
+  const servicios=citaItems(c).map(i=>i.n).join(', ')||c.svcName||'tu servicio';
+  const fechaHora=fmtFechaCompleta(c.fecha,c.hora);
+  let msg=`¡Hola${cli?' '+cli.nombre.split(' ')[0]:''}! 🤍\n\n`;
+  msg+=`Te recordamos con cariño un saldo pendiente de tu cita en *Rhēud Beauty*:\n\n`;
+  msg+=`🔖 ID de cita: *${c.codigo||'—'}*\n`;
+  msg+=`📅 ${fechaHora}\n`;
+  msg+=`💖 ${servicios}\n`;
+  msg+=`💵 Monto pendiente: *$${c.precio||0}*\n`;
+  if(c.codigo)msg+=`\nPuedes ver el detalle aquí:\n${PORTAL_URL}?c=${c.codigo}\n`;
+  msg+=`\n¡Gracias! Cualquier duda, con gusto te apoyamos.`;
+  return msg;
+}
+
+/* ====== Estado del menú de acciones ====== */
+let accCliId=null, accCitaId=null;
+function openAcciones(cliId, citaId){
+  accCliId=cliId||null; accCitaId=citaId||null;
+  const cli=DB.clientas.find(x=>x.id===accCliId);
+  document.getElementById('accSub').textContent = cli ? `Comunícate con ${cli.nombre.split(' ')[0]} por WhatsApp.` : 'Comunícate con la clienta por WhatsApp.';
+  // mostrar botones según haya cita y según adeudo
+  const hayCita=!!accCitaId;
+  document.getElementById('accCitaBtn').style.display = hayCita?'flex':'none';
+  let muestraCobro=false;
+  if(hayCita){const c=DB.citas.find(x=>x.id===accCitaId); if(c && c.estado==='atendida' && c.pago==='deuda') muestraCobro=true;}
+  else if(accCliId){const st=clientStats(accCliId); if(st.debt>0) muestraCobro=true;}
+  document.getElementById('accCobroBtn').style.display = muestraCobro?'flex':'none';
+  showSheet('accionesSheet');
+}
+function accCli(){return DB.clientas.find(x=>x.id===accCliId);}
+function accContactar(){
+  const cli=accCli();
+  if(!cli||!cli.telefono){toast('Esta clienta no tiene teléfono guardado');}
+  waOpen(cli, `¡Hola${cli?' '+cli.nombre.split(' ')[0]:''}! 🤍 Te escribimos de *Rhēud Beauty*.`);
+}
+function accInfoCita(){
+  const c=DB.citas.find(x=>x.id===accCitaId);if(!c){toast('Sin cita');return;}
+  const cli=DB.clientas.find(x=>x.id===c.clientaId);
+  waOpen(cli, msgInfoCita(c,cli));
+}
+function accRecordatorioPago(){
+  let c=null;
+  if(accCitaId)c=DB.citas.find(x=>x.id===accCitaId);
+  else if(accCliId){
+    // toma la deuda más antigua de la clienta
+    const deudas=DB.citas.filter(x=>x.clientaId===accCliId&&x.estado==='atendida'&&x.pago==='deuda').sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    c=deudas[0];
+  }
+  if(!c){toast('No hay adeudo registrado');return;}
+  const cli=DB.clientas.find(x=>x.id===c.clientaId);
+  waOpen(cli, msgRecordatorioPago(c,cli));
+}
+function accCortesia(){
+  document.getElementById('cortesiaText').value = (typeof PROMO_TEMPLATE!=='undefined'&&PROMO_TEMPLATE) ? PROMO_TEMPLATE : '';
+  document.getElementById('accionesSheet').classList.remove('show');
+  curSheet='cortesiaSheet';
+  requestAnimationFrame(()=>document.getElementById('cortesiaSheet').classList.add('show'));
+}
+function backToAcciones(){
+  document.getElementById('cortesiaSheet').classList.remove('show');
+  curSheet='accionesSheet';
+  requestAnimationFrame(()=>document.getElementById('accionesSheet').classList.add('show'));
+}
+async function accEnviarCortesia(){
+  const txt=document.getElementById('cortesiaText').value.trim();
+  if(!txt){toast('Escribe el mensaje');return;}
+  if(document.getElementById('cortesiaSave').checked){
+    PROMO_TEMPLATE=txt;
+    try{await sb.from('negocios').update({promo_template:txt}).eq('id',NEGOCIO_ID);}catch(e){console.error(e);}
+  }
+  const cli=accCli();
+  let msg=`¡Hola${cli?' '+cli.nombre.split(' ')[0]:''}! 🎁\n\n${txt}\n\n— *Rhēud Beauty* 🤍`;
+  waOpen(cli, msg);
+  closeSheet();
+}
+
+/* botón WhatsApp dentro del formulario de cita (usa la misma lógica) */
+function enviarWhatsApp(){
+  if(!editingId){toast('Primero guarda la cita');return;}
+  const c=DB.citas.find(x=>x.id===editingId);if(!c)return;
+  const cli=DB.clientas.find(x=>x.id===c.clientaId);
+  waOpen(cli, msgInfoCita(c,cli));
+}
+function openAccionesFromAppt(){
+  if(!editingId){toast('Primero guarda la cita');return;}
+  const c=DB.citas.find(x=>x.id===editingId);if(!c)return;
+  document.getElementById('apptSheet').classList.remove('show');
+  curSheet='accionesSheet';
+  openAcciones(c.clientaId, c.id);
 }
 async function uploadComprobante(dataUri){
   if(!dataUri||!dataUri.startsWith('data:'))return dataUri||'';
@@ -1739,12 +1985,23 @@ async function saveAppt(){
   // comprobante: si es data URI nuevo, súbelo; si ya era ruta, déjalo
   let compVal=isAtendida?curComp:'';
   if(compVal&&compVal.startsWith('data:'))compVal=await uploadComprobante(compVal);
+  // cobro real / descuento (solo si pagado)
+  const precioNum=Number(document.getElementById('apptPrice').value)||0;
+  let cobradoVal=null,descVal=null;
+  if(isPagado){
+    const cobRaw=document.getElementById('apptCobrado').value;
+    if(cobRaw!==''&&Number(cobRaw)>=0&&Number(cobRaw)!==precioNum){
+      cobradoVal=Number(cobRaw);
+      descVal=precioNum>0?Math.round((1-cobradoVal/precioNum)*100):0;
+    }
+  }
   const data={
     clientaId:cli.id,items,servicioId:items[0]?items[0].id:'',svcName,
     fecha:date,hora:document.getElementById('apptTime').value,
     dur:Number(document.getElementById('apptDur').value)||60,
     color:curColor,
-    precio:Number(document.getElementById('apptPrice').value)||0,
+    precio:precioNum,
+    cobrado:cobradoVal,descPct:descVal,
     estado:curEstado,pago:isAtendida?curPago:'',
     metodo:isPagado?curMetodo:'',pagadoFecha,
     comprobante:compVal,
@@ -1820,7 +2077,11 @@ async function ensureNegocio(){
   // busca el negocio del usuario; si no hay miembro, crea negocio y lo asocia
   let {data:miembros,error:em}=await sb.from('miembros').select('negocio_id').limit(1);
   if(em)throw em;
-  if(miembros&&miembros.length){NEGOCIO_ID=miembros[0].negocio_id;return;}
+  if(miembros&&miembros.length){
+    NEGOCIO_ID=miembros[0].negocio_id;
+    try{const {data:neg}=await sb.from('negocios').select('promo_template').eq('id',NEGOCIO_ID).single();if(neg&&neg.promo_template)PROMO_TEMPLATE=neg.promo_template;}catch(e){}
+    return;
+  }
   // crear negocio y membresía
   const u=(await sb.auth.getUser()).data.user;
   const {data:neg,error:e1}=await sb.from('negocios').insert({nombre:'Rhēud Beauty'}).select().single();
