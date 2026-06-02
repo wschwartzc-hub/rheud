@@ -110,6 +110,10 @@ body::before{
 .acc-check input{width:17px;height:17px;accent-color:var(--wine)}
 .dur-row{display:flex;gap:8px}
 .dur-row select{flex:1}
+.appt-wx{display:flex;align-items:center;gap:9px;background:var(--cream);border:1px solid var(--line);border-radius:13px;padding:11px 14px;margin-bottom:6px}
+.aw-ic{font-size:20px}
+.aw-tx{font-size:13px;color:var(--ink)}
+.aw-tx b{color:var(--wine);font-weight:600}
 .btn-confirm{width:100%;background:var(--cream);border:1.5px solid var(--gold-soft);border-radius:13px;padding:13px;font-family:'Jost';font-size:14px;font-weight:600;color:var(--wine);cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-confirm:active{transform:scale(.99)}
 .cf-badge{background:var(--wine);color:#fff;font-size:12px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
@@ -786,6 +790,7 @@ body::before{
       </div>
     </div>
   </div>
+  <div class="appt-wx" id="apptWeather" style="display:none"></div>
   <div class="assist" id="assist"></div>
   <div class="field">
     <label>Total</label>
@@ -2052,6 +2057,7 @@ function onApptDateChange(){
   renderAssist();
 }
 function renderAssist(){
+  renderApptWeather();
   const el=document.getElementById('assist');
   const date=document.getElementById('apptDate').value;
   if(!date){el.innerHTML='';return;}
@@ -2659,8 +2665,24 @@ async function initWeather(){
       const cur=WX_CACHE.current;
       document.getElementById('sbWeather').textContent=`${WX_ICON[cur.weather_code]||''} ${Math.round(cur.temperature_2m)}°`;
       renderAgendaWeather();
+      if(document.getElementById('apptSheet').classList.contains('show'))renderApptWeather();
     }catch(e){document.getElementById('sbWeather').textContent='';console.error(e);}
   },()=>{document.getElementById('sbWeather').textContent='';},{timeout:8000});
+}
+function wxForDate(key){
+  if(!WX_CACHE||!WX_CACHE.daily)return null;
+  const idx=WX_CACHE.daily.time.indexOf(key);
+  if(idx<0)return null;
+  return {code:WX_CACHE.daily.weather_code[idx],mx:Math.round(WX_CACHE.daily.temperature_2m_max[idx]),mn:Math.round(WX_CACHE.daily.temperature_2m_min[idx])};
+}
+function renderApptWeather(){
+  const el=document.getElementById('apptWeather');if(!el)return;
+  const date=document.getElementById('apptDate').value;
+  if(!date){el.style.display='none';return;}
+  const w=wxForDate(date);
+  if(!w){el.style.display='none';return;}
+  el.style.display='flex';
+  el.innerHTML=`<span class="aw-ic">${WX_ICON[w.code]||'🌡️'}</span><span class="aw-tx">Clima ese día: <b>${wxText(w.code)}</b> · ${w.mx}° / ${w.mn}°</span>`;
 }
 function renderAgendaWeather(){
   const el=document.getElementById('agendaWeather');if(!el)return;
