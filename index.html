@@ -1800,14 +1800,16 @@ async function doLogin(){
 }
 async function ensureNegocio(){
   // busca el negocio del usuario; si no hay miembro, crea negocio y lo asocia
-  let {data:miembros}=await sb.from('miembros').select('negocio_id').limit(1);
+  let {data:miembros,error:em}=await sb.from('miembros').select('negocio_id').limit(1);
+  if(em)throw em;
   if(miembros&&miembros.length){NEGOCIO_ID=miembros[0].negocio_id;return;}
   // crear negocio y membresía
   const u=(await sb.auth.getUser()).data.user;
   const {data:neg,error:e1}=await sb.from('negocios').insert({nombre:'Rhēud Beauty'}).select().single();
-  if(e1){console.error(e1);throw e1;}
+  if(e1)throw e1;
   NEGOCIO_ID=neg.id;
-  await sb.from('miembros').insert({negocio_id:NEGOCIO_ID,user_id:u.id,nombre:u.email,rol:'dueña'});
+  const {error:e2}=await sb.from('miembros').insert({negocio_id:NEGOCIO_ID,user_id:u.id,nombre:u.email,rol:'dueña'});
+  if(e2)throw e2;
 }
 async function startApp(){
   document.getElementById('loginScreen').style.display='none';
@@ -1820,7 +1822,10 @@ async function startApp(){
     console.error(e);
     document.getElementById('loadingScreen').style.display='none';
     document.getElementById('loginScreen').style.display='flex';
-    document.getElementById('loginErr').textContent='No se pudo cargar. Revisa tu conexión.';
+    const msg=(e&&(e.message||e.error_description||e.details||e.hint))||JSON.stringify(e);
+    const el=document.getElementById('loginErr');
+    el.style.whiteSpace='normal';el.style.fontSize='11px';el.style.textAlign='left';
+    el.textContent='Error: '+msg+(e&&e.code?(' [código '+e.code+']'):'');
     return;
   }
   document.getElementById('loadingScreen').style.display='none';
