@@ -403,6 +403,7 @@ body::before{
 .ev:active{transform:scale(.98)}
 .ev .et{font-size:9px;font-weight:600;opacity:.85}
 .ev .ec{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.ev .ec.compact{font-size:10.5px;margin-top:0}
 .ev .es{font-size:9.5px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.82;margin-top:1px}
 .ev.cancelada{opacity:.42;text-decoration:line-through}
 .tg.wk .ev{padding:3px 4px;border-left-width:2px;border-radius:7px}
@@ -712,6 +713,14 @@ body::before{
         <option value="tarjeta">Tarjeta</option>
         <option value="cupon">Cupón</option>
         <option value="otro">Otro</option>
+      </select>
+      <select id="citasOrden" onchange="renderCitas()">
+        <option value="fecha_desc">Fecha: más reciente</option>
+        <option value="fecha_asc">Fecha: más antigua</option>
+        <option value="nombre_az">Clienta: A–Z</option>
+        <option value="nombre_za">Clienta: Z–A</option>
+        <option value="monto_desc">Monto: mayor</option>
+        <option value="monto_asc">Monto: menor</option>
       </select>
     </div>
     <div class="citas-summary" id="citasSummary"></div>
@@ -1176,14 +1185,24 @@ function evBox(c,narrow){
   const pal=PALETTE[c.color]||PALETTE.rosa;
   const hpx=narrow?HOUR_PX_WK:HOUR_PX;
   const top=Math.max(0,(c._s-RST*60)/60*hpx);
-  const h=Math.max(((c._e-c._s)/60)*hpx,narrow?15:24);
+  const h=Math.max(((c._e-c._s)/60)*hpx,narrow?15:40);
   const w=100/(c._cols||1),left=(c._col||0)*w;
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
   const svc=DB.servicios.find(x=>x.id===c.servicioId);
   const name=cli?cli.nombre:'Clienta';
-  const inner=narrow
-    ?`<div class="ec">${name.split(' ')[0]}</div>`
-    :`<div class="et">${minLabel(c._s)}</div><div class="ec">${name}</div><div class="es">${svcDisplay(c)}</div>`;
+  // adapta el contenido a la altura disponible
+  let inner;
+  if(narrow){
+    inner=`<div class="ec">${name.split(' ')[0]}</div>`;
+  }else if(h<52){
+    // caja baja: solo hora + nombre en una línea compacta
+    inner=`<div class="ec compact">${minLabel(c._s)} · ${name}</div>`;
+  }else if(h<72){
+    // mediana: hora y nombre, sin servicio
+    inner=`<div class="et">${minLabel(c._s)}</div><div class="ec">${name}</div>`;
+  }else{
+    inner=`<div class="et">${minLabel(c._s)}</div><div class="ec">${name}</div><div class="es">${svcDisplay(c)}</div>`;
+  }
   return `<div class="ev ${c.estado}" style="top:${top}px;height:${h}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px);background:${pal.bg};border-left-color:${pal.br};color:${pal.tx}" onclick="event.stopPropagation();editAppt('${c.id}')">${inner}</div>`;
 }
 function gutterHours(){let g='';for(let hh=RST;hh<REN;hh++){const ap=hh>=12?'PM':'AM',h12=hh%12||12;g+=`<div class="hr-cell"><span class="lbl">${h12} ${ap}</span></div>`;}return g}
@@ -1383,7 +1402,20 @@ function renderCitas(){
     if(fMet&&c.metodo!==fMet)return false;
     if(nq){const cli=DB.clientas.find(x=>x.id===c.clientaId);const hay=normTxt((cli?cli.nombre:'')+' '+svcFull(c));if(!hay.includes(nq))return false;}
     return true;
-  }).sort((a,b)=>(b.fecha+(b.hora||'')).localeCompare(a.fecha+(a.hora||'')));
+  });
+  const orden=(document.getElementById('citasOrden')||{}).value||'fecha_desc';
+  const nombreDe=id=>{const cli=DB.clientas.find(x=>x.id===id);return normTxt(cli?cli.nombre:'');};
+  list.sort((a,b)=>{
+    switch(orden){
+      case 'fecha_asc':return (a.fecha+(a.hora||'')).localeCompare(b.fecha+(b.hora||''));
+      case 'nombre_az':return nombreDe(a.clientaId).localeCompare(nombreDe(b.clientaId));
+      case 'nombre_za':return nombreDe(b.clientaId).localeCompare(nombreDe(a.clientaId));
+      case 'monto_desc':return montoCita(b)-montoCita(a);
+      case 'monto_asc':return montoCita(a)-montoCita(b);
+      case 'fecha_desc':
+      default:return (b.fecha+(b.hora||'')).localeCompare(a.fecha+(a.hora||''));
+    }
+  });
   // summary
   const atend=list.filter(c=>c.estado==='atendida');
   const cobrado=atend.filter(c=>c.pago==='pagado').reduce((s,c)=>s+montoCita(c),0);
