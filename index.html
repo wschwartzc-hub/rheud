@@ -271,7 +271,10 @@ body::before{
 .rank .rc .b{font-size:10px;color:var(--muted)}
 
 /* ---------- AGENDA PRO ---------- */
-.agenda-sticky{position:sticky;top:0;z-index:20;background:var(--ivory);padding-top:10px;margin:0 -16px;padding-left:16px;padding-right:16px;transition:top .25s ease}
+.agenda-sticky{position:sticky;top:0;z-index:20;background:var(--ivory);padding-top:10px;margin:0 -16px;padding-left:16px;padding-right:16px;transition:top .25s ease;border-bottom:1px solid transparent}
+#agDayStrip:not(:empty){padding-top:4px;padding-bottom:6px}
+#agDayStrip .wk-head{margin-bottom:0}
+#agDayStrip .mdow{margin-bottom:0;padding:0 11px}
 .agenda-head{display:flex;align-items:center;gap:7px;margin:2px 2px 12px}
 .agenda-label{flex:1;font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;color:var(--ink);text-align:center;line-height:1.1}
 .navarrow{width:34px;height:34px;border-radius:11px;border:1px solid var(--line);background:var(--card);color:var(--wine);font-size:18px;cursor:pointer;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
@@ -497,6 +500,7 @@ body::before{
         <button data-m="sem">Semana</button>
         <button data-m="mes">Mes</button>
       </div>
+      <div id="agDayStrip"></div>
     </div>
     <div id="agendaCanvas"></div>
   </section>
@@ -937,6 +941,7 @@ function prepDay(key,narrow){
 function renderDay(){
   const key=ymd(agAnchor);selectedDate=key;
   setRange([key]);
+  const strip=document.getElementById('agDayStrip');if(strip)strip.innerHTML='';
   const all=dayEvents(key);
   const noTime=all.filter(c=>!c.hora);
   const timed=prepDay(key,false);
@@ -955,8 +960,9 @@ function renderWeek(){
   for(let i=0;i<7;i++){const d=new Date(ws);d.setDate(ws.getDate()+i);days.push(d);}
   setRange(days.map(d=>ymd(d)));
   const head=`<div class="wk-head"><div class="wgut"></div>${days.map(d=>`<div class="wd ${ymd(d)===todayKey?'tdy':''}" onclick="goDay('${ymd(d)}')"><div>${DOW[d.getDay()][0]}</div><span class="dn">${d.getDate()}</span></div>`).join('')}</div>`;
+  const strip=document.getElementById('agDayStrip');if(strip)strip.innerHTML=head;
   const cols=days.map(d=>{const t=prepDay(ymd(d),true);return `<div class="wcol">${gridLines()}${t.map(c=>evBox(c,true)).join('')}</div>`;}).join('');
-  document.getElementById('agendaCanvas').innerHTML=`${head}<div class="tg wk" id="tgScroll"><div class="tg-gutter wk">${gutterHours()}</div>${cols}</div>`;
+  document.getElementById('agendaCanvas').innerHTML=`<div class="tg wk" id="tgScroll"><div class="tg-gutter wk">${gutterHours()}</div>${cols}</div>`;
   const sc=document.getElementById('tgScroll');if(sc)sc.scrollTop=Math.max(0,(Math.max(RST,9)*60-RST*60)/60*HOUR_PX_WK);
 }
 function renderMonth(){
@@ -971,7 +977,8 @@ function renderMonth(){
     const cnt=evs.length;
     cells+=`<div class="mcell ${out?'out':''} ${key===todayKey?'tdy':''}" onclick="goDay('${key}')"><div class="md">${d.getDate()}</div>${cnt?`<div class="mcount">${cnt}</div>`:''}</div>`;
   }
-  document.getElementById('agendaCanvas').innerHTML=`<div class="mgrid"><div class="mdow">${dows.map(x=>`<span>${x}</span>`).join('')}</div><div class="mcells">${cells}</div></div>`;
+  const strip=document.getElementById('agDayStrip');if(strip)strip.innerHTML=`<div class="mdow">${dows.map(x=>`<span>${x}</span>`).join('')}</div>`;
+  document.getElementById('agendaCanvas').innerHTML=`<div class="mgrid"><div class="mcells">${cells}</div></div>`;
 }
 function renderAgenda(){
   const todayKey=ymd(new Date());let label='';
