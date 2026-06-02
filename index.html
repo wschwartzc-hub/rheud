@@ -114,6 +114,11 @@ body::before{
 .aw-ic{font-size:20px}
 .aw-tx{font-size:13px;color:var(--ink)}
 .aw-tx b{color:var(--wine);font-weight:600}
+.field-hint{display:block;font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.4}
+.svc-opt-row{display:flex;align-items:center;gap:11px}
+.svc-var{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;padding-left:33px}
+.svc-var-chip{font-size:13px;font-weight:600;padding:6px 13px;border-radius:20px;background:#fff;border:1.5px solid var(--line);color:var(--ink);cursor:pointer}
+.svc-var-chip.on{background:linear-gradient(150deg,var(--wine),var(--mauve));border-color:transparent;color:#fff}
 .btn-confirm{width:100%;background:var(--cream);border:1.5px solid var(--gold-soft);border-radius:13px;padding:13px;font-family:'Jost';font-size:14px;font-weight:600;color:var(--wine);cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn-confirm:active{transform:scale(.99)}
 .cf-badge{background:var(--wine);color:#fff;font-size:12px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
@@ -846,7 +851,7 @@ body::before{
     <textarea id="apptNotes" placeholder="Diseño, color, alergias…"></textarea>
   </div>
   <button class="btn btn-primary" onclick="saveAppt()">Guardar cita</button>
-  <button class="btn btn-line" onclick="closeSheet()">Cancelar</button>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
   <button class="btn btn-ghost" id="apptDelBtn" style="display:none" onclick="deleteAppt()">Eliminar cita</button>
 </div>
 
@@ -859,6 +864,7 @@ body::before{
     <div class="field"><label>Precio al cliente</label><input type="number" id="svcPrice" placeholder="0" inputmode="numeric"></div>
     <div class="field"><label>Costo real (insumos)</label><input type="number" id="svcCost" placeholder="0" inputmode="numeric"></div>
   </div>
+  <div class="field"><label>Precios variables (opcional)</label><input id="svcPrecios" placeholder="Ej. 80, 100, 130" inputmode="numeric"><small class="field-hint">Si este servicio tiene varios precios a elegir, escríbelos separados por coma. Al agendar podrás elegir cuál.</small></div>
   <div class="field"><label>Descripción</label><textarea id="svcDesc" placeholder="Breve descripción del servicio…"></textarea></div>
   <div class="field"><label>¿Qué incluye?</label><textarea id="svcIncl" placeholder="Ej. Limado, cutícula, esmaltado, decoración simple…"></textarea></div>
   <button class="btn btn-primary" onclick="saveSvc()">Guardar</button>
@@ -1022,8 +1028,8 @@ let onlineState=navigator.onLine;
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 
 /* ---- mapeo fila Supabase -> objeto que usa la UI ---- */
-function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),costoReal:Number(r.costo_real||0),desc:r.descripcion||'',incluye:r.incluye||''}}
-function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
+function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),precios:Array.isArray(r.precios)?r.precios.map(Number):[],costoReal:Number(r.costo_real||0),desc:r.descripcion||'',incluye:r.incluye||''}}
+function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),precios:Array.isArray(s.precios)?s.precios:[],costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
 function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
 function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
@@ -1942,7 +1948,7 @@ function renderServicios(){
     if(cost>0)meta.push(`Margen <b>${fmtMoney(margin)}</b>`);
     if(s.incluye)meta.push(`Incluye: ${s.incluye}`);
     return `<div class="svc-card" onclick="editSvc('${s.id}')">
-      <div class="sc-top"><div class="sc-n">${s.n}</div><div class="sc-p">${fmtMoney(s.p)}</div></div>
+      <div class="sc-top"><div class="sc-n">${s.n}</div><div class="sc-p">${(s.precios&&s.precios.length>1)?(fmtMoney(Math.min(...s.precios))+' – '+fmtMoney(Math.max(...s.precios))):fmtMoney(s.p)}</div></div>
       ${s.desc?`<div class="sc-desc">${s.desc}</div>`:''}
       ${meta.length?`<div class="sc-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</div>`:''}
     </div>`;
@@ -1955,7 +1961,7 @@ function openSvcSheet(){
   document.getElementById('svcDelBtn').style.display='none';
   document.getElementById('svcName').value='';document.getElementById('svcPrice').value='';
   document.getElementById('svcCost').value='';document.getElementById('svcDesc').value='';
-  document.getElementById('svcIncl').value='';
+  document.getElementById('svcIncl').value='';document.getElementById('svcPrecios').value='';
   showSheet('svcSheet');
 }
 function editSvc(id){
@@ -1968,13 +1974,22 @@ function editSvc(id){
   document.getElementById('svcCost').value=s.costoReal||'';
   document.getElementById('svcDesc').value=s.desc||'';
   document.getElementById('svcIncl').value=s.incluye||'';
+  document.getElementById('svcPrecios').value=(s.precios&&s.precios.length)?s.precios.join(', '):'';
   showSheet('svcSheet');
+}
+function parsePrecios(str){
+  return (str||'').split(',').map(x=>Number(x.trim())).filter(x=>!isNaN(x)&&x>0);
 }
 async function saveSvc(){
   const n=document.getElementById('svcName').value.trim();
   if(!n){toast('Escribe el nombre');return;}
+  const precios=parsePrecios(document.getElementById('svcPrecios').value);
+  let p=Number(document.getElementById('svcPrice').value)||0;
+  // si hay precios variables y no hay precio base, usa el primero como referencia
+  if(precios.length&&!p)p=precios[0];
   const data={
-    n,p:Number(document.getElementById('svcPrice').value)||0,
+    n,p,
+    precios,
     costoReal:Number(document.getElementById('svcCost').value)||0,
     desc:document.getElementById('svcDesc').value.trim(),
     incluye:document.getElementById('svcIncl').value.trim()
@@ -2010,23 +2025,49 @@ function renderColorChips(){
 function setColor(k){curColor=k;renderColorChips();}
 document.getElementById('colorChips').addEventListener('click',e=>{if(e.target.dataset.c)setColor(e.target.dataset.c)});
 let selectedSvcIds=[];
+let svcChosenPrice={}; // id -> precio elegido (para servicios con precios variables)
 function renderSvcPicker(){
   const cont=document.getElementById('apptSvcPicker');
   cont.innerHTML=DB.servicios.map(s=>{
     const sel=selectedSvcIds.includes(s.id);
-    return `<div class="svc-opt ${sel?'sel':''}" data-id="${s.id}"><div class="chk">${sel?'✓':''}</div><div class="on">${s.n}</div><div class="op">${fmtMoney(s.p)}</div></div>`;
+    const hasVar=s.precios&&s.precios.length>1;
+    const shownPrice=sel&&svcChosenPrice[s.id]!=null?svcChosenPrice[s.id]:s.p;
+    let priceLabel=fmtMoney(shownPrice);
+    if(hasVar&&!sel)priceLabel=`${fmtMoney(Math.min(...s.precios))}+`;
+    // si está seleccionado y tiene precios variables, muestra chips para elegir
+    let varChips='';
+    if(sel&&hasVar){
+      varChips=`<div class="svc-var">${s.precios.map(pr=>`<span class="svc-var-chip ${svcChosenPrice[s.id]===pr?'on':''}" data-svc="${s.id}" data-pr="${pr}">${fmtMoney(pr)}</span>`).join('')}</div>`;
+    }
+    return `<div class="svc-opt ${sel?'sel':''}" data-id="${s.id}"><div class="svc-opt-row"><div class="chk">${sel?'✓':''}</div><div class="on">${s.n}</div><div class="op">${priceLabel}</div></div>${varChips}</div>`;
   }).join('');
-  const total=selectedSvcIds.reduce((t,id)=>{const s=DB.servicios.find(x=>x.id===id);return t+(s?Number(s.p||0):0)},0);
+  const total=selectedSvcIds.reduce((t,id)=>{const s=DB.servicios.find(x=>x.id===id);if(!s)return t;const pr=(svcChosenPrice[id]!=null)?svcChosenPrice[id]:Number(s.p||0);return t+pr;},0);
   document.getElementById('svcCount').textContent=selectedSvcIds.length?`· ${selectedSvcIds.length} · ${fmtMoney(total)}`:'';
   return total;
 }
 function toggleSvc(id){
   const i=selectedSvcIds.indexOf(id);
-  if(i>=0)selectedSvcIds.splice(i,1);else selectedSvcIds.push(id);
+  if(i>=0){selectedSvcIds.splice(i,1);delete svcChosenPrice[id];}
+  else{
+    selectedSvcIds.push(id);
+    const s=DB.servicios.find(x=>x.id===id);
+    // precio por defecto: si tiene variables, el primero; si no, su precio
+    if(s&&s.precios&&s.precios.length)svcChosenPrice[id]=s.precios[0];
+    else if(s)svcChosenPrice[id]=Number(s.p||0);
+  }
   const total=renderSvcPicker();
   document.getElementById('apptPrice').value=total||'';
 }
-document.getElementById('apptSvcPicker').addEventListener('click',e=>{const o=e.target.closest('.svc-opt');if(o)toggleSvc(o.dataset.id)});
+function chooseSvcPrice(id,pr){
+  svcChosenPrice[id]=Number(pr);
+  const total=renderSvcPicker();
+  document.getElementById('apptPrice').value=total||'';
+}
+document.getElementById('apptSvcPicker').addEventListener('click',e=>{
+  const chip=e.target.closest('.svc-var-chip');
+  if(chip){e.stopPropagation();chooseSvcPrice(chip.dataset.svc,chip.dataset.pr);return;}
+  const o=e.target.closest('.svc-opt');if(o)toggleSvc(o.dataset.id);
+});
 let apptSelectedCliId=null,cliCreateReturnToAppt=false;
 function onApptCliInput(){
   apptSelectedCliId=null;
@@ -2197,7 +2238,7 @@ function openApptSheet(){
   document.getElementById('apptDelBtn').style.display='none';
   document.getElementById('apptCodeBar').style.display='none';
   document.getElementById('apptCli').value='';
-  selectedSvcIds=[];renderSvcPicker();
+  selectedSvcIds=[];svcChosenPrice={};renderSvcPicker();
   apptSelectedCliId=null;document.getElementById('apptCliResults').innerHTML='';
   document.getElementById('apptDate').value=selectedDate;
   document.getElementById('apptTime').value='';
@@ -2222,7 +2263,9 @@ function editAppt(id){
   const bar=document.getElementById('apptCodeBar');
   if(c.codigo){document.getElementById('apptCodeVal').textContent=c.codigo;bar.style.display='block';}
   else bar.style.display='none';
-  selectedSvcIds=citaItems(c).map(i=>i.id).filter(Boolean);renderSvcPicker();
+  selectedSvcIds=citaItems(c).map(i=>i.id).filter(Boolean);
+  svcChosenPrice={};citaItems(c).forEach(i=>{if(i.id)svcChosenPrice[i.id]=Number(i.p||0);});
+  renderSvcPicker();
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
   document.getElementById('apptCli').value=cli?cli.nombre:'';
   apptSelectedCliId=c.clientaId||null;document.getElementById('apptCliResults').innerHTML='';
@@ -2309,6 +2352,8 @@ function msgInfoCita(c,cli){
   msg+=`📅 ${fechaHora}\n`;
   msg+=`💖 ${servicios}\n`;
   if(c.precio)msg+=`💵 Total: $${c.precio}\n`;
+  const w=wxForDate(c.fecha);
+  if(w)msg+=`${WX_ICON[w.code]||'🌡️'} Clima estimado: ${wxText(w.code)}, ${w.mx}°/${w.mn}°\n`;
   msg+=`\n🔖 Código de tu cita: *${c.codigo||'—'}*\n`;
   if(c.codigo)msg+=`\nConsulta el estado de tu cita aquí:\n${PORTAL_URL}?c=${c.codigo}\n`;
   msg+=`\n¡Te esperamos! 🤍`;
@@ -2426,7 +2471,7 @@ async function saveAppt(){
     try{const {data:ins,error}=await sb.from('clientas').insert(cliToRow({nombre})).select().single();if(error)throw error;cli=rowToCli(ins);DB.clientas.push(cli);}
     catch(e){toast('Error al crear clienta');console.error(e);if(btn)btn.textContent='Guardar cita';return;}
   }
-  const items=selectedSvcIds.map(id=>{const s=DB.servicios.find(x=>x.id===id);return s?{id:s.id,n:s.n,p:Number(s.p||0)}:null}).filter(Boolean);
+  const items=selectedSvcIds.map(id=>{const s=DB.servicios.find(x=>x.id===id);if(!s)return null;const pr=(svcChosenPrice[id]!=null)?Number(svcChosenPrice[id]):Number(s.p||0);return {id:s.id,n:s.n,p:pr};}).filter(Boolean);
   const svcName=items.map(i=>i.n).join(' · ');
   const todayKey=ymd(new Date());
   const isAtendida=curEstado==='atendida',isPagado=isAtendida&&curPago==='pagado';

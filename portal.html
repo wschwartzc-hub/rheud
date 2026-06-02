@@ -71,6 +71,19 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:#F8EFE6;
 .qr-sub{font-size:12.5px;color:var(--muted);margin:4px 0 16px}
 .loy-qr{display:flex;justify-content:center}
 .loy-qr img,.loy-qr canvas{display:block}
+.loy-portal{background:linear-gradient(155deg,#FCF7F1,#F3E6DC);border:1px solid var(--gold-soft);border-radius:20px;padding:20px;margin-top:16px}
+.lp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.lp-head span:first-child{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:var(--wine)}
+.lp-count{font-size:13px;font-weight:600;color:var(--gold);background:#fff;padding:3px 12px;border-radius:20px}
+.lp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-bottom:14px}
+.p-sello{aspect-ratio:1;border-radius:50%;border:1.5px dashed var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--gold);background:rgba(255,255,255,.4);font-weight:600}
+.p-sello.hito{border-style:solid;border-color:var(--gold)}
+.p-sello.on{background:linear-gradient(150deg,var(--wine),var(--mauve));border:none;color:#fff;font-size:15px}
+.lp-msg{font-size:13.5px;color:var(--wine);font-weight:500;text-align:center;line-height:1.5}
+.lp-prizes{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.p-prize{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.6);border-radius:11px;padding:9px 13px;font-size:13px}
+.p-prize span{color:var(--mauve);font-weight:600}
+.p-prize b{color:var(--ink);font-weight:600}
 .back{margin-top:16px}
 .spin{width:34px;height:34px;border:3px solid var(--mauve-pale);border-top-color:var(--wine);border-radius:50%;animation:rot .8s linear infinite;margin:30px auto}
 @keyframes rot{to{transform:rotate(360deg)}}
@@ -152,7 +165,8 @@ function render(c){
         <div class="live"><span class="live-dot"></span>Estado actualizado en tiempo real</div>
       </div>
     </div>
-    ${c.clienta_id?`<div class="qr-card">
+    ${c.clienta_id?`<div id="loyaltyCard"></div>
+    <div class="qr-card">
       <div class="qr-title">Tu código de lealtad</div>
       <div class="qr-sub">Muéstralo en el estudio para sumar tu sello 💅</div>
       <div id="loyQr" class="loy-qr"></div>
@@ -161,7 +175,43 @@ function render(c){
     <div class="foot">Rhēud Beauty</div>`;
   if(c.clienta_id){
     try{new QRCode(document.getElementById('loyQr'),{text:'RHEUD-CLI:'+c.clienta_id,width:180,height:180,colorDark:'#5C2233',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}catch(e){console.error(e);}
+    loadLoyalty(c.clienta_id);
   }
+}
+const MAX_SELLOS=12;
+async function loadLoyalty(cliId){
+  try{
+    const {data,error}=await sb.from('clientas').select('sellos,premio_menor_id,premio_mayor_id,menor_canjeado,mayor_canjeado').eq('id',cliId).single();
+    if(error||!data)return;
+    let premios=[];
+    try{const pr=await sb.from('premios').select('id,nombre,nivel');premios=pr.data||[];}catch(e){}
+    renderLoyalty(data,premios);
+  }catch(e){console.error(e);}
+}
+function renderLoyalty(d,premios){
+  const box=document.getElementById('loyaltyCard');if(!box)return;
+  const sellos=Math.min(d.sellos||0,MAX_SELLOS);
+  let dots='';
+  for(let i=1;i<=MAX_SELLOS;i++){
+    const on=i<=sellos;const hito=(i===6||i===12);
+    dots+=`<div class="p-sello ${on?'on':''} ${hito?'hito':''}">${on?'✦':(hito?(i===6?'6':'12'):'')}</div>`;
+  }
+  const faltan6=Math.max(0,6-sellos), faltan12=Math.max(0,12-sellos);
+  let msg;
+  if(sellos>=12)msg='¡Completaste tu tarjeta! 🏆 Pregunta por tu premio mayor.';
+  else if(sellos>=6)msg=`¡Ya tienes tu premio de 6 sellos! 🎁 Te faltan ${faltan12} para el premio mayor.`;
+  else msg=`Te faltan ${faltan6} sello${faltan6!==1?'s':''} para tu primer premio 🎁`;
+  const pMenor=premios.find(p=>p.id===d.premio_menor_id);
+  const pMayor=premios.find(p=>p.id===d.premio_mayor_id);
+  let premiosHtml='';
+  if(pMenor)premiosHtml+=`<div class="p-prize"><span>🎁 6 sellos</span><b>${pMenor.nombre}${d.menor_canjeado?' ✓':''}</b></div>`;
+  if(pMayor)premiosHtml+=`<div class="p-prize"><span>🏆 12 sellos</span><b>${pMayor.nombre}${d.mayor_canjeado?' ✓':''}</b></div>`;
+  box.innerHTML=`<div class="loy-portal">
+    <div class="lp-head"><span>Tu tarjeta de lealtad</span><span class="lp-count">${sellos}/12</span></div>
+    <div class="lp-grid">${dots}</div>
+    <div class="lp-msg">${msg}</div>
+    ${premiosHtml?`<div class="lp-prizes">${premiosHtml}</div>`:''}
+  </div>`;
 }
 
 function subscribe(code){
