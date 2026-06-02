@@ -2053,7 +2053,8 @@ function closeSheet(){
     requestAnimationFrame(()=>document.getElementById('apptSheet').classList.add('show'));
     return;
   }
-  if(curSheet)document.getElementById(curSheet).classList.remove('show');
+  // cierra cualquier hoja abierta (robusto ante estados inconsistentes)
+  document.querySelectorAll('.sheet.show').forEach(s=>s.classList.remove('show'));
   document.getElementById('scrim').classList.remove('show');
   if(openCliId){renderClientas();openCliId=null;}
   curSheet=null;
