@@ -108,6 +108,72 @@ body::before{
 .acc-tx small{font-size:12px;color:var(--muted)}
 .acc-check{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink);margin:4px 0 6px;cursor:pointer}
 .acc-check input{width:17px;height:17px;accent-color:var(--wine)}
+.dur-row{display:flex;gap:8px}
+.dur-row select{flex:1}
+.btn-confirm{width:100%;background:var(--cream);border:1.5px solid var(--gold-soft);border-radius:13px;padding:13px;font-family:'Jost';font-size:14px;font-weight:600;color:var(--wine);cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-confirm:active{transform:scale(.99)}
+.cf-badge{background:var(--wine);color:#fff;font-size:12px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+.confirm-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.cf-item{display:flex;align-items:center;gap:12px;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:13px 15px}
+.cf-info{flex:1;min-width:0}
+.cf-when{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--wine)}
+.cf-cli{font-size:14px;font-weight:600;color:var(--ink);margin-top:1px}
+.cf-svc{font-size:12px;color:var(--muted);margin-top:1px}
+.cf-wa{background:#25D366;color:#fff;border:none;border-radius:11px;padding:10px 15px;font-family:'Jost';font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.cf-wa:active{transform:scale(.96)}
+.btn-scan{width:100%;background:linear-gradient(150deg,var(--wine),var(--mauve));color:#fff;border:none;border-radius:13px;padding:13px;font-family:'Jost';font-size:14px;font-weight:600;cursor:pointer;margin-bottom:14px}
+.btn-scan:active{transform:scale(.99)}
+.qr-reader{width:100%;border-radius:16px;overflow:hidden;margin-bottom:14px;background:#000;min-height:60px}
+.scan-result{margin-bottom:14px}
+.scan-ok{background:var(--green-bg);color:var(--green);border-radius:13px;padding:15px;text-align:center;font-size:14px;line-height:1.5}
+.scan-err{background:var(--red-bg);color:var(--red);border-radius:13px;padding:13px;text-align:center;font-size:13.5px}
+.loy-qr-btn{width:100%;background:#fff;border:1px solid var(--gold-soft);border-radius:11px;padding:10px;font-family:'Jost';font-size:13px;font-weight:600;color:var(--wine);cursor:pointer;margin-top:12px}
+.loy-qr-btn:active{transform:scale(.99)}
+.cli-qr-box{display:flex;justify-content:center;padding:20px;background:#fff;border-radius:16px;margin-bottom:16px}
+.cli-qr-box img,.cli-qr-box canvas{display:block}
+/* premios catálogo */
+.empty-mini{font-size:13px;color:var(--muted);font-weight:300;padding:10px 2px;text-align:center}
+.premios-hint{font-size:13px;color:var(--muted);line-height:1.5;margin:4px 0 14px}
+.premio-group{margin-bottom:18px}
+.pg-title{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--mauve);font-weight:600;margin-bottom:8px}
+.premio-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.premio-card:active{transform:scale(.99)}
+.pr-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pr-n{font-size:14.5px;font-weight:600;color:var(--ink)}
+.pr-badge{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.pr-badge.menor{background:var(--gold-soft);color:#8a6a1e}
+.pr-badge.mayor{background:var(--mauve-pale);color:var(--wine)}
+.pr-desc{font-size:12.5px;color:var(--muted);margin-top:5px}
+/* tarjeta de lealtad */
+.loy-card{background:linear-gradient(155deg,#FCF7F1,#F3E6DC);border:1px solid var(--gold-soft);border-radius:18px;padding:18px}
+.loy-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.loy-head span:first-child{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--wine)}
+.loy-count{font-size:13px;font-weight:600;color:var(--gold);background:#fff;padding:3px 11px;border-radius:20px}
+.loy-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-bottom:16px}
+.sello{aspect-ratio:1;border-radius:50%;border:1.5px dashed var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--gold);background:rgba(255,255,255,.4);font-weight:600}
+.sello.hito{border-style:solid;border-color:var(--gold)}
+.sello.on{background:linear-gradient(150deg,var(--wine),var(--mauve));border:none;color:#fff;font-size:15px}
+.loy-actions{display:flex;gap:9px;margin-bottom:16px}
+.loy-plus{flex:1;background:linear-gradient(150deg,var(--wine),var(--mauve));color:#fff;border:none;border-radius:12px;padding:12px;font-family:'Jost';font-size:14px;font-weight:600;cursor:pointer}
+.loy-plus:active{transform:scale(.98)}
+.loy-minus{width:48px;background:#fff;border:1px solid var(--line);border-radius:12px;font-size:20px;color:var(--muted);cursor:pointer}
+.loy-prems{display:flex;flex-direction:column;gap:9px}
+.loy-prem{display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:13px;padding:11px 13px}
+.loy-prem.ready{border-color:var(--gold);background:#fff}
+.lp-ic{font-size:20px;flex:0 0 auto}
+.lp-mid{flex:1;min-width:0}
+.lp-name{font-size:13.5px;font-weight:600;color:var(--ink)}
+.lp-empty{color:var(--muted);font-weight:400;font-style:italic}
+.lp-meta{font-size:11.5px;color:var(--mauve);margin-top:1px}
+.lp-edit{background:none;border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-family:'Jost';font-size:11.5px;color:var(--wine);cursor:pointer;white-space:nowrap}
+.lp-btn{background:var(--gold);border:none;border-radius:9px;padding:7px 12px;font-family:'Jost';font-size:11.5px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap}
+.lp-done{font-size:11.5px;color:var(--green);font-weight:600;white-space:nowrap}
+.pick-list{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
+.pick-item{display:flex;flex-direction:column;gap:2px;text-align:left;background:var(--cream);border:1px solid var(--line);border-radius:13px;padding:13px 15px;cursor:pointer;font-family:'Jost'}
+.pick-item:active{transform:scale(.99)}
+.pick-item b{font-size:14px;color:var(--ink);font-weight:600}
+.pick-item small{font-size:12px;color:var(--muted)}
+.pick-item.clear{color:var(--red);font-size:13px;align-items:center}
 /* cobro real / descuento */
 .cobro-box{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:13px 14px}
 .cobro-row{display:flex;gap:12px}
@@ -482,6 +548,8 @@ body::before{
 .amt-strike{color:var(--muted);text-decoration:line-through;font-size:13px;font-weight:400;margin-right:3px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <!-- LOGIN -->
@@ -576,14 +644,26 @@ body::before{
   <section class="view" id="v-clientas">
     <div class="section-title">Clientas <small id="cliCount"></small></div>
     <div class="searchbar"><span class="si">⌕</span><input id="cliSearch" placeholder="Buscar por nombre, teléfono o email…" autocomplete="off" oninput="renderClientas()"><span class="clr" id="cliSearchClr" onclick="clearCliSearch()" style="display:none">×</span></div>
+    <button class="btn-scan" onclick="openScanner()">📷 Escanear QR para sumar sello</button>
     <div id="cliList"></div>
   </section>
 
   <!-- SERVICIOS -->
   <section class="view" id="v-servicios">
-    <div class="section-title">Menú <small>Servicios</small></div>
-    <div id="svcList"></div>
-    <button class="btn btn-line" style="margin-top:8px" onclick="openSvcSheet()">+ Agregar servicio</button>
+    <div class="section-title">Menú <small id="menuSub">Servicios</small></div>
+    <div class="seg" id="menuSeg">
+      <button data-s="servicios" class="on" onclick="menuTab('servicios')">Servicios</button>
+      <button data-s="premios" onclick="menuTab('premios')">Premios</button>
+    </div>
+    <div id="menuServicios">
+      <div id="svcList"></div>
+      <button class="btn btn-line" style="margin-top:8px" onclick="openSvcSheet()">+ Agregar servicio</button>
+    </div>
+    <div id="menuPremios" style="display:none">
+      <p class="premios-hint">Crea los premios de tu tarjeta de lealtad. Luego los asignas a cada clienta a los 6 y 12 sellos.</p>
+      <div id="premiosList"></div>
+      <button class="btn btn-line" style="margin-top:8px" onclick="openPremioSheet()">+ Agregar premio</button>
+    </div>
   </section>
 
   <button class="fab" id="fab" onclick="fabAction()">+</button>
@@ -591,6 +671,7 @@ body::before{
   <!-- CITAS (seguimiento) -->
   <section class="view" id="v-citas">
     <div class="section-title">Citas <small id="citasCount"></small></div>
+    <button class="btn-confirm" onclick="openConfirmaciones()">📋 Confirmar citas de mañana <span id="confirmBadge" class="cf-badge" style="display:none"></span></button>
     <div class="searchbar"><span class="si">⌕</span><input id="citasSearch" placeholder="Buscar clienta, servicio…" autocomplete="off" oninput="renderCitas()"><span class="clr" id="citasSearchClr" onclick="clearCitasSearch()" style="display:none">×</span></div>
     <div class="seg" id="citasPeriodSeg">
       <button data-p="todo" class="on">Todo</button>
@@ -684,15 +765,25 @@ body::before{
   <div class="field-row">
     <div class="field"><label>Hora</label><input type="time" id="apptTime" onchange="renderAssist()"></div>
     <div class="field"><label>Duración</label>
-      <select id="apptDur" onchange="renderAssist()">
-        <option value="30">30 min</option>
-        <option value="45">45 min</option>
-        <option value="60" selected>1 hora</option>
-        <option value="90">1 h 30 min</option>
-        <option value="120">2 horas</option>
-        <option value="180">3 horas</option>
-        <option value="240">4 horas</option>
-      </select>
+      <div class="dur-row">
+        <select id="apptDurH" onchange="renderAssist()">
+          <option value="0">0 h</option>
+          <option value="1" selected>1 h</option>
+          <option value="2">2 h</option>
+          <option value="3">3 h</option>
+          <option value="4">4 h</option>
+          <option value="5">5 h</option>
+          <option value="6">6 h</option>
+          <option value="7">7 h</option>
+          <option value="8">8 h</option>
+        </select>
+        <select id="apptDurM" onchange="renderAssist()">
+          <option value="0" selected>00 min</option>
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+        </select>
+      </div>
     </div>
   </div>
   <div class="assist" id="assist"></div>
@@ -802,6 +893,7 @@ body::before{
   <div class="kv" id="cliPayKv" style="display:none"><span class="k">Suele pagar en</span><span class="v" id="cliPayDays"></span></div>
   <div class="kv"><span class="k">Última visita</span><span class="v" id="cliLast"></span></div>
   <div class="field" style="margin-top:16px"><label>Notas de la clienta</label><textarea id="cliNotes" placeholder="Tono favorito, alergias, observaciones…" onblur="saveCliNotes()"></textarea></div>
+  <div id="cliLoyalty" style="margin-top:18px"></div>
   <div class="divider">Historial</div>
   <div id="cliHist"></div>
   <button class="btn btn-primary" style="margin-top:18px" onclick="openAcciones(openCliId,null)">Acciones · Comunicarme</button>
@@ -845,6 +937,59 @@ body::before{
   <button class="btn btn-line" onclick="backToAcciones()">Volver</button>
 </div>
 
+<!-- HOJA QR DE LA CLIENTA -->
+<div class="sheet" id="cliQrSheet">
+  <div class="grab"></div>
+  <h3 id="cliQrTitle">QR de la clienta</h3>
+  <div class="acc-sub">La clienta puede mostrar este código para que le sumes un sello escaneándolo.</div>
+  <div id="cliQrBox" class="cli-qr-box"></div>
+  <button class="btn btn-line" onclick="backToCliFromQR()">Volver</button>
+</div>
+
+<!-- HOJA NUEVO/EDITAR PREMIO -->
+<div class="sheet" id="scanSheet">
+  <div class="grab"></div>
+  <h3>Escanear QR</h3>
+  <div class="acc-sub">Apunta la cámara al QR de la clienta para sumarle un sello.</div>
+  <div id="qrReader" class="qr-reader"></div>
+  <div id="scanResult" class="scan-result"></div>
+  <button class="btn btn-line" onclick="closeScanner()">Cerrar</button>
+</div>
+
+<div class="sheet" id="confirmSheet">
+  <div class="grab"></div>
+  <h3>Confirmar citas de mañana</h3>
+  <div class="acc-sub" id="confirmSub">Envía la confirmación a cada clienta con un toque.</div>
+  <div id="confirmList" class="confirm-list"></div>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
+</div>
+
+<div class="sheet" id="premioSheet">
+  <div class="grab"></div>
+  <h3 id="premioSheetTitle">Nuevo premio</h3>
+  <div class="field"><label>Nombre del premio</label><input id="premioNombre" placeholder="Ej: Diseño gratis, 15% descuento, Retiro sin costo…"></div>
+  <div class="field">
+    <label>Nivel</label>
+    <div class="chips" id="premioNivelChips">
+      <div class="chip sel" data-nv="menor" onclick="setPremioNivel('menor')">🎁 Menor (6 sellos)</div>
+      <div class="chip" data-nv="mayor" onclick="setPremioNivel('mayor')">🏆 Mayor (12 sellos)</div>
+    </div>
+  </div>
+  <div class="field"><label>Descripción (opcional)</label><textarea id="premioDesc" rows="2" placeholder="Detalles del premio…"></textarea></div>
+  <button class="btn btn-primary" onclick="savePremio()">Guardar premio</button>
+  <button class="btn btn-line" onclick="closeSheet()">Cancelar</button>
+  <button class="btn btn-ghost" id="premioDelBtn" style="display:none" onclick="deletePremio()">Eliminar premio</button>
+</div>
+
+<!-- HOJA ELEGIR PREMIO PARA CLIENTA -->
+<div class="sheet" id="pickPremioSheet">
+  <div class="grab"></div>
+  <h3 id="pickPremioTitle">Elegir premio</h3>
+  <div class="acc-sub">Escoge del catálogo el premio para esta clienta.</div>
+  <div id="pickPremioList" class="pick-list"></div>
+  <button class="btn btn-line" onclick="backToCliFromPick()">Volver</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -865,7 +1010,7 @@ const DEFAULT_SVCS=[
 
 /* DB es el caché en memoria; las funciones de UI lo siguen usando igual.
    Cada registro guarda su id real de Supabase en .id (uuid). */
-let DB={servicios:[],clientas:[],citas:[]};
+let DB={servicios:[],clientas:[],citas:[],premios:[]};
 let NEGOCIO_ID=null;
 let PROMO_TEMPLATE='';
 let onlineState=navigator.onLine;
@@ -874,22 +1019,26 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 /* ---- mapeo fila Supabase -> objeto que usa la UI ---- */
 function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),costoReal:Number(r.costo_real||0),desc:r.descripcion||'',incluye:r.incluye||''}}
 function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
-function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||''}}
+function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
 function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
 function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
+function rowToPremio(r){return {id:r.id,nombre:r.nombre,nivel:r.nivel||'menor',desc:r.descripcion||''}}
+function premioToRow(p){return {negocio_id:NEGOCIO_ID,nombre:p.nombre,nivel:p.nivel||'menor',descripcion:p.desc||''}}
 
 /* ---- carga inicial completa desde Supabase ---- */
 async function loadAll(){
-  const [sv,cl,ci]=await Promise.all([
+  const [sv,cl,ci,pr]=await Promise.all([
     sb.from('servicios').select('*').order('created_at',{ascending:true}),
     sb.from('clientas').select('*').order('created_at',{ascending:true}),
-    sb.from('citas').select('*').order('fecha',{ascending:true})
+    sb.from('citas').select('*').order('fecha',{ascending:true}),
+    sb.from('premios').select('*').order('created_at',{ascending:true})
   ]);
   if(sv.error||cl.error||ci.error){console.error(sv.error||cl.error||ci.error);throw (sv.error||cl.error||ci.error);}
   DB.servicios=(sv.data||[]).map(rowToSvc);
   DB.clientas=(cl.data||[]).map(rowToCli);
   DB.citas=(ci.data||[]).map(rowToCita);
+  DB.premios=(pr&&!pr.error)?(pr.data||[]).map(rowToPremio):[];
   // sembrar menú por defecto si está vacío
   if(DB.servicios.length===0){
     const rows=DEFAULT_SVCS.map(s=>({negocio_id:NEGOCIO_ID,nombre:s.n,precio:s.precio,costo_real:0,descripcion:'',incluye:''}));
@@ -908,6 +1057,9 @@ const DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MON=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function fmtMoney(n){return '$'+Number(n||0).toLocaleString('es-MX')}
+function getApptDur(){const h=Number(document.getElementById('apptDurH').value)||0;const m=Number(document.getElementById('apptDurM').value)||0;return h*60+m;}
+function setApptDur(min){min=Number(min)||60;const h=Math.floor(min/60);let m=min%60;if(![0,15,30,45].includes(m))m=Math.round(m/15)*15%60;const hSel=document.getElementById('apptDurH'),mSel=document.getElementById('apptDurM');hSel.value=String(Math.min(h,8));mSel.value=String(m);}
+function fmtDur(min){min=Number(min)||0;const h=Math.floor(min/60),m=min%60;if(h&&m)return `${h} h ${m} min`;if(h)return `${h} h`;return `${m} min`;}
 function citaItems(c){if(c.items&&c.items.length)return c.items;const s=DB.servicios.find(x=>x.id===c.servicioId);return [{id:c.servicioId||'',n:(s?s.n:(c.svcName||'Servicio')),p:Number(c.precio||0)}]}
 /* monto realmente cobrado: usa 'cobrado' si la dueña aplicó descuento, si no el precio */
 function montoCita(c){return (c.cobrado!=null&&!isNaN(c.cobrado))?Number(c.cobrado):Number(c.precio||0)}
@@ -1200,6 +1352,7 @@ function fillCitasFilters(){
 }
 function renderCitas(){
   fillCitasFilters();
+  updateConfirmBadge();
   const q=document.getElementById('citasSearch').value||'';
   document.getElementById('citasSearchClr').style.display=q?'block':'none';
   const range=citasDateRange();
@@ -1469,6 +1622,7 @@ function openCli(id){
     <div class="hd">${fmtFechaCompleta(c.fecha,c.hora)} · ${c.estado}${pg}</div></div>
     <div class="hp">${fmtMoney(c.precio)}</div></div>`;
   }).join(''):'<p style="color:var(--muted);font-size:13px;font-weight:300">Sin historial.</p>';
+  document.getElementById('cliLoyalty').innerHTML=loyaltyCardHtml(cl);
   showSheet('cliSheet');
 }
 async function saveCliNotes(){
@@ -1531,6 +1685,249 @@ async function saveNewCli(){
 }
 
 /* ---------------- SERVICIOS ---------------- */
+/* ============ MENÚ: tabs Servicios / Premios ============ */
+function menuTab(t){
+  document.querySelectorAll('#menuSeg button').forEach(b=>b.classList.toggle('on',b.dataset.s===t));
+  document.getElementById('menuServicios').style.display=(t==='servicios')?'block':'none';
+  document.getElementById('menuPremios').style.display=(t==='premios')?'block':'none';
+  document.getElementById('menuSub').textContent=(t==='servicios')?'Servicios':'Premios de lealtad';
+  if(t==='premios')renderPremios();
+}
+/* ============ PREMIOS (catálogo) ============ */
+function renderPremios(){
+  const cont=document.getElementById('premiosList');
+  if(!DB.premios.length){cont.innerHTML='<div class="empty-mini">Aún no tienes premios. Agrega el primero para tu tarjeta de lealtad.</div>';return;}
+  const menores=DB.premios.filter(p=>p.nivel==='menor');
+  const mayores=DB.premios.filter(p=>p.nivel==='mayor');
+  function card(p){
+    return `<div class="premio-card" onclick="editPremio('${p.id}')">
+      <div class="pr-top"><div class="pr-n">${p.nombre}</div><span class="pr-badge ${p.nivel}">${p.nivel==='menor'?'6 sellos':'12 sellos'}</span></div>
+      ${p.desc?`<div class="pr-desc">${p.desc}</div>`:''}
+    </div>`;
+  }
+  let html='';
+  html+=`<div class="premio-group"><div class="pg-title">🎁 Premio menor · 6 sellos</div>${menores.length?menores.map(card).join(''):'<div class="empty-mini">Sin premios de 6 sellos.</div>'}</div>`;
+  html+=`<div class="premio-group"><div class="pg-title">🏆 Premio mayor · 12 sellos</div>${mayores.length?mayores.map(card).join(''):'<div class="empty-mini">Sin premios de 12 sellos.</div>'}</div>`;
+  cont.innerHTML=html;
+}
+let editingPremioId=null;
+function openPremioSheet(){
+  editingPremioId=null;
+  document.getElementById('premioSheetTitle').textContent='Nuevo premio';
+  document.getElementById('premioNombre').value='';
+  document.getElementById('premioDesc').value='';
+  setPremioNivel('menor');
+  document.getElementById('premioDelBtn').style.display='none';
+  showSheet('premioSheet');
+}
+function editPremio(id){
+  const p=DB.premios.find(x=>x.id===id);if(!p)return;
+  editingPremioId=id;
+  document.getElementById('premioSheetTitle').textContent='Editar premio';
+  document.getElementById('premioNombre').value=p.nombre;
+  document.getElementById('premioDesc').value=p.desc||'';
+  setPremioNivel(p.nivel||'menor');
+  document.getElementById('premioDelBtn').style.display='block';
+  showSheet('premioSheet');
+}
+let curPremioNivel='menor';
+function setPremioNivel(n){curPremioNivel=n;document.querySelectorAll('#premioNivelChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.nv===n));}
+async function savePremio(){
+  const nombre=document.getElementById('premioNombre').value.trim();
+  if(!nombre){toast('Escribe el nombre del premio');return;}
+  const obj={nombre,nivel:curPremioNivel,desc:document.getElementById('premioDesc').value.trim()};
+  try{
+    if(editingPremioId){
+      await sb.from('premios').update(premioToRow(obj)).eq('id',editingPremioId);
+      const p=DB.premios.find(x=>x.id===editingPremioId);if(p)Object.assign(p,obj);
+    }else{
+      const {data,error}=await sb.from('premios').insert(premioToRow(obj)).select().single();
+      if(error)throw error;
+      DB.premios.push(rowToPremio(data));
+    }
+  }catch(e){toast('Error al guardar premio');console.error(e);return;}
+  renderPremios();closeSheet();toast('Premio guardado');
+}
+async function deletePremio(){
+  if(!editingPremioId)return;
+  if(!confirm('¿Eliminar este premio?'))return;
+  try{await sb.from('premios').delete().eq('id',editingPremioId);}catch(e){console.error(e);}
+  DB.premios=DB.premios.filter(p=>p.id!==editingPremioId);
+  renderPremios();closeSheet();toast('Premio eliminado');
+}
+
+/* ============ TARJETA DE LEALTAD (por clienta) ============ */
+const MAX_SELLOS=12;
+function loyaltyCardHtml(cli){
+  const sellos=Math.min(cli.sellos||0,MAX_SELLOS);
+  let dots='';
+  for(let i=1;i<=MAX_SELLOS;i++){
+    const on=i<=sellos;
+    const hito=(i===6||i===12);
+    dots+=`<div class="sello ${on?'on':''} ${hito?'hito':''}">${on?'✦':(hito?(i===6?'6':'12'):'')}</div>`;
+  }
+  const pMenor=DB.premios.find(p=>p.id===cli.premioMenorId);
+  const pMayor=DB.premios.find(p=>p.id===cli.premioMayorId);
+  // estado de premios
+  const lograMenor=sellos>=6, lograMayor=sellos>=12;
+  function premioRow(nivel,premio,logra,canjeado){
+    const meta=nivel==='menor'?'6 sellos':'12 sellos';
+    const ic=nivel==='menor'?'🎁':'🏆';
+    let right;
+    if(canjeado)right=`<span class="lp-done">Canjeado ✓</span>`;
+    else if(logra&&premio)right=`<button class="lp-btn" onclick="canjearPremio('${nivel}')">Canjear</button>`;
+    else right='';
+    return `<div class="loy-prem ${logra?'ready':''}">
+      <div class="lp-ic">${ic}</div>
+      <div class="lp-mid">
+        <div class="lp-name">${premio?premio.nombre:'<span class="lp-empty">Sin premio asignado</span>'}</div>
+        <div class="lp-meta">${meta}${logra&&!canjeado?' · ¡disponible!':''}</div>
+      </div>
+      <button class="lp-edit" onclick="pickPremio('${nivel}')">${premio?'Cambiar':'Asignar'}</button>
+      ${right}
+    </div>`;
+  }
+  return `<div class="loy-card">
+    <div class="loy-head">
+      <span>Tarjeta de lealtad</span>
+      <span class="loy-count">${sellos}/12</span>
+    </div>
+    <div class="loy-grid">${dots}</div>
+    <div class="loy-actions">
+      <button class="loy-minus" onclick="addSello(-1)">−</button>
+      <button class="loy-plus" onclick="addSello(1)">+ Marcar sello</button>
+    </div>
+    <button class="loy-qr-btn" onclick="showCliQR()">📱 Ver QR de la clienta</button>
+    <div class="loy-prems">
+      ${premioRow('menor',pMenor,lograMenor,cli.menorCanjeado)}
+      ${premioRow('mayor',pMayor,lograMayor,cli.mayorCanjeado)}
+    </div>
+  </div>`;
+}
+async function addSello(delta){
+  const cli=DB.clientas.find(x=>x.id===openCliId);if(!cli)return;
+  let s=(cli.sellos||0)+delta;
+  if(s<0)s=0;if(s>MAX_SELLOS)s=MAX_SELLOS;
+  cli.sellos=s;
+  try{await sb.from('clientas').update({sellos:s}).eq('id',cli.id);}catch(e){console.error(e);}
+  refreshLoyalty(cli);
+  if(delta>0&&(s===6||s===12))toast(s===6?'¡Llegó a 6 sellos! 🎁':'¡Tarjeta completa! 🏆');
+}
+function refreshLoyalty(cli){
+  const box=document.getElementById('cliLoyalty');
+  if(box)box.innerHTML=loyaltyCardHtml(cli);
+}
+let pickNivel=null;
+function backToCliFromPick(){
+  document.getElementById('pickPremioSheet').classList.remove('show');
+  curSheet='cliSheet';
+  requestAnimationFrame(()=>document.getElementById('cliSheet').classList.add('show'));
+}
+function pickPremio(nivel){
+  pickNivel=nivel;
+  const lista=DB.premios.filter(p=>p.nivel===nivel);
+  const cont=document.getElementById('pickPremioList');
+  document.getElementById('pickPremioTitle').textContent=nivel==='menor'?'Premio de 6 sellos':'Premio de 12 sellos';
+  if(!lista.length){
+    cont.innerHTML='<div class="empty-mini">No tienes premios de este nivel. Créalos en Menú → Premios.</div>';
+  }else{
+    cont.innerHTML=lista.map(p=>`<button class="pick-item" onclick="assignPremio('${p.id}')"><b>${p.nombre}</b>${p.desc?`<small>${p.desc}</small>`:''}</button>`).join('')
+      +`<button class="pick-item clear" onclick="assignPremio('')">Quitar premio asignado</button>`;
+  }
+  showSheet('pickPremioSheet');
+}
+async function assignPremio(premioId){
+  const cli=DB.clientas.find(x=>x.id===openCliId);if(!cli)return;
+  const field=pickNivel==='menor'?'premio_menor_id':'premio_mayor_id';
+  const val=premioId||null;
+  if(pickNivel==='menor')cli.premioMenorId=val;else cli.premioMayorId=val;
+  try{await sb.from('clientas').update({[field]:val}).eq('id',cli.id);}catch(e){console.error(e);}
+  // vuelve a la ficha de clienta (estaba debajo)
+  document.getElementById('pickPremioSheet').classList.remove('show');
+  curSheet='cliSheet';
+  requestAnimationFrame(()=>document.getElementById('cliSheet').classList.add('show'));
+  refreshLoyalty(cli);
+}
+async function canjearPremio(nivel){
+  const cli=DB.clientas.find(x=>x.id===openCliId);if(!cli)return;
+  const field=nivel==='menor'?'menor_canjeado':'mayor_canjeado';
+  if(nivel==='menor')cli.menorCanjeado=true;else cli.mayorCanjeado=true;
+  try{await sb.from('clientas').update({[field]:true}).eq('id',cli.id);}catch(e){console.error(e);}
+  refreshLoyalty(cli);
+  toast('Premio canjeado ✓');
+}
+
+/* ====== QR: mostrar el de la clienta ====== */
+function showCliQR(){
+  const cli=DB.clientas.find(x=>x.id===openCliId);if(!cli)return;
+  document.getElementById('cliQrTitle').textContent='QR · '+cli.nombre;
+  const box=document.getElementById('cliQrBox');
+  box.innerHTML='';
+  document.getElementById('cliSheet').classList.remove('show');
+  curSheet='cliQrSheet';
+  requestAnimationFrame(()=>document.getElementById('cliQrSheet').classList.add('show'));
+  // generar QR con el id de la clienta
+  try{
+    new QRCode(box,{text:'RHEUD-CLI:'+cli.id,width:220,height:220,colorDark:'#5C2233',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+  }catch(e){box.innerHTML='<div class="empty-mini">No se pudo generar el QR.</div>';console.error(e);}
+}
+function backToCliFromQR(){
+  document.getElementById('cliQrSheet').classList.remove('show');
+  curSheet='cliSheet';
+  requestAnimationFrame(()=>document.getElementById('cliSheet').classList.add('show'));
+}
+
+/* ====== QR: escanear para sumar sello ====== */
+let qrScanner=null;
+function openScanner(){
+  document.getElementById('scanResult').innerHTML='';
+  showSheet('scanSheet');
+  // pequeño delay para que el contenedor esté visible
+  setTimeout(startScan,250);
+}
+function startScan(){
+  if(typeof Html5Qrcode==='undefined'){
+    document.getElementById('scanResult').innerHTML='<div class="scan-err">No se pudo cargar el escáner. Revisa tu conexión.</div>';
+    return;
+  }
+  qrScanner=new Html5Qrcode('qrReader');
+  qrScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},onScanSuccess,()=>{})
+    .catch(err=>{
+      document.getElementById('scanResult').innerHTML='<div class="scan-err">No se pudo abrir la cámara. Dale permiso a Safari para usar la cámara.</div>';
+      console.error(err);
+    });
+}
+async function onScanSuccess(text){
+  if(!text||!text.startsWith('RHEUD-CLI:')){
+    document.getElementById('scanResult').innerHTML='<div class="scan-err">Ese QR no es de una clienta de Rhēud.</div>';
+    return;
+  }
+  const id=text.replace('RHEUD-CLI:','');
+  const cli=DB.clientas.find(x=>x.id===id);
+  if(!cli){
+    document.getElementById('scanResult').innerHTML='<div class="scan-err">No encontré a esa clienta.</div>';
+    return;
+  }
+  // pausa el escáner para no leer mil veces
+  try{await qrScanner.stop();}catch(e){}
+  let s=Math.min((cli.sellos||0)+1,MAX_SELLOS);
+  cli.sellos=s;
+  try{await sb.from('clientas').update({sellos:s}).eq('id',cli.id);}catch(e){console.error(e);}
+  let extra='';
+  if(s===6)extra=' · ¡llegó a 6 sellos! 🎁';
+  else if(s===12)extra=' · ¡tarjeta completa! 🏆';
+  document.getElementById('scanResult').innerHTML=`<div class="scan-ok"><b>${cli.nombre}</b><br>Sello sumado: ${s}/12${extra}</div><button class="btn btn-primary" style="margin-top:12px" onclick="restartScan()">Escanear otra</button>`;
+}
+function restartScan(){
+  document.getElementById('scanResult').innerHTML='';
+  startScan();
+}
+async function closeScanner(){
+  if(qrScanner){try{await qrScanner.stop();}catch(e){}try{qrScanner.clear();}catch(e){}qrScanner=null;}
+  closeSheet();
+  if(currentView==='clientas')renderClientas();
+}
+
 function renderServicios(){
   const cont=document.getElementById('svcList');
   cont.innerHTML=DB.servicios.map(s=>{
@@ -1660,7 +2057,7 @@ function renderAssist(){
   if(!date){el.innerHTML='';return;}
   const busy=busyIntervals(date,editingId);
   const winS=AS_START*60,winE=AS_END*60,winLen=winE-winS;
-  const dur=Number(document.getElementById('apptDur').value)||60;
+  const dur=getApptDur()||60;
   const time=document.getElementById('apptTime').value;
   const propS=time?toMin(time):null,propE=propS!=null?propS+dur:null;
   // conflict check
@@ -1798,7 +2195,7 @@ function openApptSheet(){
   apptSelectedCliId=null;document.getElementById('apptCliResults').innerHTML='';
   document.getElementById('apptDate').value=selectedDate;
   document.getElementById('apptTime').value='';
-  document.getElementById('apptDur').value='60';
+  setApptDur(60);
   document.getElementById('apptPrice').value='';
   document.getElementById('apptNotes').value='';
   document.getElementById('apptCobrado').value='';
@@ -1825,7 +2222,7 @@ function editAppt(id){
   apptSelectedCliId=c.clientaId||null;document.getElementById('apptCliResults').innerHTML='';
   document.getElementById('apptDate').value=c.fecha;
   document.getElementById('apptTime').value=c.hora||'';
-  document.getElementById('apptDur').value=String(c.dur||60);
+  setApptDur(c.dur||60);
   document.getElementById('apptPrice').value=c.precio||'';
   document.getElementById('apptNotes').value=c.notas||'';
   curColor=c.color||'rosa';renderColorChips();
@@ -1846,6 +2243,58 @@ function waOpen(cli,msg){
   window.open(url,'_blank');
 }
 const PORTAL_URL='https://rheud-app.netlify.app/portal.html';
+function msgConfirmacion(c,cli){
+  const servicios=citaItems(c).map(i=>i.n).join(', ')||c.svcName||'tu servicio';
+  const fechaHora=fmtFechaCompleta(c.fecha,c.hora);
+  let msg=`¡Hola${cli?' '+cli.nombre.split(' ')[0]:''}! 🤍\n\n`;
+  msg+=`Te recordamos tu cita de mañana en *Rhēud Beauty*:\n\n`;
+  msg+=`📅 ${fechaHora}\n`;
+  msg+=`💖 ${servicios}\n`;
+  if(c.codigo)msg+=`🔖 ${c.codigo}\n`;
+  msg+=`\n¿Nos confirmas tu asistencia? Responde *Sí* para confirmar. 💅✨`;
+  return msg;
+}
+function openConfirmaciones(){
+  const t=new Date();t.setDate(t.getDate()+1);
+  const manana=ymd(t);
+  const citas=DB.citas.filter(c=>c.fecha===manana&&c.estado!=='cancelada').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  const cont=document.getElementById('confirmList');
+  const sub=document.getElementById('confirmSub');
+  const fechaTxt=`${DOW[t.getDay()]} ${t.getDate()} ${MON[t.getMonth()]}`;
+  if(!citas.length){
+    sub.textContent=`No hay citas para mañana (${fechaTxt}).`;
+    cont.innerHTML='<div class="empty-mini">Nada que confirmar por ahora.</div>';
+  }else{
+    sub.textContent=`${citas.length} cita${citas.length!==1?'s':''} para mañana, ${fechaTxt}. Toca para enviar la confirmación.`;
+    cont.innerHTML=citas.map(c=>{
+      const cli=DB.clientas.find(x=>x.id===c.clientaId);
+      const t12=fmt12(c.hora);
+      const hora=t12?`${t12.h} ${t12.ap}`:'—';
+      const svc=citaItems(c).map(i=>i.n).join(' · ')||c.svcName||'Servicio';
+      return `<div class="cf-item">
+        <div class="cf-info">
+          <div class="cf-when">${hora}</div>
+          <div class="cf-cli">${cli?cli.nombre:'Sin clienta'}</div>
+          <div class="cf-svc">${svc}</div>
+        </div>
+        <button class="cf-wa" onclick="confirmarCita('${c.id}')">Confirmar</button>
+      </div>`;
+    }).join('');
+  }
+  showSheet('confirmSheet');
+}
+function confirmarCita(citaId){
+  const c=DB.citas.find(x=>x.id===citaId);if(!c)return;
+  const cli=DB.clientas.find(x=>x.id===c.clientaId);
+  waOpen(cli, msgConfirmacion(c,cli));
+}
+function updateConfirmBadge(){
+  const t=new Date();t.setDate(t.getDate()+1);
+  const manana=ymd(t);
+  const n=DB.citas.filter(c=>c.fecha===manana&&c.estado!=='cancelada').length;
+  const b=document.getElementById('confirmBadge');
+  if(b){if(n>0){b.textContent=n;b.style.display='inline-block';}else b.style.display='none';}
+}
 function msgInfoCita(c,cli){
   const servicios=citaItems(c).map(i=>i.n).join(', ')||c.svcName||'tu servicio';
   const fechaHora=fmtFechaCompleta(c.fecha,c.hora);
@@ -1998,7 +2447,7 @@ async function saveAppt(){
   const data={
     clientaId:cli.id,items,servicioId:items[0]?items[0].id:'',svcName,
     fecha:date,hora:document.getElementById('apptTime').value,
-    dur:Number(document.getElementById('apptDur').value)||60,
+    dur:getApptDur()||60,
     color:curColor,
     precio:precioNum,
     cobrado:cobradoVal,descPct:descVal,
@@ -2054,6 +2503,7 @@ function closeSheet(){
     return;
   }
   // cierra cualquier hoja abierta (robusto ante estados inconsistentes)
+  if(typeof qrScanner!=='undefined'&&qrScanner){try{qrScanner.stop();}catch(e){}try{qrScanner.clear();}catch(e){}qrScanner=null;}
   document.querySelectorAll('.sheet.show').forEach(s=>s.classList.remove('show'));
   document.getElementById('scrim').classList.remove('show');
   if(openCliId){renderClientas();openCliId=null;}
@@ -2148,6 +2598,7 @@ function subscribeRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'citas'},()=>refetch('citas'))
     .on('postgres_changes',{event:'*',schema:'public',table:'clientas'},()=>refetch('clientas'))
     .on('postgres_changes',{event:'*',schema:'public',table:'servicios'},()=>refetch('servicios'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'premios'},()=>refetch('premios'))
     .subscribe();
 }
 let refetchTimer=null;
@@ -2156,14 +2607,16 @@ function refetch(){
   clearTimeout(refetchTimer);
   refetchTimer=setTimeout(async()=>{
     try{
-      const [sv,cl,ci]=await Promise.all([
+      const [sv,cl,ci,pr]=await Promise.all([
         sb.from('servicios').select('*').order('created_at',{ascending:true}),
         sb.from('clientas').select('*').order('created_at',{ascending:true}),
-        sb.from('citas').select('*').order('fecha',{ascending:true})
+        sb.from('citas').select('*').order('fecha',{ascending:true}),
+        sb.from('premios').select('*').order('created_at',{ascending:true})
       ]);
       if(sv.data)DB.servicios=sv.data.map(rowToSvc);
       if(cl.data)DB.clientas=cl.data.map(rowToCli);
       if(ci.data)DB.citas=ci.data.map(rowToCita);
+      if(pr&&pr.data)DB.premios=pr.data.map(rowToPremio);
       // re-render la vista actual
       if(currentView==='agenda')renderAgenda();
       else if(currentView==='ventas')renderVentas();
