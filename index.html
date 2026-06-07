@@ -244,6 +244,7 @@ body::before{
 .pill.cancelada{background:#EDE9EA;color:var(--muted)}
 .pill.pagado{background:var(--green-bg);color:var(--green)}
 .pill.deuda{background:var(--red-bg);color:var(--red)}
+.pill.parcial{background:var(--gold-soft);color:#8a6a1e}
 
 .empty{text-align:center;padding:46px 20px;color:var(--muted)}
 .empty .ic{font-size:34px;opacity:.5}
@@ -833,6 +834,7 @@ body::before{
     <label>Pago</label>
     <div class="chips" id="pagoChips">
       <div class="chip sel" data-pg="pagado">Pagado</div>
+      <div class="chip" data-pg="parcial">Parcial</div>
       <div class="chip" data-pg="deuda">Pendiente</div>
     </div>
   </div>
@@ -844,6 +846,13 @@ body::before{
         <div class="cobro-mini"><span>Desc. %</span><input type="number" id="apptDescPct" placeholder="0" inputmode="numeric" max="100" oninput="onDescPctInput()"></div>
       </div>
       <div class="cobro-info" id="cobroInfo"></div>
+    </div>
+  </div>
+  <div class="field" id="abonoWrap" style="display:none">
+    <label>Pago parcial (abono)</label>
+    <div class="cobro-box">
+      <div class="cobro-mini"><span>Abonado $</span><input type="number" id="apptAbonado" placeholder="0" inputmode="numeric" oninput="updateAbonoInfo()"></div>
+      <div class="cobro-info" id="abonoInfo"></div>
     </div>
   </div>
   <div class="field" id="metodoWrap" style="display:none">
@@ -1048,8 +1057,8 @@ function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),precios:Ar
 function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),precios:Array.isArray(s.precios)?s.precios:[],costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
 function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
-function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
-function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
+function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),abonado:(r.abonado==null?null:Number(r.abonado)),estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
+function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),abonado:(c.abonado==null?null:Number(c.abonado)),estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
 function rowToPremio(r){return {id:r.id,nombre:r.nombre,nivel:r.nivel||'menor',desc:r.descripcion||''}}
 function premioToRow(p){return {negocio_id:NEGOCIO_ID,nombre:p.nombre,nivel:p.nivel||'menor',descripcion:p.desc||''}}
 
@@ -1089,7 +1098,20 @@ function setApptDur(min){min=Number(min)||60;const h=Math.floor(min/60);let m=mi
 function fmtDur(min){min=Number(min)||0;const h=Math.floor(min/60),m=min%60;if(h&&m)return `${h} h ${m} min`;if(h)return `${h} h`;return `${m} min`;}
 function citaItems(c){if(c.items&&c.items.length)return c.items;const s=DB.servicios.find(x=>x.id===c.servicioId);return [{id:c.servicioId||'',n:(s?s.n:(c.svcName||'Servicio')),p:Number(c.precio||0)}]}
 /* monto realmente cobrado: usa 'cobrado' si la dueña aplicó descuento, si no el precio */
-function montoCita(c){return (c.cobrado!=null&&!isNaN(c.cobrado))?Number(c.cobrado):Number(c.precio||0)}
+function montoCita(c){
+  // monto realmente cobrado (ingreso) de la cita
+  if(c.pago==='parcial')return Number(c.abonado||0);
+  if(c.pago==='deuda')return 0;
+  // pagado: usa cobrado (descuento) si existe, si no el precio
+  return (c.cobrado!=null&&!isNaN(c.cobrado))?Number(c.cobrado):Number(c.precio||0);
+}
+function deudaCita(c){
+  // saldo pendiente de la cita
+  if(c.estado!=='atendida')return 0;
+  if(c.pago==='deuda')return Number(c.precio||0);
+  if(c.pago==='parcial')return Math.max(0,Number(c.precio||0)-Number(c.abonado||0));
+  return 0;
+}
 function svcDisplay(c){const it=citaItems(c);if(it.length<=1)return it[0]?it[0].n:(c.svcName||'Servicio');return it[0].n+' +'+(it.length-1)}
 function svcFull(c){return citaItems(c).map(i=>i.n).join(' · ')}
 function fmt12(t){if(!t)return '';let[h,m]=t.split(':').map(Number);const ap=h>=12?'PM':'AM';h=h%12||12;return {h:h+':'+String(m).padStart(2,'0'),ap}}
@@ -1293,9 +1315,9 @@ function renderVentas(){
     if(endKey<startKey){const t=startKey;startKey=endKey;endKey=t;}
   }else{startKey=rangeStart(ventasPeriod);endKey=today;}
   const sales=DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=startKey&&c.fecha<=endKey);
-  const total=sales.reduce((s,c)=>s+montoCita(c),0);
-  const cobrado=sales.filter(c=>c.pago!=='deuda').reduce((s,c)=>s+montoCita(c),0);
-  const deuda=sales.filter(c=>c.pago==='deuda').reduce((s,c)=>s+Number(c.precio||0),0);
+  const total=sales.reduce((s,c)=>s+Number(c.precio||0),0);
+  const cobrado=sales.reduce((s,c)=>s+montoCita(c),0);
+  const deuda=sales.reduce((s,c)=>s+deudaCita(c),0);
   document.getElementById('ventasStats').innerHTML=`
     <div class="stat wide"><div class="lbl">Total atendido</div><div class="val">${fmtMoney(total)}</div><div class="sub">${sales.length} servicio${sales.length!==1?'s':''}</div></div>
     <div class="stat"><div class="lbl">Cobrado</div><div class="val" style="color:var(--green)">${fmtMoney(cobrado)}</div></div>
@@ -1310,29 +1332,29 @@ function renderVentas(){
       <div class="avatar">${cli?cli.nombre[0].toUpperCase():'·'}</div>
       <div class="info"><div class="name">${cli?cli.nombre:'Clienta'}</div>
       <div class="det">${svcDisplay(c)} · ${d.getDate()} ${MON[d.getMonth()]}</div></div>
-      <div class="right"><div class="amt">${fmtMoney(c.precio)}</div>
-      <span class="pill ${c.pago==='deuda'?'deuda':'pagado'}">${c.pago==='deuda'?'Debe':(c.metodo?metodoLabel(c.metodo):'Pagado')}</span></div>
+      <div class="right"><div class="amt">${fmtMoney(deudaCita(c))}</div>
+      <span class="pill ${c.pago==='parcial'?'parcial':'deuda'}">${c.pago==='parcial'?'Abonó':'Debe'}</span></div>
     </div>`;
   }).join('');
   renderCobranza();
 }
 function metodoLabel(m){return ({efectivo:'Efectivo',transferencia:'Transfer.',tarjeta:'Tarjeta',cupon:'Cupón',otro:'Otro'})[m]||'Pagado'}
 function renderCobranza(){
-  const debts=DB.citas.filter(c=>c.estado==='atendida'&&c.pago==='deuda');
+  const debts=DB.citas.filter(c=>c.estado==='atendida'&&(c.pago==='deuda'||c.pago==='parcial'));
   const alertEl=document.getElementById('cobAlert');
   const block=document.getElementById('cobranzaBlock');
   if(!debts.length){alertEl.innerHTML='';block.innerHTML='';return;}
   // aging buckets
   const buckets=[{l:'0–7 días',min:0,max:7,v:0},{l:'8–14 días',min:8,max:14,v:0},{l:'15–30 días',min:15,max:30,v:0},{l:'+30 días',min:31,max:1e9,v:0}];
-  debts.forEach(c=>{const d=daysSince(c.fecha);const b=buckets.find(b=>d>=b.min&&d<=b.max);if(b)b.v+=Number(c.precio||0);});
-  const totalDebt=debts.reduce((s,c)=>s+Number(c.precio||0),0);
+  debts.forEach(c=>{const d=daysSince(c.fecha);const b=buckets.find(b=>d>=b.min&&d<=b.max);if(b)b.v+=deudaCita(c);});
+  const totalDebt=debts.reduce((s,c)=>s+deudaCita(c),0);
   const overdue=debts.filter(c=>daysSince(c.fecha)>=14);
-  const overdueAmt=overdue.reduce((s,c)=>s+Number(c.precio||0),0);
+  const overdueAmt=overdue.reduce((s,c)=>s+deudaCita(c),0);
   const overdueClis=new Set(overdue.map(c=>c.clientaId)).size;
   alertEl.innerHTML=overdueAmt>0?`<div class="alert-cob"><div class="ai">⚠️</div><div class="at">Tienes <b>${fmtMoney(overdueAmt)}</b> en cobranza vencida (+14 días) de <b>${overdueClis} client${overdueClis!==1?'as':'a'}</b>. Conviene dar seguimiento.</div></div>`:'';
   // debtors grouped by client
   const byCli={};
-  debts.forEach(c=>{if(!byCli[c.clientaId])byCli[c.clientaId]={debt:0,oldest:0,count:0};byCli[c.clientaId].debt+=Number(c.precio||0);byCli[c.clientaId].count++;byCli[c.clientaId].oldest=Math.max(byCli[c.clientaId].oldest,daysSince(c.fecha));});
+  debts.forEach(c=>{if(!byCli[c.clientaId])byCli[c.clientaId]={debt:0,oldest:0,count:0};byCli[c.clientaId].debt+=deudaCita(c);byCli[c.clientaId].count++;byCli[c.clientaId].oldest=Math.max(byCli[c.clientaId].oldest,daysSince(c.fecha));});
   const debtors=Object.entries(byCli).map(([id,d])=>({id,...d})).sort((a,b)=>b.debt-a.debt);
   const maxB=Math.max(...buckets.map(b=>b.v),1);
   const barsHtml=buckets.map(b=>{const h=Math.round((b.v/maxB)*100);const danger=b.min>=15;return `<div class="bar-col"><div class="bar-val">${b.v?('$'+(b.v>=1000?(b.v/1000).toFixed(1)+'k':b.v)):''}</div><div class="bar-track"><div class="bar-fill ${b.v?'':'zero'}" style="height:${b.v?Math.max(h,4):4}%;${danger&&b.v?'background:linear-gradient(to top,var(--red),#D98A82)':''}"></div></div><div class="bar-lbl">${b.l.replace(' días','d')}</div></div>`}).join('');
@@ -1400,7 +1422,7 @@ function renderCitas(){
   const nq=normTxt(q);
   let list=DB.citas.filter(c=>{
     if(range&&(c.fecha<range[0]||c.fecha>range[1]))return false;
-    if(fEstado==='deuda'){if(!(c.estado==='atendida'&&c.pago==='deuda'))return false;}
+    if(fEstado==='deuda'){if(!(c.estado==='atendida'&&(c.pago==='deuda'||c.pago==='parcial')))return false;}
     else if(fEstado==='pagada'){if(!(c.estado==='atendida'&&c.pago==='pagado'))return false;}
     else if(fEstado&&c.estado!==fEstado)return false;
     if(fCli&&c.clientaId!==fCli)return false;
@@ -1424,8 +1446,8 @@ function renderCitas(){
   });
   // summary
   const atend=list.filter(c=>c.estado==='atendida');
-  const cobrado=atend.filter(c=>c.pago==='pagado').reduce((s,c)=>s+montoCita(c),0);
-  const pend=atend.filter(c=>c.pago==='deuda').reduce((s,c)=>s+Number(c.precio||0),0);
+  const cobrado=atend.reduce((s,c)=>s+montoCita(c),0);
+  const pend=atend.reduce((s,c)=>s+deudaCita(c),0);
   document.getElementById('citasCount').textContent=list.length?list.length+' citas':'';
   document.getElementById('citasSummary').innerHTML=`
     <div class="csum"><div class="cl">Citas</div><div class="cv">${list.length}</div></div>
@@ -1437,10 +1459,15 @@ function renderCitas(){
     const cli=DB.clientas.find(x=>x.id===c.clientaId);
     const d=new Date(c.fecha+'T00:00:00');
     const isDeuda=c.estado==='atendida'&&c.pago==='deuda';
-    const rowCls=isDeuda?'deuda':c.estado;
+    const isParcial=c.estado==='atendida'&&c.pago==='parcial';
+    const rowCls=(isDeuda||isParcial)?'deuda':c.estado;
     const estPill=`<span class="pill ${c.estado}">${c.estado}</span>`;
     let payPill='';
-    if(c.estado==='atendida')payPill=isDeuda?`<span class="pill deuda">debe ${fmtMoney(c.precio)}</span>`:`<span class="pill pagado">pagado</span>`;
+    if(c.estado==='atendida'){
+      if(isDeuda)payPill=`<span class="pill deuda">debe ${fmtMoney(deudaCita(c))}</span>`;
+      else if(isParcial)payPill=`<span class="pill parcial">abonó ${fmtMoney(c.abonado||0)} · debe ${fmtMoney(deudaCita(c))}</span>`;
+      else payPill=`<span class="pill pagado">pagado</span>`;
+    }
     const metPill=(c.estado==='atendida'&&c.pago==='pagado'&&c.metodo)?`<span class="pill metodo">${metodoLabel(c.metodo)}</span>`:'';
     const tieneDesc=(c.cobrado!=null&&!isNaN(c.cobrado)&&Number(c.cobrado)!==Number(c.precio));
     const descPill=tieneDesc?`<span class="pill desc">${c.descPct?c.descPct+'% desc':'desc'}</span>`:'';
@@ -1470,8 +1497,8 @@ function refreshAfterCita(){renderCitas();if(currentView==='agenda')renderAgenda
 async function marcarAtendida(id){const c=DB.citas.find(x=>x.id===id);if(!c)return;c.estado='atendida';if(!c.pago)c.pago='deuda';try{await sb.from('citas').update({estado:c.estado,pago:c.pago}).eq('id',id);}catch(e){console.error(e);}refreshAfterCita();toast('Marcada como atendida');}
 async function marcarPagada(id){
   const c=DB.citas.find(x=>x.id===id);if(!c)return;
-  c.pago='pagado';c.pagadoFecha=ymd(new Date());if(!c.metodo)c.metodo='efectivo';
-  try{await sb.from('citas').update({pago:'pagado',pagado_fecha:c.pagadoFecha,metodo:c.metodo}).eq('id',id);}catch(e){console.error(e);}
+  c.pago='pagado';c.pagadoFecha=ymd(new Date());if(!c.metodo)c.metodo='efectivo';c.abonado=null;
+  try{await sb.from('citas').update({pago:'pagado',pagado_fecha:c.pagadoFecha,metodo:c.metodo,abonado:null}).eq('id',id);}catch(e){console.error(e);}
   refreshAfterCita();toast('Pago registrado ✨ — abre la cita para método/comprobante');
 }
 function reagendar(id){editAppt(id);}
@@ -1595,8 +1622,8 @@ function matchCli(c,q){q=normTxt(q);if(!q)return true;const num=c.num?('#'+Strin
 function clientStats(id){
   const cs=DB.citas.filter(c=>c.clientaId===id&&c.estado==='atendida');
   const spent=cs.reduce((s,c)=>s+montoCita(c),0);
-  const debtCitas=cs.filter(c=>c.pago==='deuda');
-  const debt=debtCitas.reduce((s,c)=>s+Number(c.precio||0),0);
+  const debtCitas=cs.filter(c=>c.pago==='deuda'||c.pago==='parcial');
+  const debt=cs.reduce((s,c)=>s+deudaCita(c),0);
   const last=cs.map(c=>c.fecha).sort().pop();
   const visits=cs.length,avgTicket=visits?Math.round(spent/visits):0;
   const lastDays=last?daysSince(last):null;
@@ -2201,11 +2228,26 @@ function setEstado(e){
 function setPago(p){curPago=p;document.querySelectorAll('#pagoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.pg===p));updateMetodoVis();}
 function setMetodo(m){curMetodo=m;document.querySelectorAll('#metodoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.mt===m))}
 function updateMetodoVis(){
-  const show=(curEstado==='atendida'&&curPago==='pagado');
-  document.getElementById('metodoWrap').style.display=show?'block':'none';
-  document.getElementById('compWrap').style.display=(curEstado==='atendida')?'block':'none';
-  document.getElementById('cobroWrap').style.display=show?'block':'none';
-  if(show)updateCobroInfo();
+  const atendida=curEstado==='atendida';
+  const pagado=atendida&&curPago==='pagado';
+  const parcial=atendida&&curPago==='parcial';
+  // método de pago: cuando pagó todo o abonó algo
+  document.getElementById('metodoWrap').style.display=(pagado||parcial)?'block':'none';
+  document.getElementById('compWrap').style.display=atendida?'block':'none';
+  // descuento: solo cuando pagó completo
+  document.getElementById('cobroWrap').style.display=pagado?'block':'none';
+  // abono: solo en parcial
+  document.getElementById('abonoWrap').style.display=parcial?'block':'none';
+  if(pagado)updateCobroInfo();
+  if(parcial)updateAbonoInfo();
+}
+function updateAbonoInfo(){
+  const base=precioBase();
+  const ab=Number(document.getElementById('apptAbonado').value)||0;
+  const info=document.getElementById('abonoInfo');
+  const pend=Math.max(0,base-ab);
+  if(ab<=0){info.innerHTML='';return;}
+  info.innerHTML=`Abonó <b>$${ab}</b> · queda pendiente <b style="color:var(--red)">$${pend}</b>`;
 }
 function precioBase(){return Number(document.getElementById('apptPrice').value)||0;}
 function onCobradoInput(){
@@ -2286,6 +2328,7 @@ function openApptSheet(){
   document.getElementById('apptNotes').value='';
   document.getElementById('apptCobrado').value='';
   document.getElementById('apptDescPct').value='';
+  document.getElementById('apptAbonado').value='';
   document.getElementById('cobroInfo').innerHTML='';
   curColor='rosa';renderColorChips();
   curMetodo='efectivo';setMetodo('efectivo');
@@ -2319,7 +2362,8 @@ function editAppt(id){
   setEstado(c.estado);setPago(c.pago||'pagado');
   document.getElementById('apptCobrado').value=(c.cobrado==null||c.cobrado===c.precio)?'':c.cobrado;
   document.getElementById('apptDescPct').value=(c.descPct==null||c.descPct===0)?'':c.descPct;
-  updateCobroInfo();
+  document.getElementById('apptAbonado').value=(c.abonado==null)?'':c.abonado;
+  updateCobroInfo();updateAbonoInfo();
   renderAssist();
   showSheet('apptSheet');
 }
@@ -2406,7 +2450,8 @@ function msgRecordatorioPago(c,cli){
   msg+=`🔖 ID de cita: *${c.codigo||'—'}*\n`;
   msg+=`📅 ${fechaHora}\n`;
   msg+=`💖 ${servicios}\n`;
-  msg+=`💵 Monto pendiente: *$${c.precio||0}*\n`;
+  if(c.pago==='parcial'&&c.abonado)msg+=`✅ Abonado: $${c.abonado}\n`;
+  msg+=`💵 Monto pendiente: *$${deudaCita(c)}*\n`;
   if(c.codigo)msg+=`\nPuedes ver el detalle aquí:\n${PORTAL_URL}?c=${c.codigo}\n`;
   msg+=`\n¡Gracias! Cualquier duda, con gusto te apoyamos.`;
   return msg;
@@ -2422,7 +2467,7 @@ function openAcciones(cliId, citaId){
   const hayCita=!!accCitaId;
   document.getElementById('accCitaBtn').style.display = hayCita?'flex':'none';
   let muestraCobro=false;
-  if(hayCita){const c=DB.citas.find(x=>x.id===accCitaId); if(c && c.estado==='atendida' && c.pago==='deuda') muestraCobro=true;}
+  if(hayCita){const c=DB.citas.find(x=>x.id===accCitaId); if(c && c.estado==='atendida' && (c.pago==='deuda'||c.pago==='parcial')) muestraCobro=true;}
   else if(accCliId){const st=clientStats(accCliId); if(st.debt>0) muestraCobro=true;}
   document.getElementById('accCobroBtn').style.display = muestraCobro?'flex':'none';
   showSheet('accionesSheet');
@@ -2443,7 +2488,7 @@ function accRecordatorioPago(){
   if(accCitaId)c=DB.citas.find(x=>x.id===accCitaId);
   else if(accCliId){
     // toma la deuda más antigua de la clienta
-    const deudas=DB.citas.filter(x=>x.clientaId===accCliId&&x.estado==='atendida'&&x.pago==='deuda').sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const deudas=DB.citas.filter(x=>x.clientaId===accCliId&&x.estado==='atendida'&&(x.pago==='deuda'||x.pago==='parcial')).sort((a,b)=>a.fecha.localeCompare(b.fecha));
     c=deudas[0];
   }
   if(!c){toast('No hay adeudo registrado');return;}
@@ -2514,11 +2559,12 @@ async function saveAppt(){
   const svcName=items.map(i=>i.n).join(' · ');
   const todayKey=ymd(new Date());
   const isAtendida=curEstado==='atendida',isPagado=isAtendida&&curPago==='pagado';
+  const isParcial=isAtendida&&curPago==='parcial';
   let pagadoFecha='';
   if(isPagado){
     const prev=editingId?DB.citas.find(c=>c.id===editingId):null;
     if(prev&&prev.pago==='pagado'&&prev.pagadoFecha)pagadoFecha=prev.pagadoFecha;
-    else if(prev&&prev.pago==='deuda')pagadoFecha=todayKey;
+    else if(prev&&(prev.pago==='deuda'||prev.pago==='parcial'))pagadoFecha=todayKey;
     else pagadoFecha=date;
   }
   // comprobante: si es data URI nuevo, súbelo; si ya era ruta, déjalo
@@ -2534,15 +2580,18 @@ async function saveAppt(){
       descVal=precioNum>0?Math.round((1-cobradoVal/precioNum)*100):0;
     }
   }
+  // abono (solo si parcial)
+  let abonadoVal=null;
+  if(isParcial){abonadoVal=Number(document.getElementById('apptAbonado').value)||0;}
   const data={
     clientaId:cli.id,items,servicioId:items[0]?items[0].id:'',svcName,
     fecha:date,hora:document.getElementById('apptTime').value,
     dur:getApptDur()||60,
     color:curColor,
     precio:precioNum,
-    cobrado:cobradoVal,descPct:descVal,
+    cobrado:cobradoVal,descPct:descVal,abonado:abonadoVal,
     estado:curEstado,pago:isAtendida?curPago:'',
-    metodo:isPagado?curMetodo:'',pagadoFecha,
+    metodo:(isPagado||isParcial)?curMetodo:'',pagadoFecha,
     comprobante:compVal,
     notas:document.getElementById('apptNotes').value.trim()
   };

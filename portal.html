@@ -61,6 +61,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:#F8EFE6;
 .pago-row{margin-top:4px}
 .pago-tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12.5px;font-weight:600}
 .pago-pagado{background:var(--green-bg);color:var(--green)}
+.pago-parcial{background:#E3D2AE;color:#8a6a1e}
 .pago-pendiente{background:var(--red-bg);color:var(--red)}
 .live{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:18px;font-size:11.5px;color:var(--muted)}
 .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
@@ -145,8 +146,13 @@ function render(c){
   const estado=c.estado||'agendada';
   const estadoTxt={agendada:'Cita agendada',atendida:'Cita atendida',cancelada:'Cita cancelada'}[estado]||estado;
   const items=(c.items||[]).map(i=>i.n).join(' · ')||'Servicio';
+  const pagoTag = c.pago==='pagado'
+    ? '<span class="pago-tag pago-pagado">Pagado</span>'
+    : (c.pago==='parcial'
+        ? `<span class="pago-tag pago-parcial">Abonó $${c.abonado||0} · debe $${Math.max(0,(c.precio||0)-(c.abonado||0))}</span>`
+        : '<span class="pago-tag pago-pendiente">Pendiente</span>');
   const pagoHtml = estado==='atendida'
-    ? `<div class="line pago-row"><span class="k">Pago</span><span class="v"><span class="pago-tag ${c.pago==='pagado'?'pago-pagado':'pago-pendiente'}">${c.pago==='pagado'?'Pagado':'Pendiente'}</span></span></div>`
+    ? `<div class="line pago-row"><span class="k">Pago</span><span class="v">${pagoTag}</span></div>`
     : '';
   const precio = c.precio?`<div class="line"><span class="k">Total</span><span class="v big">$${c.precio}</span></div>`:'';
   document.getElementById('result').innerHTML=`
