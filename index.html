@@ -405,6 +405,21 @@ body::before{
 /* ---------- AGENDA PRO ---------- */
 .agenda-sticky{position:sticky;top:0;z-index:20;background:var(--ivory);padding-top:10px;margin:0 -16px;padding-left:16px;padding-right:16px;transition:top .25s ease;border-bottom:1px solid transparent}
 #agDayStrip:not(:empty){padding-top:4px;padding-bottom:6px}
+.ag-count{text-align:center;font-size:12.5px;color:var(--mauve);font-weight:500;margin:8px 0 4px}
+.ag-count .agc-num{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;color:var(--wine)}
+/* tendencias */
+.trends{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.trend{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;box-shadow:var(--shadow)}
+.tr-lbl{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--mauve);font-weight:600}
+.tr-val{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);margin:2px 0}
+.tr-delta{font-size:12px;font-weight:600}
+.tr-up{color:var(--green)}
+.tr-down{color:var(--red)}
+.tr-flat{color:var(--muted)}
+/* sugerencias */
+.tips{display:flex;flex-direction:column;gap:9px}
+.tip{background:linear-gradient(150deg,#FCF7F1,#F3E6DC);border:1px solid var(--gold-soft);border-radius:14px;padding:13px 15px;font-size:13.5px;line-height:1.5;color:var(--ink)}
+.tip b{color:var(--wine);font-weight:600}
 #agDayStrip .wk-head{margin-bottom:0}
 #agDayStrip .mdow{margin-bottom:0;padding:0 11px}
 .agenda-head{display:flex;align-items:center;gap:7px;margin:2px 2px 12px}
@@ -638,6 +653,7 @@ body::before{
         <button data-m="sem">Semana</button>
         <button data-m="mes">Mes</button>
       </div>
+      <div class="ag-count" id="agCount"></div>
       <div id="agDayStrip"></div>
     </div>
     <div id="agendaCanvas"></div>
@@ -1285,8 +1301,31 @@ function renderAgenda(){
   else if(agMode==='sem'){const ws=startOfWeek(agAnchor),we=new Date(ws);we.setDate(ws.getDate()+6);label=`${ws.getDate()} ${MON[ws.getMonth()]} – ${we.getDate()} ${MON[we.getMonth()]}`;}
   else label=`${MONF[agAnchor.getMonth()]} ${agAnchor.getFullYear()}`;
   document.getElementById('agendaLabel').textContent=label;
+  renderAgCount();
   if(agMode==='dia')renderDay();else if(agMode==='sem')renderWeek();else renderMonth();
   if(typeof renderAgendaWeather==='function')renderAgendaWeather();
+}
+function rangoAgenda(){
+  // devuelve [desde, hasta] (claves ymd) según el modo actual
+  if(agMode==='dia'){const k=ymd(agAnchor);return [k,k];}
+  if(agMode==='sem'){const ws=startOfWeek(agAnchor),we=new Date(ws);we.setDate(ws.getDate()+6);return [ymd(ws),ymd(we)];}
+  const y=agAnchor.getFullYear(),m=agAnchor.getMonth();
+  return [ymd(new Date(y,m,1)),ymd(new Date(y,m+1,0))];
+}
+function renderAgCount(){
+  const el=document.getElementById('agCount');if(!el)return;
+  const [a,b]=rangoAgenda();
+  const citas=DB.citas.filter(c=>c.fecha>=a&&c.fecha<=b&&c.estado!=='cancelada');
+  const n=citas.length;
+  const palabra=agMode==='dia'?'este día':(agMode==='sem'?'esta semana':'este mes');
+  if(n===0){el.innerHTML=`<span class="agc-num">0</span> citas ${palabra}`;return;}
+  // desglose por estado
+  const atend=citas.filter(c=>c.estado==='atendida').length;
+  const agend=citas.filter(c=>c.estado==='agendada').length;
+  let extra=[];
+  if(agend)extra.push(`${agend} por atender`);
+  if(atend)extra.push(`${atend} atendida${atend!==1?'s':''}`);
+  el.innerHTML=`<span class="agc-num">${n}</span> cita${n!==1?'s':''} ${palabra}${extra.length?` · ${extra.join(' · ')}`:''}`;
 }
 
 /* ---------------- VENTAS ---------------- */
@@ -1584,6 +1623,39 @@ function renderInteligencia(){
   let nuevas=0;clientasRango.forEach(id=>{const first=DB.citas.filter(c=>c.clientaId===id&&c.estado==='atendida').map(c=>c.fecha).sort()[0];if(first&&first>=startKey&&first<=endKey)nuevas++;});
   const recurrentes=clientasRango.length-nuevas;
 
+  // ===== TENDENCIAS vs periodo anterior =====
+  const prevNCitas=prev.length;
+  const prevTicket=prevNCitas?Math.round(sumP(prev)/prevNCitas):0;
+  // clientas nuevas del periodo anterior
+  const prevClientas=[...new Set(prev.map(c=>c.clientaId))];
+  let prevNuevas=0;prevClientas.forEach(id=>{const first=DB.citas.filter(c=>c.clientaId===id&&c.estado==='atendida').map(c=>c.fecha).sort()[0];if(first&&first>=ymd(prevStart)&&first<=ymd(prevEnd))prevNuevas++;});
+  function pctChange(now,before){if(before<=0)return null;return Math.round(((now-before)/before)*100);}
+  const dCitas=pctChange(nCitas,prevNCitas);
+  const dTicket=pctChange(ticket,prevTicket);
+  const dNuevas=pctChange(nuevas,prevNuevas);
+  function trendChip(label,now,before,delta,fmtV){
+    const v=fmtV?fmtV(now):now;
+    let arrow='',cls='tr-flat',txt='igual';
+    if(delta!==null){
+      if(delta>0){arrow='▲';cls='tr-up';txt='+'+delta+'%';}
+      else if(delta<0){arrow='▼';cls='tr-down';txt=delta+'%';}
+    }else if(before===0&&now>0){arrow='▲';cls='tr-up';txt='nuevo';}
+    return `<div class="trend"><div class="tr-lbl">${label}</div><div class="tr-val">${v}</div><div class="tr-delta ${cls}">${arrow} ${txt}</div></div>`;
+  }
+  const periodoPrevLabel=intelPeriod==='sem'?'semana pasada':(intelPeriod==='mes'?'mes pasado':(intelPeriod==='ano'?'año pasado':'periodo anterior'));
+
+  // ===== SUGERENCIAS basadas en datos =====
+  const tips=[];
+  if(nCitas>0){
+    if(dCitas!==null&&dCitas<=-15)tips.push(`📉 Tus citas bajaron <b>${Math.abs(dCitas)}%</b> vs ${periodoPrevLabel}. Buen momento para una promo o un mensaje a clientas que no han vuelto.`);
+    else if(dCitas!==null&&dCitas>=15)tips.push(`📈 Tus citas subieron <b>${dCitas}%</b> vs ${periodoPrevLabel}. ¡Vas muy bien! Considera asegurar esos horarios pico con anticipación.`);
+    if(dTicket!==null&&dTicket<=-10)tips.push(`💵 Tu ticket promedio bajó <b>${Math.abs(dTicket)}%</b>. Ofrecer un servicio adicional (diseño, retiro) al agendar puede subirlo.`);
+    if(busyDay&&maxDow>0)tips.push(`🗓️ El <b>${busyDay}</b> es tu día más fuerte. Si quieres llenar días flojos, una promo entre semana puede ayudar.`);
+    if(nuevas>0&&recurrentes>0&&recurrentes<nuevas)tips.push(`🔁 Tuviste más clientas nuevas que recurrentes. Una tarjeta de lealtad activa o recordatorio de "ya toca tu mantenimiento" ayuda a que regresen.`);
+    if(porCobrar>0)tips.push(`💰 Tienes <b>${fmtMoney(porCobrar)}</b> por cobrar. Desde Citas → Acciones puedes mandar recordatorio por WhatsApp.`);
+    if(!tips.length)tips.push(`✨ Todo se ve estable. Sigue registrando tus citas para detectar patrones con más datos.`);
+  }
+
   let frase=[];
   if(nCitas===0){frase.push('Aún no hay servicios atendidos en este periodo. En cuanto marques una cita como <b>atendida</b>, verás todo aquí.');}
   else{
@@ -1600,6 +1672,15 @@ function renderInteligencia(){
 
   document.getElementById('intelBody').innerHTML=`
     <div class="insight"><div class="ih">✦ Resumen inteligente</div><p>${frase.join(' ')}</p></div>
+    ${nCitas>0?`<div class="divider">Tendencia vs ${periodoPrevLabel}</div>
+    <div class="trends">
+      ${trendChip('Citas',nCitas,prevNCitas,dCitas)}
+      ${trendChip('Ingresos',ingresos,prevIng,delta,fmtMoney)}
+      ${trendChip('Ticket prom.',ticket,prevTicket,dTicket,fmtMoney)}
+      ${trendChip('Clientas nuevas',nuevas,prevNuevas,dNuevas)}
+    </div>`:''}
+    ${tips.length?`<div class="divider">Sugerencias para optimizar</div>
+    <div class="tips">${tips.map(t=>`<div class="tip">${t}</div>`).join('')}</div>`:''}
     <div class="kpis">
       <div class="kpi"><div class="l">Cobrado</div><div class="v" style="color:var(--green)">${fmtMoney(cobrado)}</div></div>
       <div class="kpi"><div class="l">Por cobrar</div><div class="v" style="color:${porCobrar?'var(--red)':'var(--muted)'}">${fmtMoney(porCobrar)}</div></div>
