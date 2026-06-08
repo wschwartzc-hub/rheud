@@ -1283,15 +1283,17 @@ function autoScrollDay(timed,isToday){
     target=firstCita;
   }
   if(target==null)return; // día futuro sin citas: deja arriba
-  // espera a que el layout esté listo y calcula la posición absoluta en la página
   setTimeout(()=>{
     const area=document.getElementById('tgArea');if(!area)return;
-    const offsetY=Math.max(0,(target-RST*60)/60*HOUR_PX-20); // 20px de aire arriba
-    const areaTop=area.getBoundingClientRect().top+window.scrollY;
-    const sticky=document.querySelector('.agenda-sticky');
-    const stickyH=sticky?sticky.getBoundingClientRect().height:0;
-    window.scrollTo({top:Math.max(0,areaTop+offsetY-stickyH-8),behavior:'smooth'});
-  },120);
+    const offsetY=Math.max(0,(target-RST*60)/60*HOUR_PX);
+    // crea (o reutiliza) un ancla invisible en la posición del objetivo
+    let anchor=document.getElementById('agFocusAnchor');
+    if(!anchor){anchor=document.createElement('div');anchor.id='agFocusAnchor';anchor.style.position='absolute';anchor.style.left='0';anchor.style.width='1px';anchor.style.height='1px';area.appendChild(anchor);}
+    anchor.style.top=offsetY+'px';
+    // scroll-margin-top reserva espacio para el header sticky + aire; iOS lo respeta
+    anchor.style.scrollMarginTop='150px';
+    anchor.scrollIntoView({behavior:'smooth',block:'start'});
+  },150);
 }
 function renderWeek(){
   const ws=startOfWeek(agAnchor),todayKey=ymd(new Date()),days=[];
