@@ -245,6 +245,27 @@ body::before{
 .pill.pagado{background:var(--green-bg);color:var(--green)}
 .pill.deuda{background:var(--red-bg);color:var(--red)}
 .pill.parcial{background:var(--gold-soft);color:#8a6a1e}
+/* pagos múltiples */
+.pagos-box{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:13px}
+.desc-box{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:13px}
+.desc-row{display:flex;gap:12px}
+.desc-mini{flex:1;display:flex;flex-direction:column;gap:5px}
+.desc-mini span{font-size:11px;letter-spacing:.5px;color:var(--mauve);font-weight:600;text-transform:uppercase}
+.desc-mini input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:15px;background:#fff;outline:none}
+.desc-mini input:focus{border-color:var(--gold)}
+.desc-info{font-size:13px;color:var(--wine);font-weight:500;margin-top:10px;min-height:18px}
+.desc-info .strike{color:var(--muted);text-decoration:line-through;font-weight:400;margin-right:6px}
+.pago-item{display:flex;gap:8px;margin-bottom:9px;align-items:center}
+.pago-monto{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:15px;background:#fff;outline:none}
+.pago-monto:focus{border-color:var(--gold)}
+.pago-metodo{flex:0 0 130px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:14px;background:#fff;outline:none;color:var(--ink)}
+.pago-del{flex:0 0 auto;width:38px;height:38px;border:1px solid var(--line);background:#fff;border-radius:10px;color:var(--red);font-size:15px;cursor:pointer}
+.pago-add{width:100%;background:#fff;border:1.5px dashed var(--mauve);border-radius:11px;padding:10px;font-family:'Jost';font-size:13.5px;font-weight:600;color:var(--wine);cursor:pointer}
+.pago-add:active{transform:scale(.99)}
+.pagos-resumen{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.pr-line{display:flex;justify-content:space-between;font-size:13px;color:var(--ink);margin-bottom:4px}
+.pr-line b{font-weight:600}
+.pr-estado{font-size:13.5px;font-weight:600;margin-top:6px;text-align:center}
 
 .empty{text-align:center;padding:46px 20px;color:var(--muted)}
 .empty .ic{font-size:34px;opacity:.5}
@@ -830,39 +851,20 @@ body::before{
       <div class="chip" data-e="cancelada">Cancelada</div>
     </div>
   </div>
-  <div class="field" id="pagoWrap" style="display:none">
-    <label>Pago</label>
-    <div class="chips" id="pagoChips">
-      <div class="chip sel" data-pg="pagado">Pagado</div>
-      <div class="chip" data-pg="parcial">Parcial</div>
-      <div class="chip" data-pg="deuda">Pendiente</div>
-    </div>
-  </div>
-  <div class="field" id="cobroWrap" style="display:none">
-    <label>Cobro real (si hubo descuento)</label>
-    <div class="cobro-box">
-      <div class="cobro-row">
-        <div class="cobro-mini"><span>Cobrado $</span><input type="number" id="apptCobrado" placeholder="igual al total" inputmode="numeric" oninput="onCobradoInput()"></div>
-        <div class="cobro-mini"><span>Desc. %</span><input type="number" id="apptDescPct" placeholder="0" inputmode="numeric" max="100" oninput="onDescPctInput()"></div>
+  <div class="field" id="pagosWrap" style="display:none">
+    <label>Descuento (opcional)</label>
+    <div class="desc-box">
+      <div class="desc-row">
+        <div class="desc-mini"><span>Descuento $</span><input type="number" id="apptDescMonto" inputmode="numeric" placeholder="0" oninput="onDescMonto()"></div>
+        <div class="desc-mini"><span>o %</span><input type="number" id="apptDescPct" inputmode="numeric" placeholder="0" max="100" oninput="onDescPct()"></div>
       </div>
-      <div class="cobro-info" id="cobroInfo"></div>
+      <div class="desc-info" id="descInfo"></div>
     </div>
-  </div>
-  <div class="field" id="abonoWrap" style="display:none">
-    <label>Pago parcial (abono)</label>
-    <div class="cobro-box">
-      <div class="cobro-mini"><span>Abonado $</span><input type="number" id="apptAbonado" placeholder="0" inputmode="numeric" oninput="updateAbonoInfo()"></div>
-      <div class="cobro-info" id="abonoInfo"></div>
-    </div>
-  </div>
-  <div class="field" id="metodoWrap" style="display:none">
-    <label>Método de pago</label>
-    <div class="chips" id="metodoChips">
-      <div class="chip sel" data-mt="efectivo">Efectivo</div>
-      <div class="chip" data-mt="transferencia">Transferencia</div>
-      <div class="chip" data-mt="tarjeta">Tarjeta</div>
-      <div class="chip" data-mt="cupon">Cupón</div>
-      <div class="chip" data-mt="otro">Otro</div>
+    <label style="margin-top:14px">Pagos recibidos</label>
+    <div class="pagos-box">
+      <div id="pagosList"></div>
+      <button type="button" class="pago-add" onclick="addPago()">+ Agregar pago</button>
+      <div class="pagos-resumen" id="pagosResumen"></div>
     </div>
   </div>
   <div class="field" id="compWrap" style="display:none">
@@ -1057,8 +1059,8 @@ function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),precios:Ar
 function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),precios:Array.isArray(s.precios)?s.precios:[],costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
 function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
-function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),abonado:(r.abonado==null?null:Number(r.abonado)),estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
-function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),abonado:(c.abonado==null?null:Number(c.abonado)),estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
+function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),descMonto:Number(r.descuento_monto||0),abonado:(r.abonado==null?null:Number(r.abonado)),pagos:Array.isArray(r.pagos)?r.pagos:[],estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
+function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),descuento_monto:Number(c.descMonto||0),abonado:(c.abonado==null?null:Number(c.abonado)),pagos:Array.isArray(c.pagos)?c.pagos:[],estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
 function rowToPremio(r){return {id:r.id,nombre:r.nombre,nivel:r.nivel||'menor',desc:r.descripcion||''}}
 function premioToRow(p){return {negocio_id:NEGOCIO_ID,nombre:p.nombre,nivel:p.nivel||'menor',descripcion:p.desc||''}}
 
@@ -1099,18 +1101,12 @@ function fmtDur(min){min=Number(min)||0;const h=Math.floor(min/60),m=min%60;if(h
 function citaItems(c){if(c.items&&c.items.length)return c.items;const s=DB.servicios.find(x=>x.id===c.servicioId);return [{id:c.servicioId||'',n:(s?s.n:(c.svcName||'Servicio')),p:Number(c.precio||0)}]}
 /* monto realmente cobrado: usa 'cobrado' si la dueña aplicó descuento, si no el precio */
 function montoCita(c){
-  // monto realmente cobrado (ingreso) de la cita
-  if(c.pago==='parcial')return Number(c.abonado||0);
-  if(c.pago==='deuda')return 0;
-  // pagado: usa cobrado (descuento) si existe, si no el precio
-  return (c.cobrado!=null&&!isNaN(c.cobrado))?Number(c.cobrado):Number(c.precio||0);
+  if(c.estado!=='atendida')return 0;
+  return pagosSummary(c).cobrado;
 }
 function deudaCita(c){
-  // saldo pendiente de la cita
   if(c.estado!=='atendida')return 0;
-  if(c.pago==='deuda')return Number(c.precio||0);
-  if(c.pago==='parcial')return Math.max(0,Number(c.precio||0)-Number(c.abonado||0));
-  return 0;
+  return pagosSummary(c).deuda;
 }
 function svcDisplay(c){const it=citaItems(c);if(it.length<=1)return it[0]?it[0].n:(c.svcName||'Servicio');return it[0].n+' +'+(it.length-1)}
 function svcFull(c){return citaItems(c).map(i=>i.n).join(' · ')}
@@ -1328,12 +1324,15 @@ function renderVentas(){
   cont.innerHTML=ordered.map(c=>{
     const cli=DB.clientas.find(x=>x.id===c.clientaId);
     const d=new Date(c.fecha+'T00:00:00');
+    let pill,amt;
+    if(c.pago==='deuda'){pill='<span class="pill deuda">Debe</span>';amt=fmtMoney(deudaCita(c));}
+    else if(c.pago==='parcial'){pill='<span class="pill parcial">Abonó · debe '+fmtMoney(deudaCita(c))+'</span>';amt=fmtMoney(montoCita(c));}
+    else {pill='<span class="pill pagado">Pagado</span>';amt=fmtMoney(montoCita(c));}
     return `<div class="row" onclick="editAppt('${c.id}')">
       <div class="avatar">${cli?cli.nombre[0].toUpperCase():'·'}</div>
       <div class="info"><div class="name">${cli?cli.nombre:'Clienta'}</div>
       <div class="det">${svcDisplay(c)} · ${d.getDate()} ${MON[d.getMonth()]}</div></div>
-      <div class="right"><div class="amt">${fmtMoney(deudaCita(c))}</div>
-      <span class="pill ${c.pago==='parcial'?'parcial':'deuda'}">${c.pago==='parcial'?'Abonó':'Debe'}</span></div>
+      <div class="right"><div class="amt">${amt}</div>${pill}</div>
     </div>`;
   }).join('');
   renderCobranza();
@@ -1465,13 +1464,15 @@ function renderCitas(){
     let payPill='';
     if(c.estado==='atendida'){
       if(isDeuda)payPill=`<span class="pill deuda">debe ${fmtMoney(deudaCita(c))}</span>`;
-      else if(isParcial)payPill=`<span class="pill parcial">abonó ${fmtMoney(c.abonado||0)} · debe ${fmtMoney(deudaCita(c))}</span>`;
+      else if(isParcial)payPill=`<span class="pill parcial">cobró ${fmtMoney(montoCita(c))} · debe ${fmtMoney(deudaCita(c))}</span>`;
       else payPill=`<span class="pill pagado">pagado</span>`;
     }
     const metPill=(c.estado==='atendida'&&c.pago==='pagado'&&c.metodo)?`<span class="pill metodo">${metodoLabel(c.metodo)}</span>`:'';
-    const tieneDesc=(c.cobrado!=null&&!isNaN(c.cobrado)&&Number(c.cobrado)!==Number(c.precio));
+    const descM=Number(c.descMonto||0);
+    const tieneDesc=descM>0;
+    const totalNeto=Number(c.precio||0)-descM;
     const descPill=tieneDesc?`<span class="pill desc">${c.descPct?c.descPct+'% desc':'desc'}</span>`:'';
-    const amtHtml=tieneDesc?`<span class="cr-amt"><span class="amt-strike">${fmtMoney(c.precio)}</span> ${fmtMoney(c.cobrado)}</span>`:`<span class="cr-amt">${fmtMoney(c.precio)}</span>`;
+    const amtHtml=tieneDesc?`<span class="cr-amt"><span class="amt-strike">${fmtMoney(c.precio)}</span> ${fmtMoney(totalNeto)}</span>`:`<span class="cr-amt">${fmtMoney(c.precio)}</span>`;
     const compThumb=c.comprobante?`<div class="cr-comp"><span class="comp-link" onclick="event.stopPropagation();viewComp('${c.id}')">📎 Ver comprobante</span></div>`:'';
     const acts=[];
     if(isDeuda)acts.push(`<div class="cr-btn pay" onclick="event.stopPropagation();marcarPagada('${c.id}')">Marcar pagada</div>`);
@@ -1497,9 +1498,12 @@ function refreshAfterCita(){renderCitas();if(currentView==='agenda')renderAgenda
 async function marcarAtendida(id){const c=DB.citas.find(x=>x.id===id);if(!c)return;c.estado='atendida';if(!c.pago)c.pago='deuda';try{await sb.from('citas').update({estado:c.estado,pago:c.pago}).eq('id',id);}catch(e){console.error(e);}refreshAfterCita();toast('Marcada como atendida');}
 async function marcarPagada(id){
   const c=DB.citas.find(x=>x.id===id);if(!c)return;
-  c.pago='pagado';c.pagadoFecha=ymd(new Date());if(!c.metodo)c.metodo='efectivo';c.abonado=null;
-  try{await sb.from('citas').update({pago:'pagado',pagado_fecha:c.pagadoFecha,metodo:c.metodo,abonado:null}).eq('id',id);}catch(e){console.error(e);}
-  refreshAfterCita();toast('Pago registrado ✨ — abre la cita para método/comprobante');
+  const metodo=c.metodo||'efectivo';
+  c.pago='pagado';c.pagadoFecha=ymd(new Date());c.metodo=metodo;
+  c.pagos=[{monto:Number(c.precio||0),metodo}];
+  c.cobrado=null;c.abonado=null;
+  try{await sb.from('citas').update({pago:'pagado',pagado_fecha:c.pagadoFecha,metodo,pagos:c.pagos,abonado:null,cobrado:null}).eq('id',id);}catch(e){console.error(e);}
+  refreshAfterCita();toast('Pago registrado ✨');
 }
 function reagendar(id){editAppt(id);}
 async function cancelarCita(id){
@@ -1567,7 +1571,7 @@ function renderInteligencia(){
   const prev=atendidasEntre(ymd(prevStart),ymd(prevEnd));
   document.getElementById('intelRange').textContent=rangeLabel;
 
-  const ingresos=sumP(cur),cobrado=sumP(cur.filter(c=>c.pago!=='deuda')),porCobrar=sumP(cur.filter(c=>c.pago==='deuda'));
+  const ingresos=cur.reduce((s,c)=>s+Number(c.precio||0),0),cobrado=cur.reduce((s,c)=>s+montoCita(c),0),porCobrar=cur.reduce((s,c)=>s+deudaCita(c),0);
   const nCitas=cur.length,ticket=nCitas?Math.round(ingresos/nCitas):0;
   const prevIng=sumP(prev);
   let delta=null;if(prevIng>0)delta=Math.round(((ingresos-prevIng)/prevIng)*100);
@@ -2222,60 +2226,89 @@ function pickSlot(t){
 function setEstado(e){
   curEstado=e;
   document.querySelectorAll('#estadoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.e===e));
-  document.getElementById('pagoWrap').style.display=e==='atendida'?'block':'none';
-  updateMetodoVis();
-}
-function setPago(p){curPago=p;document.querySelectorAll('#pagoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.pg===p));updateMetodoVis();}
-function setMetodo(m){curMetodo=m;document.querySelectorAll('#metodoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.mt===m))}
-function updateMetodoVis(){
-  const atendida=curEstado==='atendida';
-  const pagado=atendida&&curPago==='pagado';
-  const parcial=atendida&&curPago==='parcial';
-  // método de pago: cuando pagó todo o abonó algo
-  document.getElementById('metodoWrap').style.display=(pagado||parcial)?'block':'none';
+  const atendida=e==='atendida';
+  document.getElementById('pagosWrap').style.display=atendida?'block':'none';
   document.getElementById('compWrap').style.display=atendida?'block':'none';
-  // descuento: solo cuando pagó completo
-  document.getElementById('cobroWrap').style.display=pagado?'block':'none';
-  // abono: solo en parcial
-  document.getElementById('abonoWrap').style.display=parcial?'block':'none';
-  if(pagado)updateCobroInfo();
-  if(parcial)updateAbonoInfo();
+  if(atendida){updateDescInfo();renderPagos();}
 }
-function updateAbonoInfo(){
-  const base=precioBase();
-  const ab=Number(document.getElementById('apptAbonado').value)||0;
-  const info=document.getElementById('abonoInfo');
-  const pend=Math.max(0,base-ab);
-  if(ab<=0){info.innerHTML='';return;}
-  info.innerHTML=`Abonó <b>$${ab}</b> · queda pendiente <b style="color:var(--red)">$${pend}</b>`;
-}
+/* ====== Pagos múltiples ====== */
+const METODOS=[['efectivo','Efectivo'],['transferencia','Transfer.'],['tarjeta','Tarjeta'],['cupon','Cupón'],['otro','Otro']];
+let curPagos=[]; // [{monto, metodo}]
+let curDescuento=0; // monto de descuento
 function precioBase(){return Number(document.getElementById('apptPrice').value)||0;}
-function onCobradoInput(){
-  const base=precioBase();const cob=Number(document.getElementById('apptCobrado').value);
-  const pctEl=document.getElementById('apptDescPct');
-  if(base>0&&document.getElementById('apptCobrado').value!==''&&cob>=0){
-    const pct=Math.round((1-cob/base)*100);
-    pctEl.value=pct>0?pct:'';
-  }
-  updateCobroInfo();
-}
-function onDescPctInput(){
-  const base=precioBase();let pct=Number(document.getElementById('apptDescPct').value);
-  const cobEl=document.getElementById('apptCobrado');
-  if(pct<0)pct=0;if(pct>100)pct=100;
-  if(base>0&&document.getElementById('apptDescPct').value!==''){
-    cobEl.value=Math.round(base*(1-pct/100));
-  }
-  updateCobroInfo();
-}
-function updateCobroInfo(){
+function totalACobrar(){return Math.max(0,precioBase()-curDescuento);}
+function onDescMonto(){
+  let d=Number(document.getElementById('apptDescMonto').value)||0;
   const base=precioBase();
-  const cobRaw=document.getElementById('apptCobrado').value;
-  const info=document.getElementById('cobroInfo');
-  if(cobRaw===''||Number(cobRaw)===base||base===0){info.innerHTML='';return;}
-  const cob=Number(cobRaw);
-  const pct=Math.round((1-cob/base)*100);
-  info.innerHTML=`<span class="strike">$${base}</span> Se cobra <b>$${cob}</b>${pct>0?` · ${pct}% desc.`:''}`;
+  if(d<0)d=0;if(d>base)d=base;
+  curDescuento=d;
+  // sincroniza el %
+  const pctEl=document.getElementById('apptDescPct');
+  pctEl.value=(base>0&&d>0)?Math.round(d/base*100):'';
+  updateDescInfo();updatePagosResumen();
+}
+function onDescPct(){
+  let pct=Number(document.getElementById('apptDescPct').value)||0;
+  const base=precioBase();
+  if(pct<0)pct=0;if(pct>100)pct=100;
+  curDescuento=Math.round(base*pct/100);
+  document.getElementById('apptDescMonto').value=curDescuento>0?curDescuento:'';
+  updateDescInfo();updatePagosResumen();
+}
+function updateDescInfo(){
+  const el=document.getElementById('descInfo');if(!el)return;
+  const base=precioBase();
+  if(curDescuento<=0||base<=0){el.innerHTML='';return;}
+  el.innerHTML=`<span class="strike">${fmtMoney(base)}</span> Total a cobrar: <b>${fmtMoney(totalACobrar())}</b>`;
+}
+function renderPagos(){
+  const cont=document.getElementById('pagosList');if(!cont)return;
+  cont.innerHTML=curPagos.map((p,i)=>`
+    <div class="pago-item">
+      <input type="number" class="pago-monto" inputmode="numeric" placeholder="0" value="${p.monto||''}" oninput="setPagoMonto(${i},this.value)">
+      <select class="pago-metodo" onchange="setPagoMetodo(${i},this.value)">
+        ${METODOS.map(m=>`<option value="${m[0]}" ${p.metodo===m[0]?'selected':''}>${m[1]}</option>`).join('')}
+      </select>
+      <button type="button" class="pago-del" onclick="delPago(${i})">✕</button>
+    </div>`).join('');
+  updatePagosResumen();
+}
+function addPago(){
+  const pagado=curPagos.reduce((s,p)=>s+(Number(p.monto)||0),0);
+  const resto=Math.max(0,totalACobrar()-pagado);
+  curPagos.push({monto:resto||'',metodo:'efectivo'});
+  renderPagos();
+}
+function delPago(i){curPagos.splice(i,1);renderPagos();}
+function setPagoMonto(i,v){if(curPagos[i])curPagos[i].monto=Number(v)||0;updatePagosResumen();}
+function setPagoMetodo(i,v){if(curPagos[i])curPagos[i].metodo=v;}
+function updatePagosResumen(){
+  const el=document.getElementById('pagosResumen');if(!el)return;
+  const total=totalACobrar();
+  const pagado=curPagos.reduce((s,p)=>s+(Number(p.monto)||0),0);
+  const pend=total-pagado;
+  let estado,color;
+  if(pagado<=0){estado='Sin pago';color='var(--red)';}
+  else if(pend>0){estado='Parcial · debe '+fmtMoney(pend);color='#8a6a1e';}
+  else if(pend<0){estado='Cobró '+fmtMoney(Math.abs(pend))+' de más';color='var(--red)';}
+  else {estado='Pagado completo';color='var(--green)';}
+  el.innerHTML=`<div class="pr-line"><span>Total a cobrar</span><b>${fmtMoney(total)}</b></div>
+    <div class="pr-line"><span>Cobrado</span><b style="color:var(--green)">${fmtMoney(pagado)}</b></div>
+    <div class="pr-estado" style="color:${color}">${estado}</div>`;
+}
+function pagosSummary(c){
+  const base=Number(c.precio||0);
+  const desc=Number(c.descMonto||0);
+  const total=Math.max(0,base-desc);
+  if(Array.isArray(c.pagos)&&c.pagos.length){
+    const cobrado=c.pagos.reduce((s,p)=>s+(Number(p.monto)||0),0);
+    return {cobrado,deuda:Math.max(0,total-cobrado),estado:(cobrado<=0?'deuda':(cobrado<total?'parcial':'pagado'))};
+  }
+  // compatibilidad con citas viejas
+  if(c.pago==='parcial'){const ab=Number(c.abonado||0);return {cobrado:ab,deuda:Math.max(0,base-ab),estado:'parcial'};}
+  if(c.pago==='deuda')return {cobrado:0,deuda:base,estado:'deuda'};
+  const cob=(c.cobrado!=null&&!isNaN(c.cobrado))?Number(c.cobrado):base;
+  return {cobrado:cob,deuda:0,estado:'pagado'};
 }
 let curComp='';
 function renderCompPreview(){
@@ -2310,8 +2343,6 @@ function onCompFile(e){
   e.target.value='';
 }
 document.getElementById('estadoChips').addEventListener('click',e=>{if(e.target.dataset.e)setEstado(e.target.dataset.e)});
-document.getElementById('pagoChips').addEventListener('click',e=>{if(e.target.dataset.pg)setPago(e.target.dataset.pg)});
-document.getElementById('metodoChips').addEventListener('click',e=>{if(e.target.dataset.mt)setMetodo(e.target.dataset.mt)});
 
 function openApptSheet(){
   editingId=null;
@@ -2326,14 +2357,12 @@ function openApptSheet(){
   setApptDur(60);
   document.getElementById('apptPrice').value='';
   document.getElementById('apptNotes').value='';
-  document.getElementById('apptCobrado').value='';
-  document.getElementById('apptDescPct').value='';
-  document.getElementById('apptAbonado').value='';
-  document.getElementById('cobroInfo').innerHTML='';
   curColor='rosa';renderColorChips();
-  curMetodo='efectivo';setMetodo('efectivo');
   curComp='';renderCompPreview();
-  setEstado('agendada');setPago('pagado');
+  curPagos=[];curDescuento=0;
+  document.getElementById('apptDescMonto').value='';
+  document.getElementById('apptDescPct').value='';
+  setEstado('agendada');
   renderAssist();
   showSheet('apptSheet');
 }
@@ -2357,13 +2386,20 @@ function editAppt(id){
   document.getElementById('apptPrice').value=c.precio||'';
   document.getElementById('apptNotes').value=c.notas||'';
   curColor=c.color||'rosa';renderColorChips();
-  curMetodo=c.metodo||'efectivo';setMetodo(curMetodo);
   curComp=c.comprobante||'';renderCompPreview();
-  setEstado(c.estado);setPago(c.pago||'pagado');
-  document.getElementById('apptCobrado').value=(c.cobrado==null||c.cobrado===c.precio)?'':c.cobrado;
-  document.getElementById('apptDescPct').value=(c.descPct==null||c.descPct===0)?'':c.descPct;
-  document.getElementById('apptAbonado').value=(c.abonado==null)?'':c.abonado;
-  updateCobroInfo();updateAbonoInfo();
+  curDescuento=Number(c.descMonto||0);
+  document.getElementById('apptDescMonto').value=curDescuento>0?curDescuento:'';
+  document.getElementById('apptDescPct').value=(curDescuento>0&&c.precio>0)?Math.round(curDescuento/c.precio*100):'';
+  // cargar pagos: si la cita ya tiene lista de pagos úsala; si no, migra los campos viejos
+  if(Array.isArray(c.pagos)&&c.pagos.length){
+    curPagos=c.pagos.map(p=>({monto:Number(p.monto)||0,metodo:p.metodo||'efectivo'}));
+  }else if(c.estado==='atendida'){
+    const sm=pagosSummary(c);
+    curPagos=sm.cobrado>0?[{monto:sm.cobrado,metodo:c.metodo||'efectivo'}]:[];
+  }else{
+    curPagos=[];
+  }
+  setEstado(c.estado);
   renderAssist();
   showSheet('apptSheet');
 }
@@ -2450,7 +2486,8 @@ function msgRecordatorioPago(c,cli){
   msg+=`🔖 ID de cita: *${c.codigo||'—'}*\n`;
   msg+=`📅 ${fechaHora}\n`;
   msg+=`💖 ${servicios}\n`;
-  if(c.pago==='parcial'&&c.abonado)msg+=`✅ Abonado: $${c.abonado}\n`;
+  const cob=montoCita(c);
+  if(cob>0&&deudaCita(c)>0)msg+=`✅ Ya cobrado: $${cob}\n`;
   msg+=`💵 Monto pendiente: *$${deudaCita(c)}*\n`;
   if(c.codigo)msg+=`\nPuedes ver el detalle aquí:\n${PORTAL_URL}?c=${c.codigo}\n`;
   msg+=`\n¡Gracias! Cualquier duda, con gusto te apoyamos.`;
@@ -2558,40 +2595,41 @@ async function saveAppt(){
   const items=selectedSvcIds.map(id=>{const s=DB.servicios.find(x=>x.id===id);if(!s)return null;const pr=(svcChosenPrice[id]!=null)?Number(svcChosenPrice[id]):Number(s.p||0);return {id:s.id,n:s.n,p:pr};}).filter(Boolean);
   const svcName=items.map(i=>i.n).join(' · ');
   const todayKey=ymd(new Date());
-  const isAtendida=curEstado==='atendida',isPagado=isAtendida&&curPago==='pagado';
-  const isParcial=isAtendida&&curPago==='parcial';
+  const isAtendida=curEstado==='atendida';
+  const precioNum=Number(document.getElementById('apptPrice').value)||0;
+  const descMontoVal=isAtendida?Math.min(curDescuento,precioNum):0;
+  const totalCobrar=Math.max(0,precioNum-descMontoVal);
+  // pagos: limpia los que tengan monto > 0
+  const pagosLimpios=isAtendida?curPagos.filter(p=>Number(p.monto)>0).map(p=>({monto:Number(p.monto),metodo:p.metodo||'efectivo'})):[];
+  const cobradoTot=pagosLimpios.reduce((s,p)=>s+p.monto,0);
+  let pagoEstado='';
+  if(isAtendida){
+    if(cobradoTot<=0)pagoEstado='deuda';
+    else if(cobradoTot<totalCobrar)pagoEstado='parcial';
+    else pagoEstado='pagado';
+  }
   let pagadoFecha='';
-  if(isPagado){
+  if(isAtendida&&pagoEstado==='pagado'){
     const prev=editingId?DB.citas.find(c=>c.id===editingId):null;
-    if(prev&&prev.pago==='pagado'&&prev.pagadoFecha)pagadoFecha=prev.pagadoFecha;
-    else if(prev&&(prev.pago==='deuda'||prev.pago==='parcial'))pagadoFecha=todayKey;
-    else pagadoFecha=date;
+    if(prev&&prev.pagadoFecha&&prev.estado==='atendida')pagadoFecha=prev.pagadoFecha;
+    else pagadoFecha=todayKey;
   }
   // comprobante: si es data URI nuevo, súbelo; si ya era ruta, déjalo
   let compVal=isAtendida?curComp:'';
   if(compVal&&compVal.startsWith('data:'))compVal=await uploadComprobante(compVal);
-  // cobro real / descuento (solo si pagado)
-  const precioNum=Number(document.getElementById('apptPrice').value)||0;
-  let cobradoVal=null,descVal=null;
-  if(isPagado){
-    const cobRaw=document.getElementById('apptCobrado').value;
-    if(cobRaw!==''&&Number(cobRaw)>=0&&Number(cobRaw)!==precioNum){
-      cobradoVal=Number(cobRaw);
-      descVal=precioNum>0?Math.round((1-cobradoVal/precioNum)*100):0;
-    }
-  }
-  // abono (solo si parcial)
-  let abonadoVal=null;
-  if(isParcial){abonadoVal=Number(document.getElementById('apptAbonado').value)||0;}
+  // método principal (primer pago) para compatibilidad/etiquetas
+  const metodoPrincipal=pagosLimpios.length?pagosLimpios[0].metodo:'';
   const data={
     clientaId:cli.id,items,servicioId:items[0]?items[0].id:'',svcName,
     fecha:date,hora:document.getElementById('apptTime').value,
     dur:getApptDur()||60,
     color:curColor,
     precio:precioNum,
-    cobrado:cobradoVal,descPct:descVal,abonado:abonadoVal,
-    estado:curEstado,pago:isAtendida?curPago:'',
-    metodo:(isPagado||isParcial)?curMetodo:'',pagadoFecha,
+    pagos:pagosLimpios,
+    descMonto:descMontoVal,
+    cobrado:null,descPct:(precioNum>0&&descMontoVal>0?Math.round(descMontoVal/precioNum*100):null),abonado:null,
+    estado:curEstado,pago:isAtendida?pagoEstado:'',
+    metodo:metodoPrincipal,pagadoFecha,
     comprobante:compVal,
     notas:document.getElementById('apptNotes').value.trim()
   };

@@ -146,11 +146,20 @@ function render(c){
   const estado=c.estado||'agendada';
   const estadoTxt={agendada:'Cita agendada',atendida:'Cita atendida',cancelada:'Cita cancelada'}[estado]||estado;
   const items=(c.items||[]).map(i=>i.n).join(' · ')||'Servicio';
-  const pagoTag = c.pago==='pagado'
-    ? '<span class="pago-tag pago-pagado">Pagado</span>'
-    : (c.pago==='parcial'
-        ? `<span class="pago-tag pago-parcial">Abonó $${c.abonado||0} · debe $${Math.max(0,(c.precio||0)-(c.abonado||0))}</span>`
-        : '<span class="pago-tag pago-pendiente">Pendiente</span>');
+  // calcula cobrado y pendiente con el modelo de pagos
+  const base=Number(c.precio||0);
+  const desc=Number(c.descuento_monto||0);
+  const totalCobrar=Math.max(0,base-desc);
+  let cobrado;
+  if(Array.isArray(c.pagos)&&c.pagos.length)cobrado=c.pagos.reduce((s,p)=>s+(Number(p.monto)||0),0);
+  else if(c.pago==='parcial')cobrado=Number(c.abonado||0);
+  else if(c.pago==='deuda')cobrado=0;
+  else cobrado=totalCobrar;
+  const pend=Math.max(0,totalCobrar-cobrado);
+  let pagoTag;
+  if(c.pago==='pagado'||pend<=0&&cobrado>0)pagoTag='<span class="pago-tag pago-pagado">Pagado</span>';
+  else if(cobrado>0)pagoTag=`<span class="pago-tag pago-parcial">Cobró $${cobrado} · debe $${pend}</span>`;
+  else pagoTag='<span class="pago-tag pago-pendiente">Pendiente</span>';
   const pagoHtml = estado==='atendida'
     ? `<div class="line pago-row"><span class="k">Pago</span><span class="v">${pagoTag}</span></div>`
     : '';
