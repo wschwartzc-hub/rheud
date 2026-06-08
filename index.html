@@ -1142,7 +1142,7 @@ function nav(v){
   if(v==='inteligencia')renderInteligencia();
   if(v==='clientas')renderClientas();
   if(v==='servicios')renderServicios();
-  if(v==='agenda')renderAgenda();
+  if(v==='agenda'){agAutoScroll=true;renderAgenda();}
   if(v==='citas')renderCitas();
 }
 let currentView='agenda';
@@ -1183,6 +1183,7 @@ function setRange(keys){
   RST=mn;REN=Math.max(mx,mn+1);
 }
 let agMode='dia',agAnchor=new Date();agAnchor.setHours(0,0,0,0);
+let agAutoScroll=true; // activa auto-enfoque al abrir/cambiar día (no en refrescos automáticos)
 
 function toMin(t){if(!t)return null;const p=t.split(':');return (+p[0])*60+(+p[1])}
 function minLabel(min){let h=Math.floor(min/60),m=min%60,ap=h>=12?'PM':'AM',hh=h%12||12;return hh+(m?':'+String(m).padStart(2,'0'):'')+' '+ap}
@@ -1193,19 +1194,19 @@ function agShift(dir){
   if(agMode==='dia')agAnchor.setDate(agAnchor.getDate()+dir);
   else if(agMode==='sem')agAnchor.setDate(agAnchor.getDate()+dir*7);
   else agAnchor.setMonth(agAnchor.getMonth()+dir);
-  renderAgenda();
+  agAutoScroll=true;renderAgenda();
 }
-function agToday(){agAnchor=new Date();agAnchor.setHours(0,0,0,0);renderAgenda()}
+function agToday(){agAnchor=new Date();agAnchor.setHours(0,0,0,0);agAutoScroll=true;renderAgenda()}
 function goDay(key){
   agAnchor=new Date(key+'T00:00:00');agMode='dia';
   document.querySelectorAll('#agViewSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m==='dia'));
-  renderAgenda();
+  agAutoScroll=true;renderAgenda();
 }
 document.getElementById('agViewSeg').addEventListener('click',e=>{
   if(e.target.tagName!=='BUTTON')return;
   agMode=e.target.dataset.m;
   document.querySelectorAll('#agViewSeg button').forEach(b=>b.classList.toggle('on',b===e.target));
-  renderAgenda();
+  agAutoScroll=true;renderAgenda();
 });
 
 function placeEvents(evs){
@@ -1265,10 +1266,32 @@ function renderDay(){
   document.getElementById('agendaCanvas').innerHTML=`${sinhora}
     <div class="tg" id="tgScroll">
       <div class="tg-gutter">${gutterHours()}</div>
-      <div class="tg-area">${gridLines()}${isToday?nowLine():''}${timed.map(c=>evBox(c,false)).join('')}</div>
+      <div class="tg-area" id="tgArea">${gridLines()}${isToday?nowLine():''}${timed.map(c=>evBox(c,false)).join('')}</div>
     </div>`;
-  const sc=document.getElementById('tgScroll');
-  if(sc){const fm=timed.length?Math.min(...timed.map(c=>c._s)):(isToday?new Date().getHours()*60:10*60);sc.scrollTop=Math.max(0,(fm-RST*60)/60*HOUR_PX-16);}
+  // auto-enfoque: lleva la vista a la primera cita del día, o a la hora actual si es hoy
+  if(agAutoScroll){autoScrollDay(timed,isToday);agAutoScroll=false;}
+}
+function autoScrollDay(timed,isToday){
+  // minuto objetivo: primera cita del día; si es hoy y la hora actual es relevante, usa la más temprana entre ambas
+  let target=null;
+  const firstCita=timed.length?Math.min(...timed.map(c=>c._s)):null;
+  if(isToday){
+    const nowM=new Date().getHours()*60+new Date().getMinutes();
+    if(firstCita!=null)target=Math.min(firstCita,nowM);
+    else target=nowM;
+  }else if(firstCita!=null){
+    target=firstCita;
+  }
+  if(target==null)return; // día futuro sin citas: deja arriba
+  // espera a que el layout esté listo y calcula la posición absoluta en la página
+  setTimeout(()=>{
+    const area=document.getElementById('tgArea');if(!area)return;
+    const offsetY=Math.max(0,(target-RST*60)/60*HOUR_PX-20); // 20px de aire arriba
+    const areaTop=area.getBoundingClientRect().top+window.scrollY;
+    const sticky=document.querySelector('.agenda-sticky');
+    const stickyH=sticky?sticky.getBoundingClientRect().height:0;
+    window.scrollTo({top:Math.max(0,areaTop+offsetY-stickyH-8),behavior:'smooth'});
+  },120);
 }
 function renderWeek(){
   const ws=startOfWeek(agAnchor),todayKey=ymd(new Date()),days=[];
