@@ -2801,7 +2801,8 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='2.0';
+const APP_VERSION='2.6';
+const APP_BUILD='8 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPass').value;
@@ -2849,7 +2850,7 @@ async function startApp(){
   }
   document.getElementById('loadingScreen').style.display='none';
   document.getElementById('app').style.display='block';
-  document.getElementById('sbVer').textContent='v'+APP_VERSION;
+  document.getElementById('sbVer').textContent='v'+APP_VERSION+' · '+APP_BUILD;
   greet();renderAgenda();
   subscribeRealtime();
   startClock();
