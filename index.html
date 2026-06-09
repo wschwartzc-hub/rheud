@@ -1272,13 +1272,19 @@ function renderDay(){
   if(agAutoScroll){autoScrollDay(timed,isToday);agAutoScroll=false;}
 }
 function autoScrollDay(timed,isToday){
-  // minuto objetivo: primera cita del día; si es hoy y la hora actual es relevante, usa la más temprana entre ambas
+  // objetivo: mostrar las citas de forma útil con su nombre visible
   let target=null;
   const firstCita=timed.length?Math.min(...timed.map(c=>c._s)):null;
+  const lastCitaEnd=timed.length?Math.max(...timed.map(c=>c._e)):null;
   if(isToday){
     const nowM=new Date().getHours()*60+new Date().getMinutes();
-    if(firstCita!=null)target=Math.min(firstCita,nowM);
-    else target=nowM;
+    if(firstCita!=null){
+      // si aún hay citas en curso o por venir hoy, enfoca la PRIMERA cita (para ver su nombre completo)
+      if(lastCitaEnd!=null&&lastCitaEnd>=nowM)target=firstCita;
+      else target=Math.min(firstCita,nowM); // ya pasaron todas
+    }else{
+      target=nowM; // sin citas hoy: muestra la hora actual
+    }
   }else if(firstCita!=null){
     target=firstCita;
   }
