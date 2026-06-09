@@ -1291,7 +1291,7 @@ function autoScrollDay(timed,isToday){
     if(!anchor){anchor=document.createElement('div');anchor.id='agFocusAnchor';anchor.style.position='absolute';anchor.style.left='0';anchor.style.width='1px';anchor.style.height='1px';area.appendChild(anchor);}
     anchor.style.top=offsetY+'px';
     // scroll-margin-top reserva espacio para el header sticky + aire; iOS lo respeta
-    anchor.style.scrollMarginTop='150px';
+    anchor.style.scrollMarginTop='190px';
     anchor.scrollIntoView({behavior:'smooth',block:'start'});
   },150);
 }
