@@ -1300,32 +1300,48 @@ function renderDay(){
   if(agAutoScroll){autoScrollDay(timed,isToday);agAutoScroll=false;}
 }
 function autoScrollDay(timed,isToday){
-  // objetivo: mostrar las citas de forma útil con su nombre visible
+  /*
+    4 casos (hoy):
+    1. Hay una cita en curso ahora → muestra su inicio (para ver el nombre)
+    2. Hay citas próximas (aún no empiezan) → muestra la PRÓXIMA
+    3. Todas las citas ya pasaron → muestra la hora actual
+    4. Sin citas → sin scroll
+    Días distintos a hoy: muestra la primera cita del día.
+  */
   let target=null;
-  const firstCita=timed.length?Math.min(...timed.map(c=>c._s)):null;
-  const lastCitaEnd=timed.length?Math.max(...timed.map(c=>c._e)):null;
   if(isToday){
     const nowM=new Date().getHours()*60+new Date().getMinutes();
-    if(firstCita!=null){
-      // si aún hay citas en curso o por venir hoy, enfoca la PRIMERA cita (para ver su nombre completo)
-      if(lastCitaEnd!=null&&lastCitaEnd>=nowM)target=firstCita;
-      else target=Math.min(firstCita,nowM); // ya pasaron todas
+    if(timed.length){
+      // ¿hay una cita EN CURSO ahora mismo?
+      const enCurso=timed.find(c=>c._s<=nowM&&c._e>nowM);
+      if(enCurso){
+        target=enCurso._s; // muestra desde el inicio para ver el nombre
+      }else{
+        // ¿hay citas que AÚN NO han empezado?
+        const proximas=timed.filter(c=>c._s>nowM).sort((a,b)=>a._s-b._s);
+        if(proximas.length){
+          target=proximas[0]._s; // la siguiente cita
+        }else{
+          // ya pasaron todas: muestra la hora actual
+          target=nowM;
+        }
+      }
     }else{
-      target=nowM; // sin citas hoy: muestra la hora actual
+      // sin citas hoy: muestra la hora actual
+      target=nowM;
     }
-  }else if(firstCita!=null){
-    target=firstCita;
+  }else if(timed.length){
+    // día pasado o futuro: primera cita del día
+    target=Math.min(...timed.map(c=>c._s));
   }
-  if(target==null)return; // día futuro sin citas: deja arriba
+  if(target==null)return;
   setTimeout(()=>{
     const area=document.getElementById('tgArea');if(!area)return;
     const offsetY=Math.max(0,(target-RST*60)/60*HOUR_PX);
-    // crea (o reutiliza) un ancla invisible en la posición del objetivo
     let anchor=document.getElementById('agFocusAnchor');
     if(!anchor){anchor=document.createElement('div');anchor.id='agFocusAnchor';anchor.style.position='absolute';anchor.style.left='0';anchor.style.width='1px';anchor.style.height='1px';area.appendChild(anchor);}
     anchor.style.top=offsetY+'px';
-    // scroll-margin-top reserva espacio para el header sticky + aire; iOS lo respeta
-    anchor.style.scrollMarginTop='190px';
+    anchor.style.scrollMarginTop='220px'; // header sticky compacto (~80px) + agenda-sticky (~100px) + 40px de aire
     anchor.scrollIntoView({behavior:'smooth',block:'start'});
   },150);
 }
@@ -2927,7 +2943,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='2.9';
+const APP_VERSION='3.0';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
