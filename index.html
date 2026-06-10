@@ -374,7 +374,9 @@ body::before{
 .histitem .hp{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:16px;color:var(--wine)}
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:30px;font-size:13px;z-index:80;opacity:0;pointer-events:none;transition:.3s;box-shadow:var(--shadow-lg);white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.divider{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--mauve);margin:20px 2px 12px;font-weight:500}
+.divider{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--mauve);margin:20px 2px 12px;font-weight:500;overflow:hidden}
+.greet-sub{font-size:12.5px;color:var(--gold);font-weight:600;margin-top:5px;letter-spacing:.3px}
+.hp-debe{display:block;font-size:10.5px;color:var(--red);font-weight:600}
 
 /* ---------- INTELIGENCIA ---------- */
 .insight{background:linear-gradient(155deg,#fff,var(--mauve-pale));border-radius:18px;padding:16px 17px;margin-bottom:16px;box-shadow:var(--shadow);border:1px solid var(--line);position:relative;overflow:hidden}
@@ -420,6 +422,19 @@ body::before{
 .tips{display:flex;flex-direction:column;gap:9px}
 .tip{background:linear-gradient(150deg,#FCF7F1,#F3E6DC);border:1px solid var(--gold-soft);border-radius:14px;padding:13px 15px;font-size:13.5px;line-height:1.5;color:var(--ink)}
 .tip b{color:var(--wine);font-weight:600}
+/* alertas de retención y cumpleaños */
+.alert-card{border-radius:16px;padding:14px 16px;margin-bottom:12px;border:1px solid var(--line)}
+.cumple-card{background:linear-gradient(150deg,#FCF4E8,#F8E8D8);border-color:var(--gold-soft)}
+.riesgo-card{background:#FBF1F0;border-color:#EFD7D4}
+.al-title{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--wine);font-weight:700;margin-bottom:9px}
+.al-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(0,0,0,.04)}
+.al-row:first-of-type{border-top:none}
+.al-info{flex:1;min-width:0}
+.al-info b{font-size:13.5px;color:var(--ink);display:block}
+.al-info small{font-size:11.5px;color:var(--muted)}
+.al-wa{background:#25D366;color:#fff;border:none;border-radius:10px;padding:8px 13px;font-family:'Jost';font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.al-more{font-size:12px;color:var(--muted);text-align:center;padding-top:8px}
+.export-btn{float:right;background:none;border:1px solid var(--line);border-radius:9px;padding:5px 11px;font-family:'Jost';font-size:11.5px;font-weight:600;color:var(--wine);cursor:pointer}
 #agDayStrip .wk-head{margin-bottom:0}
 #agDayStrip .mdow{margin-bottom:0;padding:0 11px}
 .agenda-head{display:flex;align-items:center;gap:7px;margin:2px 2px 12px}
@@ -602,8 +617,8 @@ body::before{
 .amt-strike{color:var(--muted);text-decoration:line-through;font-size:13px;font-weight:400;margin-right:3px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 <!-- LOGIN -->
@@ -674,7 +689,7 @@ body::before{
       <div class="field"><label>Hasta</label><input type="date" id="vHasta" onchange="renderVentas()"></div>
     </div>
     <div class="stats" id="ventasStats"></div>
-    <div class="divider">Movimientos</div>
+    <div class="divider">Movimientos <button class="export-btn" onclick="exportCSV()">⬇️ Exportar CSV</button></div>
     <div id="ventasList"></div>
     <div id="cobranzaBlock"></div>
   </section>
@@ -700,6 +715,7 @@ body::before{
     <div class="section-title">Clientas <small id="cliCount"></small></div>
     <div class="searchbar"><span class="si">⌕</span><input id="cliSearch" placeholder="Buscar por nombre, teléfono o email…" autocomplete="off" oninput="renderClientas()"><span class="clr" id="cliSearchClr" onclick="clearCliSearch()" style="display:none">×</span></div>
     <button class="btn-scan" onclick="openScanner()">📷 Escanear QR para sumar sello</button>
+    <div id="cliAlerts"></div>
     <div id="cliList"></div>
   </section>
 
@@ -939,6 +955,7 @@ body::before{
   <div class="field-row" style="margin-top:4px">
     <div class="field"><label>Teléfono</label><input id="cliPhone" inputmode="tel" placeholder="—" onblur="saveCliContact()"></div>
     <div class="field"><label>Email</label><input id="cliEmail" inputmode="email" placeholder="—" autocomplete="off" onblur="saveCliContact()"></div>
+    <div class="field"><label>Cumpleaños 🎂</label><input id="cliCumple" type="date" onblur="saveCliContact()"></div>
   </div>
   <div class="kv"><span class="k">Visitas</span><span class="v" id="cliVisits"></span></div>
   <div class="kv"><span class="k">Total gastado</span><span class="v" id="cliSpent"></span></div>
@@ -992,6 +1009,15 @@ body::before{
 </div>
 
 <!-- HOJA QR DE LA CLIENTA -->
+<div class="sheet" id="rebookSheet">
+  <div class="grab"></div>
+  <h3>✨ ¿Agendar la próxima?</h3>
+  <div class="acc-sub">El gel se retoca cada 3-4 semanas. Aparta de una vez el espacio de <b id="rebookName"></b> antes de que se vaya.</div>
+  <button class="btn btn-primary" onclick="rebookIn(3)">📅 En 3 semanas</button>
+  <button class="btn btn-primary" style="margin-top:8px" onclick="rebookIn(4)">📅 En 4 semanas</button>
+  <button class="btn btn-line" style="margin-top:8px" onclick="pendingRebook=null;closeSheet()">Ahora no</button>
+</div>
+
 <div class="sheet" id="cliQrSheet">
   <div class="grab"></div>
   <h3 id="cliQrTitle">QR de la clienta</h3>
@@ -1073,7 +1099,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 /* ---- mapeo fila Supabase -> objeto que usa la UI ---- */
 function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),precios:Array.isArray(r.precios)?r.precios.map(Number):[],costoReal:Number(r.costo_real||0),desc:r.descripcion||'',incluye:r.incluye||''}}
 function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),precios:Array.isArray(s.precios)?s.precios:[],costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
-function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
+function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',cumple:r.cumple||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
 function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),descMonto:Number(r.descuento_monto||0),abonado:(r.abonado==null?null:Number(r.abonado)),pagos:Array.isArray(r.pagos)?r.pagos:[],estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
 function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),descuento_monto:Number(c.descMonto||0),abonado:(c.abonado==null?null:Number(c.abonado)),pagos:Array.isArray(c.pagos)?c.pagos:[],estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
@@ -1111,6 +1137,7 @@ const DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MON=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function fmtMoney(n){return '$'+Number(n||0).toLocaleString('es-MX')}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function getApptDur(){const h=Number(document.getElementById('apptDurH').value)||0;const m=Number(document.getElementById('apptDurM').value)||0;return h*60+m;}
 function setApptDur(min){min=Number(min)||60;const h=Math.floor(min/60);let m=min%60;if(![0,15,30,45].includes(m))m=Math.round(m/15)*15%60;const hSel=document.getElementById('apptDurH'),mSel=document.getElementById('apptDurM');hSel.value=String(Math.min(h,8));mSel.value=String(m);}
 function fmtDur(min){min=Number(min)||0;const h=Math.floor(min/60),m=min%60;if(h&&m)return `${h} h ${m} min`;if(h)return `${h} h`;return `${m} min`;}
@@ -1155,7 +1182,15 @@ function fabAction(){
 function greet(){
   const h=new Date().getHours();
   const s=h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches';
-  document.getElementById('greet').innerHTML=s+', <b>preciosa</b> ✨';
+  // resumen del día: citas de hoy pendientes
+  const hoy=ymd(new Date());
+  const deHoy=DB.citas.filter(c=>c.fecha===hoy&&c.estado==='agendada').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  let sub='';
+  if(deHoy.length){
+    const prim=deHoy[0];const t=prim.hora?fmt12(prim.hora):null;
+    sub=`<div class="greet-sub">Hoy: ${deHoy.length} cita${deHoy.length!==1?'s':''}${t?` · primera a las ${t.h} ${t.ap}`:''} 💅</div>`;
+  }
+  document.getElementById('greet').innerHTML=s+', <b>preciosa</b> ✨'+sub;
 }
 
 /* ---------------- AGENDA ---------------- */
@@ -1230,7 +1265,7 @@ function evBox(c,narrow){
   const w=100/(c._cols||1),left=(c._col||0)*w;
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
   const svc=DB.servicios.find(x=>x.id===c.servicioId);
-  const name=cli?cli.nombre:'Clienta';
+  const name=esc(cli?cli.nombre:'Clienta');
   // adapta el contenido a la altura disponible
   let inner;
   if(narrow){
@@ -1262,7 +1297,7 @@ function renderDay(){
   const noTime=all.filter(c=>!c.hora);
   const timed=prepDay(key,false);
   const isToday=key===ymd(new Date());
-  const sinhora=noTime.length?`<div class="sinhora">${noTime.map(c=>{const pal=PALETTE[c.color]||PALETTE.rosa;const cli=DB.clientas.find(x=>x.id===c.clientaId);return `<div class="ev ${c.estado}" style="position:static;background:${pal.bg};border-left-color:${pal.br};color:${pal.tx};padding:7px 10px" onclick="editAppt('${c.id}')"><div class="ec">${cli?cli.nombre:'Clienta'} · sin hora</div></div>`}).join('')}</div>`:'';
+  const sinhora=noTime.length?`<div class="sinhora">${noTime.map(c=>{const pal=PALETTE[c.color]||PALETTE.rosa;const cli=DB.clientas.find(x=>x.id===c.clientaId);return `<div class="ev ${c.estado}" style="position:static;background:${pal.bg};border-left-color:${pal.br};color:${pal.tx};padding:7px 10px" onclick="editAppt('${c.id}')"><div class="ec">${esc(cli?cli.nombre:'Clienta')} · sin hora</div></div>`}).join('')}</div>`:'';
   document.getElementById('agendaCanvas').innerHTML=`${sinhora}
     <div class="tg" id="tgScroll">
       <div class="tg-gutter">${gutterHours()}</div>
@@ -1400,7 +1435,7 @@ function renderVentas(){
     else {pill='<span class="pill pagado">Pagado</span>';amt=fmtMoney(montoCita(c));}
     return `<div class="row" onclick="editAppt('${c.id}')">
       <div class="avatar">${cli?cli.nombre[0].toUpperCase():'·'}</div>
-      <div class="info"><div class="name">${cli?cli.nombre:'Clienta'}</div>
+      <div class="info"><div class="name">${esc(cli?cli.nombre:'Clienta')}</div>
       <div class="det">${svcDisplay(c)} · ${d.getDate()} ${MON[d.getMonth()]}</div></div>
       <div class="right"><div class="amt">${amt}</div>${pill}</div>
     </div>`;
@@ -1432,7 +1467,7 @@ function renderCobranza(){
     const big=d.debt>=500;const old=d.oldest>=14;
     return `<div class="row debtor" onclick="openCli('${d.id}')">
       <div class="avatar" style="background:${old?'linear-gradient(150deg,#B5564E,#8C3A2E)':'linear-gradient(150deg,var(--mauve),var(--wine))'}">${cl.nombre[0].toUpperCase()}</div>
-      <div class="info"><div class="name">${cl.nombre}</div>
+      <div class="info"><div class="name">${esc(cl.nombre)}</div>
       <div class="det"><span class="${old?'age-bad':''}">hace ${d.oldest}d</span> · ${d.count} cargo${d.count!==1?'s':''} · ${big?'adeudo alto':'adeudo bajo'}</div></div>
       <div class="right"><div class="amt" style="color:var(--red)">${fmtMoney(d.debt)}</div></div>
     </div>`;
@@ -1554,7 +1589,7 @@ function renderCitas(){
       <div class="cr-top" onclick="editAppt('${c.id}')">
         <div class="cr-date"><div class="dd">${d.getDate()}</div><div class="dm">${MON[d.getMonth()]} ${d.getFullYear()}${c.hora?' · '+fmt12(c.hora).h+fmt12(c.hora).ap:''}</div></div>
         <div class="cr-body">
-          <div class="cr-cli">${cli?cli.nombre:'Clienta'}</div>
+          <div class="cr-cli">${esc(cli?cli.nombre:'Clienta')}</div>
           <div class="cr-svc">${svcFull(c)}</div>
           <div class="cr-meta">${amtHtml}${estPill}${payPill}${metPill}${descPill}</div>
           ${compThumb}
@@ -1565,7 +1600,7 @@ function renderCitas(){
   }).join('');
 }
 function refreshAfterCita(){renderCitas();if(currentView==='agenda')renderAgenda();}
-async function marcarAtendida(id){const c=DB.citas.find(x=>x.id===id);if(!c)return;c.estado='atendida';if(!c.pago)c.pago='deuda';try{await sb.from('citas').update({estado:c.estado,pago:c.pago}).eq('id',id);}catch(e){console.error(e);}refreshAfterCita();toast('Marcada como atendida');}
+async function marcarAtendida(id){const c=DB.citas.find(x=>x.id===id);if(!c)return;const wasBefore=c.estado==='atendida';c.estado='atendida';if(!c.pago)c.pago='deuda';try{await sb.from('citas').update({estado:c.estado,pago:c.pago}).eq('id',id);}catch(e){console.error(e);}refreshAfterCita();toast('Marcada como atendida');maybeOfferRebook({estado:'atendida',clientaId:c.clientaId},wasBefore);}
 async function marcarPagada(id){
   const c=DB.citas.find(x=>x.id===id);if(!c)return;
   const metodo=c.metodo||'efectivo';
@@ -1767,7 +1802,101 @@ function payBehavior(st){
   if(st.avgDaysToPay<=3)return {label:'Buena paga',cls:'pay-ok'};
   return {label:'Se tarda',cls:'pay-warn'};
 }
+/* ============ RETENCIÓN: en riesgo + cumpleaños ============ */
+const RIESGO_DIAS=35; // ciclo típico de uñas: 3-4 semanas
+function cliEnRiesgo(){
+  return DB.clientas.filter(cl=>{
+    const st=clientStats(cl.id);
+    return st.visits>0&&st.lastDays!=null&&st.lastDays>=RIESGO_DIAS&&cl.telefono;
+  }).map(cl=>({cl,days:clientStats(cl.id).lastDays})).sort((a,b)=>a.days-b.days);
+}
+function proximosCumples(dias){
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const out=[];
+  DB.clientas.forEach(cl=>{
+    if(!cl.cumple)return;
+    const [_,m,d]=cl.cumple.split('-').map(Number);
+    if(!m||!d)return;
+    let next=new Date(hoy.getFullYear(),m-1,d);
+    if(next<hoy)next=new Date(hoy.getFullYear()+1,m-1,d);
+    const diff=Math.round((next-hoy)/86400000);
+    if(diff<=dias)out.push({cl,diff,fecha:next});
+  });
+  return out.sort((a,b)=>a.diff-b.diff);
+}
+function renderCliAlerts(){
+  const el=document.getElementById('cliAlerts');if(!el)return;
+  const riesgo=cliEnRiesgo();
+  const cumples=proximosCumples(7);
+  let html='';
+  if(cumples.length){
+    html+=`<div class="alert-card cumple-card"><div class="al-title">🎂 Cumpleaños próximos</div>`;
+    html+=cumples.map(x=>`<div class="al-row"><div class="al-info"><b>${esc(x.cl.nombre)}</b><small>${x.diff===0?'¡Hoy!':(x.diff===1?'Mañana':'En '+x.diff+' días')} · ${x.fecha.getDate()} ${MON[x.fecha.getMonth()]}</small></div><button class="al-wa" onclick="event.stopPropagation();waCumple('${x.cl.id}')">Felicitar</button></div>`).join('');
+    html+=`</div>`;
+  }
+  if(riesgo.length){
+    html+=`<div class="alert-card riesgo-card"><div class="al-title">💔 No han vuelto (${riesgo.length})</div>`;
+    html+=riesgo.slice(0,5).map(x=>`<div class="al-row" onclick="openCli('${x.cl.id}')"><div class="al-info"><b>${esc(x.cl.nombre)}</b><small>Última visita hace ${x.days} días</small></div><button class="al-wa" onclick="event.stopPropagation();waTeExtranamos('${x.cl.id}')">WhatsApp</button></div>`).join('');
+    if(riesgo.length>5)html+=`<div class="al-more">y ${riesgo.length-5} más…</div>`;
+    html+=`</div>`;
+  }
+  el.innerHTML=html;
+}
+function waTeExtranamos(cliId){
+  const cl=DB.clientas.find(x=>x.id===cliId);if(!cl)return;
+  const msg=`¡Hola ${cl.nombre.split(' ')[0]}! 🤍\n\nTe extrañamos en *Rhēud Beauty* 💅 Ya pasó un tiempito desde tu última visita y tus uñas merecen su mantenimiento.\n\n¿Te aparto un espacio esta semana? ✨`;
+  waOpen(cl,msg);
+}
+function waCumple(cliId){
+  const cl=DB.clientas.find(x=>x.id===cliId);if(!cl)return;
+  const msg=`¡Feliz cumpleaños, ${cl.nombre.split(' ')[0]}! 🎂✨\n\nDe parte de *Rhēud Beauty* te deseamos un día precioso 🤍\n\nVen a consentirte este mes: tenemos un detalle especial para ti en tu próxima visita 💅`;
+  waOpen(cl,msg);
+}
+
+/* ============ RE-AGENDADO (rebooking) ============ */
+let pendingRebook=null; // {cliId, nombre}
+function maybeOfferRebook(citaData,wasAtendidaBefore){
+  // ofrece agendar la siguiente cita cuando se marca como atendida por primera vez
+  if(citaData.estado!=='atendida'||wasAtendidaBefore)return;
+  const cl=DB.clientas.find(x=>x.id===citaData.clientaId);if(!cl)return;
+  pendingRebook={cliId:cl.id,nombre:cl.nombre};
+  document.getElementById('rebookName').textContent=cl.nombre.split(' ')[0];
+  setTimeout(()=>showSheet('rebookSheet'),350);
+}
+function rebookIn(weeks){
+  if(!pendingRebook)return closeSheet();
+  const cliId=pendingRebook.cliId;pendingRebook=null;
+  closeSheet();
+  const d=new Date();d.setDate(d.getDate()+weeks*7);
+  openApptSheet();
+  document.getElementById('apptDate').value=ymd(d);
+  // preselecciona la clienta
+  apptSelectedCliId=cliId;
+  const cl=DB.clientas.find(x=>x.id===cliId);
+  if(cl){document.getElementById('apptCliSearch').value=cl.nombre;document.getElementById('apptCliResults').innerHTML='';}
+  onApptDateChange();
+  toast('Próxima cita de '+(cl?cl.nombre.split(' ')[0]:'')+' · elige hora');
+}
+
+/* ============ EXPORTAR CSV ============ */
+function exportCSV(){
+  const rows=[['Fecha','Hora','Clienta','Servicios','Precio','Descuento','Cobrado','Pendiente','Estado pago','Método','Código']];
+  DB.citas.filter(c=>c.estado==='atendida').sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).forEach(c=>{
+    const cl=DB.clientas.find(x=>x.id===c.clientaId);
+    const sm=pagosSummary(c);
+    rows.push([c.fecha,c.hora||'',cl?cl.nombre:'',svcFull(c),c.precio||0,c.descMonto||0,sm.cobrado,sm.deuda,sm.estado,metodoLabel(c.metodo||''),c.codigo||'']);
+  });
+  const csv=rows.map(r=>r.map(v=>{v=String(v??'');return (v.includes(',')||v.includes('"'))?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='rheud-ingresos-'+ymd(new Date())+'.csv';
+  document.body.appendChild(a);a.click();a.remove();
+  toast('CSV exportado 📊');
+}
+
 function renderClientas(){
+  renderCliAlerts();
   const cont=document.getElementById('cliList');
   const q=(document.getElementById('cliSearch')||{}).value||'';
   document.getElementById('cliSearchClr').style.display=q?'block':'none';
@@ -1780,7 +1909,7 @@ function renderClientas(){
     const st=clientStats(cl.id),seg=clientSegment(st),pay=payBehavior(st);
     return `<div class="row" onclick="openCli('${cl.id}')">
       <div class="avatar">${cl.nombre[0].toUpperCase()}</div>
-      <div class="info"><div class="cli-num">${cliNumLabel(cl.num)}</div><div class="name">${cl.nombre}</div>
+      <div class="info"><div class="cli-num">${cliNumLabel(cl.num)}</div><div class="name">${esc(cl.nombre)}</div>
       <div class="det">${st.visits} visita${st.visits!==1?'s':''} · ${fmtMoney(st.spent)} · ticket ${fmtMoney(st.avgTicket)}</div>
       <div class="badges"><span class="badge ${seg.cls}">${seg.label}</span><span class="badge ${pay.cls}">${pay.label}</span>${st.debt?`<span class="badge pay-bad">debe ${fmtMoney(st.debt)}</span>`:''}</div></div>
     </div>`;
@@ -1808,12 +1937,13 @@ function openCli(id){
   else payKv.style.display='none';
   document.getElementById('cliLast').textContent=st.last?(()=>{const d=new Date(st.last+'T00:00:00');return d.getDate()+' '+MON[d.getMonth()]})():'—';
   document.getElementById('cliNotes').value=cl.notas||'';
+  document.getElementById('cliCumple').value=cl.cumple||'';
   const hist=DB.citas.filter(c=>c.clientaId===id).sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
   document.getElementById('cliHist').innerHTML=hist.length?hist.map(c=>{
     const pg=c.estado==='atendida'?(c.pago==='deuda'?' · debe':(c.metodo?' · '+metodoLabel(c.metodo):' · pagado')):'';
     return `<div class="histitem"><div><div class="hs">${svcFull(c)}</div>
     <div class="hd">${fmtFechaCompleta(c.fecha,c.hora)} · ${c.estado}${pg}</div></div>
-    <div class="hp">${fmtMoney(c.precio)}</div></div>`;
+    <div class="hp">${fmtMoney(montoCita(c)||c.precio)}${deudaCita(c)>0?`<small class="hp-debe">debe ${fmtMoney(deudaCita(c))}</small>`:''}</div></div>`;
   }).join(''):'<p style="color:var(--muted);font-size:13px;font-weight:300">Sin historial.</p>';
   document.getElementById('cliLoyalty').innerHTML=loyaltyCardHtml(cl);
   showSheet('cliSheet');
@@ -1828,7 +1958,8 @@ async function saveCliContact(){
   const cl=DB.clientas.find(x=>x.id===openCliId);
   cl.telefono=document.getElementById('cliPhone').value.trim();
   cl.email=document.getElementById('cliEmail').value.trim();
-  try{await sb.from('clientas').update({telefono:cl.telefono,email:cl.email}).eq('id',openCliId);}catch(e){console.error(e);}
+  cl.cumple=document.getElementById('cliCumple').value||'';
+  try{await sb.from('clientas').update({telefono:cl.telefono,email:cl.email,cumple:cl.cumple||null}).eq('id',openCliId);}catch(e){console.error(e);}
 }
 function openCliCreateSheet(){
   cliCreateReturnToAppt=false;
@@ -2554,7 +2685,7 @@ function openConfirmaciones(){
       return `<div class="cf-item">
         <div class="cf-info">
           <div class="cf-when">${hora}</div>
-          <div class="cf-cli">${cli?cli.nombre:'Sin clienta'}</div>
+          <div class="cf-cli">${esc(cli?cli.nombre:'Sin clienta')}</div>
           <div class="cf-svc">${svc}</div>
         </div>
         <button class="cf-wa" onclick="confirmarCita('${c.id}')">Confirmar</button>
@@ -2745,6 +2876,7 @@ async function saveAppt(){
     comprobante:compVal,
     notas:document.getElementById('apptNotes').value.trim()
   };
+  const wasAtendidaBefore=editingId?(DB.citas.find(c=>c.id===editingId)||{}).estado==='atendida':false;
   try{
     if(editingId){
       const {error}=await sb.from('citas').update(citaToRow(data)).eq('id',editingId);if(error)throw error;
@@ -2763,6 +2895,7 @@ async function saveAppt(){
   if(currentView==='clientas')renderClientas();
   if(currentView==='citas')renderCitas();
   toast(editingId?'Cita actualizada':'Cita agendada ✨');
+  maybeOfferRebook(data,wasAtendidaBefore);
 }
 async function deleteAppt(){
   if(!editingId||!confirm('¿Eliminar esta cita?'))return;
@@ -2801,7 +2934,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='2.6';
+const APP_VERSION='2.8';
 const APP_BUILD='8 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
