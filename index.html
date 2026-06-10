@@ -55,31 +55,31 @@ body::before{
 /* ---------- HEADER ---------- */
 .topbar{
   position:sticky;top:0;z-index:30;
-  background:rgba(248,239,230,.86);backdrop-filter:blur(14px);
-  color:var(--ink);padding:18px 22px 16px;text-align:center;
-  border-bottom:1px solid var(--line);box-shadow:0 4px 18px rgba(92,34,51,.05);
+  background:linear-gradient(160deg,#5C2233 0%,#6e2a3f 100%);
+  color:#fff;padding:18px 22px 16px;text-align:center;
+  border-bottom:none;box-shadow:0 4px 24px rgba(92,34,51,.25);
   transition:padding .25s ease;
 }
 .brand{display:flex;justify-content:center;align-items:center}
-.brand .logo{height:46px;width:auto;display:block;transition:height .25s ease}
-.greet{margin-top:8px;font-weight:400;font-size:13px;color:#1A1216;letter-spacing:.4px;transition:opacity .2s ease,max-height .25s ease,margin .25s ease;overflow:hidden}
-.greet b{font-weight:700;color:#000}
+.brand .logo{height:46px;width:auto;display:block;transition:height .25s ease;filter:brightness(0) invert(1)}
+.greet{margin-top:8px;font-weight:400;font-size:13px;color:rgba(255,255,255,.85);letter-spacing:.4px;transition:opacity .2s ease,max-height .25s ease,margin .25s ease;overflow:hidden}
+.greet b{font-weight:700;color:#fff}
 /* topbar compacto al hacer scroll */
-.topbar.scrolled{padding:8px 22px 8px}
-.topbar.scrolled .brand .logo{height:30px}
+.topbar.scrolled{padding:8px 22px 8px;background:linear-gradient(160deg,#5C2233 0%,#6e2a3f 100%)}
+.topbar.scrolled .brand .logo{height:28px}
 .topbar.scrolled .greet{opacity:0;max-height:0;margin-top:0}
 .topbar.scrolled .statusbar{margin-top:5px}
 
 /* ---------- STATUS BAR ---------- */
-.statusbar{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:11px;color:#3a2e33;flex-wrap:wrap}
-.sb-item{font-weight:500;white-space:nowrap}
-.sb-dot{color:var(--muted)}
+.statusbar{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:11px;color:rgba(255,255,255,.7);flex-wrap:wrap}
+.sb-item{font-weight:500;white-space:nowrap;color:rgba(255,255,255,.8)}
+.sb-dot{color:rgba(255,255,255,.35)}
 .sb-right{margin-left:auto;display:flex;align-items:center;gap:9px}
-.sb-conn{display:flex;align-items:center;gap:4px;font-weight:500}
+.sb-conn{display:flex;align-items:center;gap:4px;font-weight:500;color:rgba(255,255,255,.8)}
 .sb-conndot{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block}
-.sb-conn.on .sb-conndot{background:var(--green)}
+.sb-conn.on .sb-conndot{background:#6DDFAA}
 .sb-conn.off .sb-conndot{background:var(--red)}
-.sb-ver{color:var(--muted);font-weight:400}
+.sb-ver{color:rgba(255,255,255,.45);font-weight:400}
 .agenda-weather{text-align:center;font-size:12px;color:#3a2e33;font-weight:500;margin:-4px 2px 12px;min-height:16px}
 .agenda-weather .wx{font-weight:400;color:var(--mauve)}
 
@@ -927,6 +927,7 @@ body::before{
   <div class="field"><label>Descripción</label><textarea id="svcDesc" placeholder="Breve descripción del servicio…"></textarea></div>
   <div class="field"><label>¿Qué incluye?</label><textarea id="svcIncl" placeholder="Ej. Limado, cutícula, esmaltado, decoración simple…"></textarea></div>
   <button class="btn btn-primary" onclick="saveSvc()">Guardar</button>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
   <button class="btn btn-ghost" id="svcDelBtn" style="display:none" onclick="delSvc()">Eliminar servicio</button>
 </div>
 
@@ -1182,15 +1183,7 @@ function fabAction(){
 function greet(){
   const h=new Date().getHours();
   const s=h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches';
-  // resumen del día: citas de hoy pendientes
-  const hoy=ymd(new Date());
-  const deHoy=DB.citas.filter(c=>c.fecha===hoy&&c.estado==='agendada').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
-  let sub='';
-  if(deHoy.length){
-    const prim=deHoy[0];const t=prim.hora?fmt12(prim.hora):null;
-    sub=`<div class="greet-sub">Hoy: ${deHoy.length} cita${deHoy.length!==1?'s':''}${t?` · primera a las ${t.h} ${t.ap}`:''} 💅</div>`;
-  }
-  document.getElementById('greet').innerHTML=s+', <b>preciosa</b> ✨'+sub;
+  document.getElementById('greet').innerHTML=s+', <b>preciosa</b> ✨';
 }
 
 /* ---------------- AGENDA ---------------- */
@@ -2934,8 +2927,8 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='2.8';
-const APP_BUILD='8 jun';
+const APP_VERSION='2.9';
+const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPass').value;
