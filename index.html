@@ -435,6 +435,25 @@ body::before{
 .al-wa{background:#25D366;color:#fff;border:none;border-radius:10px;padding:8px 13px;font-family:'Jost';font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
 .al-more{font-size:12px;color:var(--muted);text-align:center;padding-top:8px}
 .export-btn{float:right;background:none;border:1px solid var(--line);border-radius:9px;padding:5px 11px;font-family:'Jost';font-size:11.5px;font-weight:600;color:var(--wine);cursor:pointer}
+/* Sección preferencias */
+.pref-section{background:linear-gradient(160deg,#FAF3EE,#F5E8E0);border:1px solid var(--gold-soft);border-radius:18px;padding:16px;margin-top:16px}
+.pref-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--wine);margin-bottom:12px}
+/* Servicios frecuentes */
+.freq-svcs{margin-bottom:12px}
+.fs-title{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--mauve);font-weight:600;margin-bottom:7px}
+.fs-chip{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:5px 11px;font-size:12.5px;color:var(--ink);margin:0 5px 5px 0;font-weight:500}
+.fs-chip small{color:var(--mauve);font-size:11px}
+/* Botón IA */
+.btn-ia{width:100%;background:linear-gradient(150deg,#5C2233,var(--mauve));color:#fff;border:none;border-radius:13px;padding:13px;font-family:'Jost';font-size:14px;font-weight:600;cursor:pointer;margin-top:12px;letter-spacing:.3px}
+.btn-ia:active{transform:scale(.98)}
+/* Hoja IA */
+.ia-content{padding:4px 0 12px;max-height:60vh;overflow-y:auto}
+.ia-loading{text-align:center;color:var(--mauve);font-size:14px;padding:30px 0;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.ia-resp{font-size:14px;line-height:1.75;color:var(--ink)}
+.ia-resp p{margin-bottom:10px}
+.ia-resp b{color:var(--wine)}
+.ia-error{color:var(--red);font-size:13.5px;padding:16px 0}
 #agDayStrip .wk-head{margin-bottom:0}
 #agDayStrip .mdow{margin-bottom:0;padding:0 11px}
 .agenda-head{display:flex;align-items:center;gap:7px;margin:2px 2px 12px}
@@ -966,6 +985,29 @@ body::before{
     <div class="field"><label>Email</label><input id="cliEmail" inputmode="email" placeholder="—" autocomplete="off" onblur="saveCliContact()"></div>
     <div class="field"><label>Cumpleaños 🎂</label><input id="cliCumple" type="date" onblur="saveCliContact()"></div>
   </div>
+  <!-- PREFERENCIAS DE UÑAS -->
+  <div class="pref-section">
+    <div class="pref-title">💅 Preferencias</div>
+    <div class="field"><label>Forma de uña favorita</label>
+      <div class="chips" id="formaChips">
+        <div class="chip" data-f="cuadrada">Cuadrada</div>
+        <div class="chip" data-f="ovalada">Ovalada</div>
+        <div class="chip" data-f="almendrada">Almendrada</div>
+        <div class="chip" data-f="stiletto">Stiletto</div>
+        <div class="chip" data-f="coffin">Coffin</div>
+        <div class="chip" data-f="squoval">Squoval</div>
+      </div>
+    </div>
+    <div class="field"><label>Colores favoritos</label>
+      <input id="cliColores" placeholder="Ej: rosas, nude, neón, azul…" onblur="saveCliPrefs()"></div>
+    <div class="field"><label>Alergias o sensibilidades ⚠️</label>
+      <input id="cliAlergias" placeholder="Ej: acrílico, látex, perfume…" onblur="saveCliPrefs()"></div>
+    <div class="field"><label>Otras preferencias</label>
+      <textarea id="cliNotasPrefs" placeholder="Música, tiempo de servicio, diseños que le gustan…" onblur="saveCliPrefs()"></textarea></div>
+    <!-- IA: servicios frecuentes + sugerencias -->
+    <div id="cliFreqSvcs"></div>
+    <button class="btn-ia" onclick="openIASugerencias()">✨ Sugerencias de IA para esta clienta</button>
+  </div>
   <div class="kv"><span class="k">Visitas</span><span class="v" id="cliVisits"></span></div>
   <div class="kv"><span class="k">Total gastado</span><span class="v" id="cliSpent"></span></div>
   <div class="kv"><span class="k">Ticket promedio</span><span class="v" id="cliTicket"></span></div>
@@ -1079,6 +1121,14 @@ body::before{
   <button class="btn btn-line" onclick="backToCliFromPick()">Volver</button>
 </div>
 
+<!-- HOJA SUGERENCIAS IA -->
+<div class="sheet" id="iaSheet">
+  <div class="grab"></div>
+  <h3>✨ Asistente de estilismo</h3>
+  <div id="iaContent" class="ia-content"><div class="ia-loading">Consultando tendencias… 🎨</div></div>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1108,7 +1158,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 /* ---- mapeo fila Supabase -> objeto que usa la UI ---- */
 function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),precios:Array.isArray(r.precios)?r.precios.map(Number):[],costoReal:Number(r.costo_real||0),desc:r.descripcion||'',incluye:r.incluye||''}}
 function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),precios:Array.isArray(s.precios)?s.precios:[],costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
-function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',cumple:r.cumple||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
+function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',cumple:r.cumple||'',formaUna:r.forma_una||'',coloresFav:r.colores_fav||'',alergias:r.alergias||'',notasPrefs:r.notas_prefs||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
 function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),descMonto:Number(r.descuento_monto||0),abonado:(r.abonado==null?null:Number(r.abonado)),pagos:Array.isArray(r.pagos)?r.pagos:[],estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
 function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),descuento_monto:Number(c.descMonto||0),abonado:(c.abonado==null?null:Number(c.abonado)),pagos:Array.isArray(c.pagos)?c.pagos:[],estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
@@ -1995,6 +2045,7 @@ function openCli(id){
   document.getElementById('cliLast').textContent=st.last?(()=>{const d=new Date(st.last+'T00:00:00');return d.getDate()+' '+MON[d.getMonth()]})():'—';
   document.getElementById('cliNotes').value=cl.notas||'';
   document.getElementById('cliCumple').value=cl.cumple||'';
+  loadCliPrefs(cl);
   const hist=DB.citas.filter(c=>c.clientaId===id).sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
   document.getElementById('cliHist').innerHTML=hist.length?hist.map(c=>{
     const pg=c.estado==='atendida'?(c.pago==='deuda'?' · debe':(c.metodo?' · '+metodoLabel(c.metodo):' · pagado')):'';
@@ -2017,6 +2068,89 @@ async function saveCliContact(){
   cl.email=document.getElementById('cliEmail').value.trim();
   cl.cumple=document.getElementById('cliCumple').value||'';
   try{await sb.from('clientas').update({telefono:cl.telefono,email:cl.email,cumple:cl.cumple||null}).eq('id',openCliId);}catch(e){console.error(e);}
+}
+async function saveCliPrefs(){
+  if(!openCliId)return;
+  const cl=DB.clientas.find(x=>x.id===openCliId);
+  cl.coloresFav=document.getElementById('cliColores').value.trim();
+  cl.alergias=document.getElementById('cliAlergias').value.trim();
+  cl.notasPrefs=document.getElementById('cliNotasPrefs').value.trim();
+  try{await sb.from('clientas').update({colores_fav:cl.coloresFav,alergias:cl.alergias,notas_prefs:cl.notasPrefs}).eq('id',openCliId);}catch(e){console.error(e);}
+}
+let curForma='';
+function setForma(f){
+  curForma=f;
+  document.querySelectorAll('#formaChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.f===f));
+  if(!openCliId)return;
+  const cl=DB.clientas.find(x=>x.id===openCliId);
+  if(cl){cl.formaUna=f;sb.from('clientas').update({forma_una:f}).eq('id',openCliId).then();}
+}
+document.getElementById('formaChips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip');if(c&&c.dataset.f){
+    const f=c.dataset.f===curForma?'':c.dataset.f; // toggle off si se toca la misma
+    setForma(f);
+  }
+});
+function loadCliPrefs(cl){
+  curForma=cl.formaUna||'';
+  document.querySelectorAll('#formaChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.f===curForma));
+  document.getElementById('cliColores').value=cl.coloresFav||'';
+  document.getElementById('cliAlergias').value=cl.alergias||'';
+  document.getElementById('cliNotasPrefs').value=cl.notasPrefs||'';
+  renderFreqSvcs(cl.id);
+}
+function renderFreqSvcs(cliId){
+  const el=document.getElementById('cliFreqSvcs');if(!el)return;
+  const citas=DB.citas.filter(c=>c.clientaId===cliId&&c.estado==='atendida');
+  if(citas.length<2){el.innerHTML='';return;}
+  // cuenta frecuencia de cada servicio
+  const freq={};
+  citas.forEach(c=>citaItems(c).forEach(i=>{const k=i.n;freq[k]=(freq[k]||0)+1;}));
+  const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  if(!top.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="freq-svcs"><div class="fs-title">🔄 Suele pedir</div>${top.map(([n,v])=>`<span class="fs-chip">${n} <small>×${v}</small></span>`).join('')}</div>`;
+}
+
+/* ────────── SUGERENCIAS DE IA ────────── */
+async function openIASugerencias(){
+  const cl=DB.clientas.find(x=>x.id===openCliId);if(!cl)return;
+  document.getElementById('iaContent').innerHTML='<div class="ia-loading">✨ Consultando tendencias y gustos…</div>';
+  showSheet('iaSheet');
+  // Contexto de la clienta
+  const histSvcs=DB.citas.filter(c=>c.clientaId===cl.id&&c.estado==='atendida').flatMap(c=>citaItems(c).map(i=>i.n));
+  const freq={};histSvcs.forEach(n=>{freq[n]=(freq[n]||0)+1;});
+  const topSvcs=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([n,v])=>`${n} (${v}x)`).join(', ');
+  const mesActual=new Date().toLocaleString('es-MX',{month:'long',year:'numeric'});
+  const prompt=`Eres asistente de estilismo para un nail studio profesional llamado Rhēud Beauty en Monterrey, México.
+
+Clienta: ${cl.nombre}
+Forma de uña favorita: ${cl.formaUna||'no especificada'}
+Colores favoritos: ${cl.coloresFav||'no especificados'}
+Alergias: ${cl.alergias||'ninguna conocida'}
+Servicios más pedidos: ${topSvcs||'sin historial suficiente'}
+Notas: ${cl.notasPrefs||'ninguna'}
+
+Fecha actual: ${mesActual}
+
+Responde en español, de forma cálida y profesional. Dame:
+
+1. **Colores de temporada** (3-4 tonos de moda para ${mesActual}, con nombre y por qué van bien con esta clienta)
+2. **Diseños sugeridos** (2-3 ideas de diseño de uñas simples/realizables, con descripción breve)
+3. **Servicio recomendado** (basado en su historial, qué podría probar o renovar)
+4. **Tip personalizado** (algo específico para esta clienta según sus gustos y forma de uña)
+
+Sé concisa y entusiasta. Usa emojis con moderación. No repitas datos de la clienta.`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const txt=data.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'Sin respuesta.';
+    // Renderiza markdown básico
+    const html=txt.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\*(.*?)\*/g,'<i>$1</i>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+    document.getElementById('iaContent').innerHTML=`<div class="ia-resp"><p>${html}</p></div>`;
+  }catch(e){
+    document.getElementById('iaContent').innerHTML=`<div class="ia-error">No se pudo conectar con el asistente. Revisa tu conexión.</div>`;
+    console.error(e);
+  }
 }
 function openCliCreateSheet(){
   cliCreateReturnToAppt=false;
@@ -2991,7 +3125,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='3.2';
+const APP_VERSION='3.3';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
