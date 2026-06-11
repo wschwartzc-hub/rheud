@@ -1529,12 +1529,20 @@ function renderVentas(){
     startKey=document.getElementById('vDesde').value||today;
     endKey=document.getElementById('vHasta').value||today;
     if(endKey<startKey){const t=startKey;startKey=endKey;endKey=t;}
-  }else{startKey=rangeStart(ventasPeriod);endKey=today;}
+  }else{
+    startKey=rangeStart(ventasPeriod);
+    endKey=today;
+    // Para las agendadas futuras usamos el fin real del periodo (no hoy)
+  }
+  // fin natural del periodo (para incluir citas agendadas del resto del mes/semana)
+  let endKeyFull=endKey;
+  if(ventasPeriod==='mes'){const d=new Date();endKeyFull=ymd(new Date(d.getFullYear(),d.getMonth()+1,0));}
+  else if(ventasPeriod==='sem'){const d=new Date(startKey+'T00:00:00');d.setDate(d.getDate()+6);endKeyFull=ymd(d);}
   const sales=DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=startKey&&c.fecha<=endKey);
   const total=sales.reduce((s,c)=>s+Number(c.precio||0),0);
   const cobrado=sales.reduce((s,c)=>s+montoCita(c),0);
   const deuda=sales.reduce((s,c)=>s+deudaCita(c),0);
-  const agendadas=DB.citas.filter(c=>c.estado==='agendada'&&c.fecha>=startKey&&c.fecha<=endKey);
+  const agendadas=DB.citas.filter(c=>c.estado==='agendada'&&c.fecha>=startKey&&c.fecha<=endKeyFull);
   const esperadoAgendadas=agendadas.reduce((s,c)=>s+Number(c.precio||0),0);
   const totalEsperado=cobrado+deuda+esperadoAgendadas;
   const nTodo=sales.length+agendadas.length;
@@ -3189,7 +3197,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='3.8';
+const APP_VERSION='3.9';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
