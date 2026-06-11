@@ -1267,27 +1267,34 @@ function evBox(c,narrow){
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
   const name=esc(cli?cli.nombre:'Clienta');
 
-  // ── Intensidad temporal (solo para hoy) ──
-  const isDateToday=c.fecha===ymd(new Date());
-  const nowM=isDateToday?(new Date().getHours()*60+new Date().getMinutes()):null;
+  // ── Intensidad temporal ──
+  const todayKey=ymd(new Date());
+  const isDateToday=c.fecha===todayKey;
+  const isDatePast=c.fecha<todayKey;
   let extraStyle='';let timeClass='';
   if(c.estado==='cancelada'){
     extraStyle='opacity:0.35;filter:saturate(0.2) grayscale(0.5)';
-  }else if(nowM!==null){
+  }else if(isDatePast){
+    // Día pasado completo: siempre tenue
+    extraStyle='opacity:0.38;filter:saturate(0.35)';
+    timeClass='ev-past';
+  }else if(isDateToday){
+    const nowM=new Date().getHours()*60+new Date().getMinutes();
     if(c._e<=nowM){
-      // Pasada: muy tenue
+      // Ya pasó hoy
       extraStyle='opacity:0.38;filter:saturate(0.35)';
       timeClass='ev-past';
     }else if(c._s<=nowM){
-      // En curso ahora: plena intensidad + destaque
+      // En curso ahora
       timeClass='ev-now';
     }else{
-      // Próxima: más vívida cuanto más cerca — de 0.55 (lejana) a 1.0 (inmediata)
+      // Próxima hoy: más vívida cuanto más cerca
       const minsUntil=c._s-nowM;
       const opacity=Math.max(0.55,1-(minsUntil/(7*60))*0.45);
       extraStyle=`opacity:${opacity.toFixed(2)}`;
     }
   }
+  // Días futuros: color completo (sin cambios)
 
   // ── Badge de estado ──
   let badge='';
@@ -2984,7 +2991,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='3.1';
+const APP_VERSION='3.2';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
