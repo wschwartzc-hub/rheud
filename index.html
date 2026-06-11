@@ -434,6 +434,10 @@ body::before{
 .al-info small{font-size:11.5px;color:var(--muted)}
 .al-wa{background:#25D366;color:#fff;border:none;border-radius:10px;padding:8px 13px;font-family:'Jost';font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
 .al-more{font-size:12px;color:var(--muted);text-align:center;padding-top:8px}
+.stat-esp{background:linear-gradient(150deg,#FCF7F1,#F3E6DC);border:1px solid var(--gold-soft)!important}
+.val-esp{font-size:13px;color:var(--ink);margin-top:3px;line-height:1.5}
+.val-esp b{font-size:16px;font-weight:700;color:var(--wine);font-family:'Cormorant Garamond',serif}
+.esp-pend{color:var(--mauve)}
 .export-btn{float:right;background:none;border:1px solid var(--line);border-radius:9px;padding:5px 11px;font-family:'Jost';font-size:11.5px;font-weight:600;color:var(--wine);cursor:pointer}
 /* Sección preferencias */
 .pref-section{background:linear-gradient(160deg,#FAF3EE,#F5E8E0);border:1px solid var(--gold-soft);border-radius:18px;padding:16px;margin-top:16px}
@@ -1522,10 +1526,16 @@ function renderVentas(){
   const total=sales.reduce((s,c)=>s+Number(c.precio||0),0);
   const cobrado=sales.reduce((s,c)=>s+montoCita(c),0);
   const deuda=sales.reduce((s,c)=>s+deudaCita(c),0);
+  // Citas agendadas (aún por atender) en el periodo
+  const agendadas=DB.citas.filter(c=>c.estado==='agendada'&&c.fecha>=startKey&&c.fecha<=endKey);
+  const esperado=agendadas.reduce((s,c)=>s+Number(c.precio||0),0);
+  const totalEsperado=cobrado+deuda+esperado; // todo lo que debería entrar
   document.getElementById('ventasStats').innerHTML=`
     <div class="stat wide"><div class="lbl">Total atendido</div><div class="val">${fmtMoney(total)}</div><div class="sub">${sales.length} servicio${sales.length!==1?'s':''}</div></div>
     <div class="stat"><div class="lbl">Cobrado</div><div class="val" style="color:var(--green)">${fmtMoney(cobrado)}</div></div>
-    <div class="stat"><div class="lbl">Por cobrar</div><div class="val" style="color:${deuda?'var(--red)':'var(--muted)'}">${fmtMoney(deuda)}</div></div>`;
+    <div class="stat"><div class="lbl">Por cobrar</div><div class="val" style="color:${deuda?'var(--red)':'var(--muted)'}">${fmtMoney(deuda)}</div></div>
+    ${esperado>0?`<div class="stat wide stat-esp"><div class="lbl">Esperado del periodo <small>(${agendadas.length} cita${agendadas.length!==1?'s':''} agendada${agendadas.length!==1?'s':''})</small></div><div class="val-esp">${fmtMoney(cobrado)} cobrado + <span class="esp-pend">${fmtMoney(deuda+esperado)} pendiente</span> = <b>${fmtMoney(totalEsperado)}</b></div></div>`:''}`;
+
   const cont=document.getElementById('ventasList');
   const ordered=[...sales].sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
   if(!ordered.length){cont.innerHTML=`<div class="empty"><div class="ic">📋</div><p>Sin movimientos en este periodo.</p></div>`;renderCobranza();return;}
@@ -3150,7 +3160,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='3.5';
+const APP_VERSION='3.6';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
