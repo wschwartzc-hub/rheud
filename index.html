@@ -1230,8 +1230,10 @@ function nav(v){
   document.getElementById('v-'+v).classList.add('active');
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   const fab=document.getElementById('fab');
-  fab.style.display = (v==='agenda'||v==='clientas'||v==='citas')?'flex':'none';
+  fab.style.display=(v==='agenda'||v==='clientas'||v==='citas')?'flex':'none';
   currentView=v;
+  // Todas las secciones excepto agenda empiezan desde arriba
+  if(v!=='agenda')window.scrollTo({top:0,behavior:'instant'});
   if(v==='ventas')renderVentas();
   if(v==='inteligencia')renderInteligencia();
   if(v==='clientas')renderClientas();
@@ -3197,7 +3199,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='3.9';
+const APP_VERSION='4.0';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
