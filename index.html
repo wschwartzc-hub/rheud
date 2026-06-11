@@ -462,6 +462,14 @@ body::before{
 .ev .et{font-size:9px;font-weight:600;opacity:.85}
 .ev .ec{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .ev .ec.compact{font-size:10.5px;margin-top:0}
+/* Estado temporal de citas */
+.ev.ev-now{box-shadow:0 3px 14px rgba(92,34,51,.18)!important}
+.ev-live-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--wine);animation:livepulse 1.6s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.7)}}
+/* Badges de estado */
+.ev-badge{position:absolute;top:5px;right:5px;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;letter-spacing:.3px;line-height:14px;white-space:nowrap}
+.ev-st-ok{background:rgba(91,140,110,.22);color:#2d6e4a}
+.ev-st-cancel{background:rgba(181,86,78,.18);color:#8f3a35}
 .ev .es{font-size:9.5px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.82;margin-top:1px}
 .ev.cancelada{opacity:.42;text-decoration:line-through}
 .tg.wk .ev{padding:3px 4px;border-left-width:2px;border-radius:7px}
@@ -1257,22 +1265,55 @@ function evBox(c,narrow){
   const h=Math.max(((c._e-c._s)/60)*hpx,narrow?15:40);
   const w=100/(c._cols||1),left=(c._col||0)*w;
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
-  const svc=DB.servicios.find(x=>x.id===c.servicioId);
   const name=esc(cli?cli.nombre:'Clienta');
-  // adapta el contenido a la altura disponible
+
+  // ── Intensidad temporal (solo para hoy) ──
+  const isDateToday=c.fecha===ymd(new Date());
+  const nowM=isDateToday?(new Date().getHours()*60+new Date().getMinutes()):null;
+  let extraStyle='';let timeClass='';
+  if(c.estado==='cancelada'){
+    extraStyle='opacity:0.35;filter:saturate(0.2) grayscale(0.5)';
+  }else if(nowM!==null){
+    if(c._e<=nowM){
+      // Pasada: muy tenue
+      extraStyle='opacity:0.38;filter:saturate(0.35)';
+      timeClass='ev-past';
+    }else if(c._s<=nowM){
+      // En curso ahora: plena intensidad + destaque
+      timeClass='ev-now';
+    }else{
+      // Próxima: más vívida cuanto más cerca — de 0.55 (lejana) a 1.0 (inmediata)
+      const minsUntil=c._s-nowM;
+      const opacity=Math.max(0.55,1-(minsUntil/(7*60))*0.45);
+      extraStyle=`opacity:${opacity.toFixed(2)}`;
+    }
+  }
+
+  // ── Badge de estado ──
+  let badge='';
+  if(!narrow&&c.estado!=='agendada'){
+    const badgeMap={atendida:'ev-st-ok',cancelada:'ev-st-cancel'};
+    const badgeTxt={atendida:'Atendida ✓',cancelada:'Cancelada'};
+    badge=`<div class="ev-badge ${badgeMap[c.estado]||''}">${badgeTxt[c.estado]||c.estado}</div>`;
+  }
+
+  // ── Indicador "en curso" ──
+  const livePin=(!narrow&&timeClass==='ev-now')?`<div class="ev-live-dot"></div>`:'';
+
+  // ── Contenido ──
   let inner;
   if(narrow){
     inner=`<div class="ec">${name.split(' ')[0]}</div>`;
   }else if(h<52){
-    // caja baja: solo hora + nombre en una línea compacta
     inner=`<div class="ec compact">${minLabel(c._s)} · ${name}</div>`;
   }else if(h<72){
-    // mediana: hora y nombre, sin servicio
     inner=`<div class="et">${minLabel(c._s)}</div><div class="ec">${name}</div>`;
   }else{
     inner=`<div class="et">${minLabel(c._s)}</div><div class="ec">${name}</div><div class="es">${svcDisplay(c)}</div>`;
   }
-  return `<div class="ev ${c.estado}" style="top:${top}px;height:${h}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px);background:${pal.bg};border-left-color:${pal.br};color:${pal.tx}" onclick="event.stopPropagation();editAppt('${c.id}')">${inner}</div>`;
+
+  const borderW=timeClass==='ev-now'?'4px':'3px';
+  return `<div class="ev ${c.estado} ${timeClass}" style="top:${top}px;height:${h}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px);background:${pal.bg};border-left:${borderW} solid ${pal.br};color:${pal.tx};${extraStyle}" onclick="event.stopPropagation();editAppt('${c.id}')">${livePin}${badge}${inner}</div>`;
 }
 function gutterHours(){let g='';for(let hh=RST;hh<REN;hh++){const ap=hh>=12?'PM':'AM',h12=hh%12||12;g+=`<div class="hr-cell"><span class="lbl">${h12} ${ap}</span></div>`;}return g}
 function gridLines(){let l='';for(let hh=RST;hh<REN;hh++)l+='<div class="line"></div>';return l}
@@ -2943,7 +2984,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='3.0';
+const APP_VERSION='3.1';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
