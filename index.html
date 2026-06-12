@@ -457,6 +457,46 @@ body::before{
 /* Botón IA */
 .btn-ia{width:100%;background:linear-gradient(150deg,#5C2233,var(--mauve));color:#fff;border:none;border-radius:13px;padding:13px;font-family:'Jost';font-size:14px;font-weight:600;cursor:pointer;margin-top:12px;letter-spacing:.3px}
 .btn-ia:active{transform:scale(.98)}
+/* Cortesías en ficha */
+.cc-section{margin-bottom:6px}
+.cc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cc-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--wine)}
+.cc-add-btn{background:none;border:1px solid var(--line);border-radius:9px;padding:6px 12px;font-family:'Jost';font-size:12px;font-weight:600;color:var(--wine);cursor:pointer}
+.cc-card{background:var(--cream);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:8px}
+.cc-card.vigente{border-color:var(--mauve)}
+.cc-card.expirada{opacity:.55}
+.cc-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.cc-desc{font-size:14px;font-weight:600;color:var(--ink);flex:1}
+.cc-badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.cc-ok{background:rgba(91,140,110,.18);color:#2d6e4a}
+.cc-exp{background:var(--red-bg);color:var(--red)}
+.cc-used{background:#f0ece8;color:var(--muted)}
+.cc-notas{font-size:12px;color:var(--muted);margin-top:4px}
+.cc-usar{background:none;border:1px solid var(--mauve);border-radius:9px;padding:6px 12px;font-family:'Jost';font-size:12px;color:var(--wine);cursor:pointer;margin-top:8px;width:100%}
+.cc-used-details{margin-top:4px;font-size:12.5px;color:var(--muted)}
+.cc-used-details summary{cursor:pointer;padding:6px 0;font-weight:500}
+/* Picker de catálogo */
+.cc-cat-picker{display:flex;flex-wrap:wrap;gap:7px}
+.cc-pick-item{font-size:13px;padding:8px 13px;border-radius:20px;background:var(--cream);border:1.5px solid var(--line);cursor:pointer;color:var(--ink);font-family:'Jost'}
+.cc-pick-item.sel{background:linear-gradient(150deg,var(--wine),var(--mauve));border-color:transparent;color:#fff}
+/* Cortesía en cita */
+.cortesia-picker{display:flex;flex-wrap:wrap;gap:7px}
+/* Egresos */
+.egreso-form{background:var(--cream);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.ef-row{display:flex;gap:8px;margin-bottom:8px}
+.ef-date{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:14px;background:#fff;outline:none;color:var(--ink)}
+.ef-monto{width:110px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:14px;background:#fff;outline:none;color:var(--ink)}
+.ef-row2{display:flex;gap:8px}
+.ef-concepto{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:14px;background:#fff;outline:none;color:var(--ink)}
+.ef-add{width:46px;background:linear-gradient(150deg,var(--wine),var(--mauve));color:#fff;border:none;border-radius:10px;font-size:22px;cursor:pointer}
+.egreso-resumen{margin-bottom:8px}
+.egreso-item{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:8px}
+.ei-info{flex:1;min-width:0}
+.ei-concepto{font-size:14px;font-weight:600;color:var(--ink)}
+.ei-fecha{font-size:11.5px;color:var(--muted);margin-top:2px}
+.ei-right{display:flex;align-items:center;gap:10px}
+.ei-monto{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--red)}
+.ei-del{background:none;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;color:var(--muted);cursor:pointer;font-size:13px}
 /* Hoja IA */
 .ia-content{padding:4px 0 12px;max-height:60vh;overflow-y:auto}
 .ia-loading{text-align:center;color:var(--mauve);font-size:14px;padding:30px 0;animation:pulse 1.5s infinite}
@@ -719,23 +759,47 @@ body::before{
 
   <!-- VENTAS -->
   <section class="view" id="v-ventas">
-    <div class="section-title">Ingresos <small>Resumen</small></div>
+    <div class="section-title">Ingresos <small id="ventasSubtitle">Resumen</small></div>
     <div id="cobAlert"></div>
-    <div class="seg" id="ventasSeg">
-      <button data-p="dia" class="on">Hoy</button>
-      <button data-p="sem">Semana</button>
-      <button data-p="mes">Mes</button>
-      <button data-p="rango">Rango</button>
+    <!-- Tabs Ingresos / Egresos -->
+    <div class="seg" id="ventasModeSeg">
+      <button data-m="ingresos" class="on" onclick="ventasMode('ingresos')">Ingresos</button>
+      <button data-m="egresos" onclick="ventasMode('egresos')">Egresos</button>
     </div>
-    <div class="rangepick" id="ventasRange" style="display:none">
-      <div class="field"><label>Desde</label><input type="date" id="vDesde" onchange="renderVentas()"></div>
-      <div class="field"><label>Hasta</label><input type="date" id="vHasta" onchange="renderVentas()"></div>
+    <!-- INGRESOS -->
+    <div id="ventasIngresosPane">
+      <div class="seg" id="ventasSeg">
+        <button data-p="dia" class="on">Hoy</button>
+        <button data-p="sem">Semana</button>
+        <button data-p="mes">Mes</button>
+        <button data-p="rango">Rango</button>
+      </div>
+      <div class="rangepick" id="ventasRange" style="display:none">
+        <div class="field"><label>Desde</label><input type="date" id="vDesde" onchange="renderVentas()"></div>
+        <div class="field"><label>Hasta</label><input type="date" id="vHasta" onchange="renderVentas()"></div>
+      </div>
+      <div class="stats" id="ventasStats"></div>
+      <div id="fraseMot"></div>
+      <div class="divider">Movimientos <button class="export-btn" onclick="exportCSV()">⬇️ Exportar CSV</button></div>
+      <div id="ventasList"></div>
+      <div id="cobranzaBlock"></div>
     </div>
-    <div class="stats" id="ventasStats"></div>
-    <div id="fraseMot"></div>
-    <div class="divider">Movimientos <button class="export-btn" onclick="exportCSV()">⬇️ Exportar CSV</button></div>
-    <div id="ventasList"></div>
-    <div id="cobranzaBlock"></div>
+    <!-- EGRESOS -->
+    <div id="ventasEgresosPane" style="display:none">
+      <div class="egreso-form">
+        <div class="ef-row">
+          <input type="date" id="egresoFecha" class="ef-date">
+          <input type="number" id="egresoMonto" placeholder="$0" inputmode="numeric" class="ef-monto">
+        </div>
+        <div class="ef-row2">
+          <input id="egresoConcepto" placeholder="Concepto (insumos, renta…)" class="ef-concepto">
+          <button class="ef-add" onclick="addEgreso()">+</button>
+        </div>
+      </div>
+      <div class="egreso-resumen" id="egresoResumen"></div>
+      <div class="divider">Gastos registrados</div>
+      <div id="egresosList"></div>
+    </div>
   </section>
 
   <!-- INTELIGENCIA -->
@@ -769,6 +833,7 @@ body::before{
     <div class="seg" id="menuSeg">
       <button data-s="servicios" class="on" onclick="menuTab('servicios')">Servicios</button>
       <button data-s="premios" onclick="menuTab('premios')">Premios</button>
+      <button data-s="cortesias" onclick="menuTab('cortesias')">Cortesías</button>
     </div>
     <div id="menuServicios">
       <div id="svcList"></div>
@@ -778,6 +843,11 @@ body::before{
       <p class="premios-hint">Crea los premios de tu tarjeta de lealtad. Luego los asignas a cada clienta a los 6 y 12 sellos.</p>
       <div id="premiosList"></div>
       <button class="btn btn-line" style="margin-top:8px" onclick="openPremioSheet()">+ Agregar premio</button>
+    </div>
+    <div id="menuCortesias" style="display:none">
+      <p class="premios-hint">Crea plantillas de cortesías para reutilizarlas fácilmente con cualquier clienta.</p>
+      <div id="cortesiasCatList"></div>
+      <button class="btn btn-line" style="margin-top:8px" onclick="openCortesiaCatSheet()">+ Agregar cortesía al catálogo</button>
     </div>
   </section>
 
@@ -949,6 +1019,10 @@ body::before{
     <label class="comp-up" for="compFile">📎 Subir foto o nota</label>
     <input type="file" id="compFile" accept="image/*" style="display:none" onchange="onCompFile(event)">
   </div>
+  <div class="field" id="apptCortesiaWrap" style="display:none">
+    <label>Aplicar cortesía 🎁</label>
+    <div id="apptCortesiaList" class="cortesia-picker"></div>
+  </div>
   <div class="field">
     <label>Notas (opcional)</label>
     <textarea id="apptNotes" placeholder="Diseño, color, alergias…"></textarea>
@@ -1032,6 +1106,7 @@ body::before{
   <div class="kv"><span class="k">Última visita</span><span class="v" id="cliLast"></span></div>
   <div class="field" style="margin-top:16px"><label>Notas de la clienta</label><textarea id="cliNotes" placeholder="Tono favorito, alergias, observaciones…" onblur="saveCliNotes()"></textarea></div>
   <div id="cliLoyalty" style="margin-top:18px"></div>
+  <div id="cliCortesias" style="margin-top:14px"></div>
   <div class="divider">Historial</div>
   <div id="cliHist"></div>
   <button class="btn btn-primary" style="margin-top:18px" onclick="openAcciones(openCliId,null)">Acciones · Comunicarme</button>
@@ -1091,6 +1166,33 @@ body::before{
   <div class="acc-sub">La clienta puede mostrar este código para que le sumes un sello escaneándolo.</div>
   <div id="cliQrBox" class="cli-qr-box"></div>
   <button class="btn btn-line" onclick="backToCliFromQR()">Volver</button>
+</div>
+
+<!-- HOJA CATÁLOGO CORTESÍA -->
+<div class="sheet" id="cortesiaCatSheet">
+  <div class="grab"></div>
+  <h3 id="cortesiaCatTitle">Nueva cortesía</h3>
+  <div class="field"><label>Nombre</label><input id="ccNombre" placeholder="Ej: Diseño de regalo, Retiro gratis…"></div>
+  <div class="field"><label>Descripción</label><textarea id="ccDesc" rows="2" placeholder="Detalles de la cortesía…"></textarea></div>
+  <div class="field"><label>Vigencia (días)</label><input type="number" id="ccVigencia" value="30" inputmode="numeric" min="1"></div>
+  <button class="btn btn-primary" onclick="saveCortesiaCat()">Guardar</button>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
+  <button class="btn btn-ghost" id="ccDelBtn" style="display:none" onclick="deleteCortesiaCat()">Eliminar</button>
+</div>
+
+<!-- HOJA ASIGNAR CORTESÍA A CLIENTA -->
+<div class="sheet" id="cortesiaCliSheet">
+  <div class="grab"></div>
+  <h3>Agregar cortesía 🎁</h3>
+  <div class="acc-sub">Elige del catálogo o escribe una personalizada.</div>
+  <div class="field"><label>Del catálogo (opcional)</label>
+    <div id="ccCatPicker" class="cc-cat-picker"></div>
+  </div>
+  <div class="field"><label>Descripción</label><input id="ccCliDesc" placeholder="Ej: Diseño gratis por referido…"></div>
+  <div class="field"><label>Vigencia (días)</label><input type="number" id="ccCliVigencia" value="30" inputmode="numeric" min="1"></div>
+  <div class="field"><label>Notas (opcional)</label><input id="ccCliNotas" placeholder="Motivo, observaciones…"></div>
+  <button class="btn btn-primary" onclick="saveCortesiaCli()">Agregar cortesía</button>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
 </div>
 
 <!-- HOJA NUEVO/EDITAR PREMIO -->
@@ -1157,7 +1259,7 @@ const DEFAULT_SVCS=[
 
 /* DB es el caché en memoria; las funciones de UI lo siguen usando igual.
    Cada registro guarda su id real de Supabase en .id (uuid). */
-let DB={servicios:[],clientas:[],citas:[],premios:[]};
+let DB={servicios:[],clientas:[],citas:[],premios:[],cortesiasCat:[],cortesias:[],egresos:[]};
 let NEGOCIO_ID=null;
 let PROMO_TEMPLATE='';
 let onlineState=navigator.onLine;
@@ -1172,20 +1274,29 @@ function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id
 function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),descuento_monto:Number(c.descMonto||0),abonado:(c.abonado==null?null:Number(c.abonado)),pagos:Array.isArray(c.pagos)?c.pagos:[],estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
 function rowToPremio(r){return {id:r.id,nombre:r.nombre,nivel:r.nivel||'menor',desc:r.descripcion||''}}
 function premioToRow(p){return {negocio_id:NEGOCIO_ID,nombre:p.nombre,nivel:p.nivel||'menor',descripcion:p.desc||''}}
+function rowToCortesiaCat(r){return {id:r.id,nombre:r.nombre,desc:r.descripcion||'',vigencia:Number(r.vigencia_dias||30)}}
+function rowToCortesia(r){return {id:r.id,clientaId:r.clienta_id,catalogoId:r.catalogo_id||null,desc:r.descripcion||'',vigencia:Number(r.vigencia_dias||30),fechaInicio:r.fecha_inicio||'',fechaVence:r.fecha_vence||'',usada:!!r.usada,fechaUso:r.fecha_uso||'',notas:r.notas||''}}
+function rowToEgreso(r){return {id:r.id,fecha:r.fecha||'',concepto:r.concepto||'',monto:Number(r.monto||0),notas:r.notas||''}}
 
 /* ---- carga inicial completa desde Supabase ---- */
 async function loadAll(){
-  const [sv,cl,ci,pr]=await Promise.all([
+  const [sv,cl,ci,pr,cc,co,eg]=await Promise.all([
     sb.from('servicios').select('*').order('created_at',{ascending:true}),
     sb.from('clientas').select('*').order('created_at',{ascending:true}),
     sb.from('citas').select('*').order('fecha',{ascending:true}),
-    sb.from('premios').select('*').order('created_at',{ascending:true})
+    sb.from('premios').select('*').order('created_at',{ascending:true}),
+    sb.from('cortesias_catalogo').select('*').order('created_at',{ascending:true}),
+    sb.from('cortesias').select('*').order('created_at',{ascending:false}),
+    sb.from('egresos').select('*').order('fecha',{ascending:false})
   ]);
   if(sv.error||cl.error||ci.error){console.error(sv.error||cl.error||ci.error);throw (sv.error||cl.error||ci.error);}
   DB.servicios=(sv.data||[]).map(rowToSvc);
   DB.clientas=(cl.data||[]).map(rowToCli);
   DB.citas=(ci.data||[]).map(rowToCita);
   DB.premios=(pr&&!pr.error)?(pr.data||[]).map(rowToPremio):[];
+  DB.cortesiasCat=(cc&&!cc.error)?(cc.data||[]).map(rowToCortesiaCat):[];
+  DB.cortesias=(co&&!co.error)?(co.data||[]).map(rowToCortesia):[];
+  DB.egresos=(eg&&!eg.error)?(eg.data||[]).map(rowToEgreso):[];
   // sembrar menú por defecto si está vacío
   if(DB.servicios.length===0){
     const rows=DEFAULT_SVCS.map(s=>({negocio_id:NEGOCIO_ID,nombre:s.n,precio:s.precio,costo_real:0,descripcion:'',incluye:''}));
@@ -2091,6 +2202,7 @@ function openCli(id){
   document.getElementById('cliNotes').value=cl.notas||'';
   document.getElementById('cliCumple').value=cl.cumple||'';
   loadCliPrefs(cl);
+  renderCliCortesias(cl.id);
   const hist=DB.citas.filter(c=>c.clientaId===id).sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
   document.getElementById('cliHist').innerHTML=hist.length?hist.map(c=>{
     const pg=c.estado==='atendida'?(c.pago==='deuda'?' · debe':(c.metodo?' · '+metodoLabel(c.metodo):' · pagado')):'';
@@ -2279,8 +2391,184 @@ function menuTab(t){
   document.querySelectorAll('#menuSeg button').forEach(b=>b.classList.toggle('on',b.dataset.s===t));
   document.getElementById('menuServicios').style.display=(t==='servicios')?'block':'none';
   document.getElementById('menuPremios').style.display=(t==='premios')?'block':'none';
-  document.getElementById('menuSub').textContent=(t==='servicios')?'Servicios':'Premios de lealtad';
+  document.getElementById('menuCortesias').style.display=(t==='cortesias')?'block':'none';
+  const subs={servicios:'Servicios',premios:'Premios de lealtad',cortesias:'Catálogo de cortesías'};
+  document.getElementById('menuSub').textContent=subs[t]||t;
   if(t==='premios')renderPremios();
+  if(t==='cortesias')renderCortesiasCat();
+}
+/* ============ CATÁLOGO DE CORTESÍAS ============ */
+function renderCortesiasCat(){
+  const el=document.getElementById('cortesiasCatList');if(!el)return;
+  if(!DB.cortesiasCat.length){el.innerHTML='<div class="empty-mini">Sin cortesías en el catálogo aún.</div>';return;}
+  el.innerHTML=DB.cortesiasCat.map(c=>`<div class="premio-card" onclick="editCortesiaCat('${c.id}')">
+    <div class="pr-top"><div class="pr-n">${esc(c.nombre)}</div><span class="pr-badge menor">${c.vigencia} días</span></div>
+    ${c.desc?`<div class="pr-desc">${esc(c.desc)}</div>`:''}
+  </div>`).join('');
+}
+let editingCCId=null;
+function openCortesiaCatSheet(){
+  editingCCId=null;
+  document.getElementById('cortesiaCatTitle').textContent='Nueva cortesía';
+  document.getElementById('ccNombre').value='';
+  document.getElementById('ccDesc').value='';
+  document.getElementById('ccVigencia').value='30';
+  document.getElementById('ccDelBtn').style.display='none';
+  showSheet('cortesiaCatSheet');
+}
+function editCortesiaCat(id){
+  const c=DB.cortesiasCat.find(x=>x.id===id);if(!c)return;
+  editingCCId=id;
+  document.getElementById('cortesiaCatTitle').textContent='Editar cortesía';
+  document.getElementById('ccNombre').value=c.nombre;
+  document.getElementById('ccDesc').value=c.desc||'';
+  document.getElementById('ccVigencia').value=c.vigencia||30;
+  document.getElementById('ccDelBtn').style.display='block';
+  showSheet('cortesiaCatSheet');
+}
+async function saveCortesiaCat(){
+  const nombre=document.getElementById('ccNombre').value.trim();
+  if(!nombre){toast('Escribe el nombre');return;}
+  const obj={negocio_id:NEGOCIO_ID,nombre,descripcion:document.getElementById('ccDesc').value.trim(),vigencia_dias:Number(document.getElementById('ccVigencia').value)||30};
+  try{
+    if(editingCCId){await sb.from('cortesias_catalogo').update(obj).eq('id',editingCCId);
+      const c=DB.cortesiasCat.find(x=>x.id===editingCCId);if(c){c.nombre=nombre;c.desc=obj.descripcion;c.vigencia=obj.vigencia_dias;}
+    }else{const {data,error}=await sb.from('cortesias_catalogo').insert(obj).select().single();if(error)throw error;DB.cortesiasCat.push(rowToCortesiaCat(data));}
+  }catch(e){toast('Error al guardar');console.error(e);return;}
+  renderCortesiasCat();closeSheet();toast('Cortesía guardada');
+}
+async function deleteCortesiaCat(){
+  if(!editingCCId||!confirm('¿Eliminar esta cortesía del catálogo?'))return;
+  await sb.from('cortesias_catalogo').delete().eq('id',editingCCId);
+  DB.cortesiasCat=DB.cortesiasCat.filter(c=>c.id!==editingCCId);
+  renderCortesiasCat();closeSheet();toast('Eliminada');
+}
+/* ============ CORTESÍAS DE CLIENTA ============ */
+function cortesiasDeClienta(cliId){return DB.cortesias.filter(c=>c.clientaId===cliId);}
+function isCortesiaVigente(c){if(c.usada)return false;if(!c.fechaVence)return true;return c.fechaVence>=ymd(new Date());}
+function diasRestantes(c){if(!c.fechaVence)return null;const diff=Math.round((new Date(c.fechaVence+' 00:00:00')-new Date())/86400000);return Math.max(0,diff);}
+function renderCliCortesias(cliId){
+  const el=document.getElementById('cliCortesias');if(!el)return;
+  const lista=cortesiasDeClienta(cliId);
+  const vigentes=lista.filter(c=>isCortesiaVigente(c));
+  const usadas=lista.filter(c=>c.usada);
+  const expiradas=lista.filter(c=>!c.usada&&!isCortesiaVigente(c));
+  function card(c,tipo){
+    const dr=diasRestantes(c);
+    const badge=tipo==='vigente'
+      ?`<span class="cc-badge cc-ok">${dr===0?'Vence hoy':(dr!==null?`${dr}d`:' Sin venc.')}</span>`
+      :(tipo==='expirada'?`<span class="cc-badge cc-exp">Expirada</span>`:`<span class="cc-badge cc-used">Usada${c.fechaUso?' · '+c.fechaUso:''}</span>`);
+    return `<div class="cc-card ${tipo}">
+      <div class="cc-row"><div class="cc-desc">${esc(c.desc)}</div>${badge}</div>
+      ${c.notas?`<div class="cc-notas">${esc(c.notas)}</div>`:''}
+      ${tipo==='vigente'?`<button class="cc-usar" onclick="usarCortesia('${c.id}')">Marcar como usada</button>`:''}
+    </div>`;
+  }
+  el.innerHTML=`<div class="cc-section">
+    <div class="cc-header"><div class="cc-title">🎁 Cortesías</div><button class="cc-add-btn" onclick="openCortesiaCliSheet()">+ Agregar</button></div>
+    ${vigentes.length?vigentes.map(c=>card(c,'vigente')).join(''):'<div class="empty-mini" style="margin:6px 0">Sin cortesías vigentes.</div>'}
+    ${expiradas.map(c=>card(c,'expirada')).join('')}
+    ${usadas.length?`<details class="cc-used-details"><summary>${usadas.length} usada${usadas.length!==1?'s':''}</summary>${usadas.map(c=>card(c,'usada')).join('')}</details>`:''}
+  </div>`;
+}
+function openCortesiaCliSheet(){
+  const p=document.getElementById('ccCatPicker');
+  if(DB.cortesiasCat.length)p.innerHTML=DB.cortesiasCat.map(c=>`<div class="cc-pick-item" data-cc="${c.id}" data-desc="${esc(c.nombre)}" data-vig="${c.vigencia}" onclick="pickCortesiaCat(this)">${esc(c.nombre)} · ${c.vigencia}d</div>`).join('')+'<div class="cc-pick-item" data-cc="" onclick="pickCortesiaCat(this)">✏️ Personalizada</div>';
+  else p.innerHTML='<div class="empty-mini">Sin catálogo aún. Créalo en Menú → Cortesías.</div>';
+  document.getElementById('ccCliDesc').value='';
+  document.getElementById('ccCliVigencia').value='30';
+  document.getElementById('ccCliNotas').value='';
+  showSheet('cortesiaCliSheet');
+}
+function pickCortesiaCat(el){
+  document.querySelectorAll('.cc-pick-item').forEach(i=>i.classList.remove('sel'));
+  el.classList.add('sel');
+  if(el.dataset.desc){document.getElementById('ccCliDesc').value=el.dataset.desc;document.getElementById('ccCliVigencia').value=el.dataset.vig||30;}
+  else{document.getElementById('ccCliDesc').value='';document.getElementById('ccCliVigencia').value='30';}
+}
+async function saveCortesiaCli(){
+  const desc=document.getElementById('ccCliDesc').value.trim();
+  if(!desc){toast('Escribe la descripción');return;}
+  const vig=Number(document.getElementById('ccCliVigencia').value)||30;
+  const hoy=ymd(new Date());const vence=new Date(hoy+'T00:00:00');vence.setDate(vence.getDate()+vig);
+  const picked=document.querySelector('.cc-pick-item.sel');
+  const obj={negocio_id:NEGOCIO_ID,clienta_id:openCliId,catalogo_id:picked&&picked.dataset.cc?picked.dataset.cc:null,descripcion:desc,vigencia_dias:vig,fecha_inicio:hoy,fecha_vence:ymd(vence),usada:false,notas:document.getElementById('ccCliNotas').value.trim()};
+  try{const {data,error}=await sb.from('cortesias').insert(obj).select().single();if(error)throw error;DB.cortesias.unshift(rowToCortesia(data));}
+  catch(e){toast('Error al guardar');console.error(e);return;}
+  document.getElementById('cortesiaCliSheet').classList.remove('show');
+  curSheet='cliSheet';requestAnimationFrame(()=>document.getElementById('cliSheet').classList.add('show'));
+  renderCliCortesias(openCliId);toast('Cortesía agregada 🎁');
+}
+async function usarCortesia(id){
+  const c=DB.cortesias.find(x=>x.id===id);if(!c)return;
+  if(!confirm(`¿Marcar "${c.desc}" como usada?`))return;
+  const hoy=ymd(new Date());c.usada=true;c.fechaUso=hoy;
+  try{await sb.from('cortesias').update({usada:true,fecha_uso:hoy}).eq('id',id);}catch(e){console.error(e);}
+  renderCliCortesias(openCliId);toast('Cortesía marcada como usada ✓');
+}
+/* ============ CORTESÍA EN FORMULARIO DE CITA ============ */
+let apptCortesiaId=null;
+function renderApptCortesias(){
+  const wrap=document.getElementById('apptCortesiaWrap');if(!wrap)return;
+  if(!apptSelectedCliId){wrap.style.display='none';return;}
+  const vigentes=DB.cortesias.filter(c=>c.clientaId===apptSelectedCliId&&isCortesiaVigente(c));
+  if(!vigentes.length){wrap.style.display='none';apptCortesiaId=null;return;}
+  wrap.style.display='block';
+  const list=document.getElementById('apptCortesiaList');
+  list.innerHTML=`<div class="cc-pick-item ${!apptCortesiaId?'sel':''}" onclick="selectApptCortesia(null,this)">Sin cortesía</div>`
+    +vigentes.map(c=>`<div class="cc-pick-item ${apptCortesiaId===c.id?'sel':''}" onclick="selectApptCortesia('${c.id}',this)">${esc(c.desc)}</div>`).join('');
+}
+function selectApptCortesia(id,el){
+  apptCortesiaId=id;
+  document.querySelectorAll('#apptCortesiaList .cc-pick-item').forEach(i=>i.classList.remove('sel'));
+  if(el)el.classList.add('sel');
+}
+/* ============ EGRESOS ============ */
+let ventasModeActive='ingresos';
+function ventasMode(m){
+  ventasModeActive=m;
+  document.querySelectorAll('#ventasModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  document.getElementById('ventasIngresosPane').style.display=(m==='ingresos')?'block':'none';
+  document.getElementById('ventasEgresosPane').style.display=(m==='egresos')?'block':'none';
+  document.getElementById('ventasSubtitle').textContent=(m==='ingresos')?'Resumen':'Gastos';
+  if(m==='egresos')renderEgresos();
+}
+function renderEgresos(){
+  const hoy=ymd(new Date());
+  const d=new Date();const mesStart=ymd(new Date(d.getFullYear(),d.getMonth(),1));const mesEnd=ymd(new Date(d.getFullYear(),d.getMonth()+1,0));
+  const mes=DB.egresos.filter(e=>e.fecha>=mesStart&&e.fecha<=mesEnd);
+  const totalMes=mes.reduce((s,e)=>s+e.monto,0);
+  const ventas=DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=mesStart&&c.fecha<=hoy);
+  const cobradoMes=ventas.reduce((s,c)=>s+montoCita(c),0);
+  const ganancia=cobradoMes-totalMes;
+  document.getElementById('egresoResumen').innerHTML=`<div class="stats">
+    <div class="stat"><div class="lbl">Gastos este mes</div><div class="val" style="color:var(--red)">${fmtMoney(totalMes)}</div></div>
+    <div class="stat"><div class="lbl">Cobrado este mes</div><div class="val" style="color:var(--green)">${fmtMoney(cobradoMes)}</div></div>
+    <div class="stat wide stat-hero"><div class="lbl">Ganancia neta</div><div class="val">${fmtMoney(ganancia)}</div><div class="sub">${fmtMoney(cobradoMes)} cobrado − ${fmtMoney(totalMes)} gastos</div></div>
+  </div>`;
+  const fe=document.getElementById('egresoFecha');if(fe&&!fe.value)fe.value=hoy;
+  const list=document.getElementById('egresosList');
+  if(!DB.egresos.length){list.innerHTML='<div class="empty-mini">Sin egresos registrados.</div>';return;}
+  list.innerHTML=DB.egresos.map(e=>`<div class="egreso-item">
+    <div class="ei-info"><div class="ei-concepto">${esc(e.concepto)}</div><div class="ei-fecha">${e.fecha}</div></div>
+    <div class="ei-right"><div class="ei-monto">${fmtMoney(e.monto)}</div><button class="ei-del" onclick="deleteEgreso('${e.id}')">✕</button></div>
+  </div>`).join('');
+}
+async function addEgreso(){
+  const concepto=document.getElementById('egresoConcepto').value.trim();
+  const monto=Number(document.getElementById('egresoMonto').value)||0;
+  const fecha=document.getElementById('egresoFecha').value||ymd(new Date());
+  if(!concepto){toast('Escribe el concepto');return;}
+  if(!monto){toast('Escribe el monto');return;}
+  try{const {data,error}=await sb.from('egresos').insert({negocio_id:NEGOCIO_ID,fecha,concepto,monto}).select().single();if(error)throw error;DB.egresos.unshift(rowToEgreso(data));}
+  catch(e){toast('Error al guardar');console.error(e);return;}
+  document.getElementById('egresoConcepto').value='';document.getElementById('egresoMonto').value='';
+  renderEgresos();toast('Egreso registrado');
+}
+async function deleteEgreso(id){
+  if(!confirm('¿Eliminar este gasto?'))return;
+  try{await sb.from('egresos').delete().eq('id',id);}catch(e){console.error(e);}
+  DB.egresos=DB.egresos.filter(e=>e.id!==id);renderEgresos();toast('Eliminado');
 }
 /* ============ PREMIOS (catálogo) ============ */
 function renderPremios(){
@@ -2662,6 +2950,7 @@ function pickApptCli(id){
   apptSelectedCliId=id;
   document.getElementById('apptCli').value=c.nombre;
   document.getElementById('apptCliResults').innerHTML='';
+  renderApptCortesias();
 }
 
 /* schedule assistant */
@@ -2859,6 +3148,7 @@ function openApptSheet(){
   document.getElementById('apptCodeBar').style.display='none';
   document.getElementById('apptCli').value='';
   selectedSvcIds=[];svcChosenPrice={};renderSvcPicker();
+  apptCortesiaId=null;
   apptSelectedCliId=null;document.getElementById('apptCliResults').innerHTML='';
   document.getElementById('apptDate').value=selectedDate;
   document.getElementById('apptTime').value='';
@@ -2888,6 +3178,7 @@ function editAppt(id){
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
   document.getElementById('apptCli').value=cli?cli.nombre:'';
   apptSelectedCliId=c.clientaId||null;document.getElementById('apptCliResults').innerHTML='';
+  apptCortesiaId=null;renderApptCortesias();
   document.getElementById('apptDate').value=c.fecha;
   document.getElementById('apptTime').value=c.hora||'';
   setApptDur(c.dur||60);
@@ -3199,7 +3490,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='4.0';
+const APP_VERSION='4.1';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
@@ -3287,6 +3578,9 @@ function subscribeRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'clientas'},()=>refetch('clientas'))
     .on('postgres_changes',{event:'*',schema:'public',table:'servicios'},()=>refetch('servicios'))
     .on('postgres_changes',{event:'*',schema:'public',table:'premios'},()=>refetch('premios'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'cortesias_catalogo'},()=>refetch())
+    .on('postgres_changes',{event:'*',schema:'public',table:'cortesias'},()=>refetch())
+    .on('postgres_changes',{event:'*',schema:'public',table:'egresos'},()=>refetch())
     .subscribe();
 }
 let refetchTimer=null;
@@ -3305,6 +3599,14 @@ function refetch(){
       if(cl.data)DB.clientas=cl.data.map(rowToCli);
       if(ci.data)DB.citas=ci.data.map(rowToCita);
       if(pr&&pr.data)DB.premios=pr.data.map(rowToPremio);
+      const [cc,co,eg]=await Promise.all([
+        sb.from('cortesias_catalogo').select('*').order('created_at',{ascending:true}),
+        sb.from('cortesias').select('*').order('created_at',{ascending:false}),
+        sb.from('egresos').select('*').order('fecha',{ascending:false})
+      ]);
+      if(cc&&cc.data)DB.cortesiasCat=cc.data.map(rowToCortesiaCat);
+      if(co&&co.data)DB.cortesias=co.data.map(rowToCortesia);
+      if(eg&&eg.data)DB.egresos=eg.data.map(rowToEgreso);
       // re-render la vista actual
       if(currentView==='agenda')renderAgenda();
       else if(currentView==='ventas')renderVentas();
