@@ -483,6 +483,10 @@ body::before{
 .cortesia-picker{display:flex;flex-wrap:wrap;gap:7px}
 /* Egresos */
 .egreso-form{background:var(--cream);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.dia-picker{display:flex;gap:8px;margin-top:8px;align-items:center}
+.dia-picker input[type=date]{flex:1;border:1.5px solid var(--line);border-radius:11px;padding:10px 12px;font-family:'Jost';font-size:14px;background:#fff;color:var(--ink);outline:none}
+.dia-picker input[type=date]:focus{border-color:var(--wine)}
+.dia-hoy{background:var(--cream);border:1.5px solid var(--wine);border-radius:11px;padding:10px 16px;font-family:'Jost';font-size:13px;font-weight:600;color:var(--wine);cursor:pointer;white-space:nowrap}
 .ef-row{display:flex;gap:8px;margin-bottom:8px}
 .ef-date{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:14px;background:#fff;outline:none;color:var(--ink)}
 .ef-monto{width:110px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-family:'Jost';font-size:14px;background:#fff;outline:none;color:var(--ink)}
@@ -786,6 +790,13 @@ body::before{
     </div>
     <!-- EGRESOS -->
     <div id="ventasEgresosPane" style="display:none">
+      <div class="seg" id="egresosSeg">
+        <button data-ep="dia" onclick="egresosSetPeriod('dia')">Hoy</button>
+        <button data-ep="sem" onclick="egresosSetPeriod('sem')">Semana</button>
+        <button data-ep="mes" class="on" onclick="egresosSetPeriod('mes')">Mes</button>
+        <button data-ep="ano" onclick="egresosSetPeriod('ano')">Año</button>
+        <button data-ep="todo" onclick="egresosSetPeriod('todo')">Todo</button>
+      </div>
       <div class="egreso-form">
         <div class="ef-row">
           <input type="date" id="egresoFecha" class="ef-date">
@@ -864,6 +875,10 @@ body::before{
       <button data-p="mes">Mes</button>
       <button data-p="ano">Año</button>
       <button data-p="rango">Rango</button>
+    </div>
+    <div class="dia-picker" id="citasDiaPicker" style="display:none">
+      <input type="date" id="citasDiaFecha" onchange="renderCitas()">
+      <button class="dia-hoy" onclick="citasDiaHoy()">Hoy</button>
     </div>
     <div class="rangepick" id="citasRange" style="display:none">
       <div class="field"><label>Desde</label><input type="date" id="cDesde" onchange="renderCitas()"></div>
@@ -1226,11 +1241,8 @@ body::before{
   </div>
   <div class="field"><label>Descripción (opcional)</label><textarea id="premioDesc" rows="2" placeholder="Detalles del premio…"></textarea></div>
   <button class="btn btn-primary" onclick="savePremio()">Guardar premio</button>
-  <button class="btn btn-line" onclick="closeSheet()">Cancelar</button>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
   <button class="btn btn-ghost" id="premioDelBtn" style="display:none" onclick="deletePremio()">Eliminar premio</button>
-</div>
-
-<!-- HOJA ELEGIR PREMIO PARA CLIENTA -->
 <div class="sheet" id="pickPremioSheet">
   <div class="grab"></div>
   <h3 id="pickPremioTitle">Elegir premio</h3>
@@ -1757,13 +1769,20 @@ document.getElementById('citasPeriodSeg').addEventListener('click',e=>{
   document.querySelectorAll('#citasPeriodSeg button').forEach(b=>b.classList.toggle('on',b===e.target));
   if(citasPeriod==='rango')ensureRangeDefaults('cDesde','cHasta');
   document.getElementById('citasRange').style.display=citasPeriod==='rango'?'flex':'none';
+  const diaPicker=document.getElementById('citasDiaPicker');
+  if(citasPeriod==='dia'){
+    diaPicker.style.display='flex';
+    const f=document.getElementById('citasDiaFecha');
+    if(!f.value)f.value=ymd(new Date()); // default hoy
+  }else{diaPicker.style.display='none';}
   renderCitas();
 });
+function citasDiaHoy(){document.getElementById('citasDiaFecha').value=ymd(new Date());renderCitas();}
 function clearCitasSearch(){document.getElementById('citasSearch').value='';renderCitas();}
 function citasDateRange(){
   const today=new Date();today.setHours(0,0,0,0);
   if(citasPeriod==='todo')return null;
-  if(citasPeriod==='dia')return [ymd(today),ymd(today)];
+  if(citasPeriod==='dia'){const f=document.getElementById('citasDiaFecha').value||ymd(today);return [f,f];}
   if(citasPeriod==='mes')return [ymd(new Date(today.getFullYear(),today.getMonth(),1)),ymd(new Date(today.getFullYear(),today.getMonth()+1,0))];
   if(citasPeriod==='ano')return [ymd(new Date(today.getFullYear(),0,1)),ymd(new Date(today.getFullYear(),11,31))];
   if(citasPeriod==='rango'){let a=document.getElementById('cDesde').value||ymd(today),b=document.getElementById('cHasta').value||ymd(today);if(b<a){const t=a;a=b;b=t;}return [a,b];}
@@ -2533,23 +2552,40 @@ function ventasMode(m){
   document.getElementById('ventasSubtitle').textContent=(m==='ingresos')?'Resumen':'Gastos';
   if(m==='egresos')renderEgresos();
 }
+let egresosPeriod='mes';
+function egresosSetPeriod(p){
+  egresosPeriod=p;
+  document.querySelectorAll('#egresosSeg button').forEach(b=>b.classList.toggle('on',b.dataset.ep===p));
+  renderEgresos();
+}
+function egresosRange(){
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const ymdH=ymd(hoy);
+  if(egresosPeriod==='dia')return [ymdH,ymdH];
+  if(egresosPeriod==='sem'){const ws=startOfWeek(hoy);const we=new Date(ws);we.setDate(ws.getDate()+6);return [ymd(ws),ymd(we)];}
+  if(egresosPeriod==='mes')return [ymd(new Date(hoy.getFullYear(),hoy.getMonth(),1)),ymd(new Date(hoy.getFullYear(),hoy.getMonth()+1,0))];
+  if(egresosPeriod==='ano')return [ymd(new Date(hoy.getFullYear(),0,1)),ymd(new Date(hoy.getFullYear(),11,31))];
+  return [null,null]; // todo
+}
 function renderEgresos(){
   const hoy=ymd(new Date());
-  const d=new Date();const mesStart=ymd(new Date(d.getFullYear(),d.getMonth(),1));const mesEnd=ymd(new Date(d.getFullYear(),d.getMonth()+1,0));
-  const mes=DB.egresos.filter(e=>e.fecha>=mesStart&&e.fecha<=mesEnd);
-  const totalMes=mes.reduce((s,e)=>s+e.monto,0);
-  const ventas=DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=mesStart&&c.fecha<=hoy);
-  const cobradoMes=ventas.reduce((s,c)=>s+montoCita(c),0);
-  const ganancia=cobradoMes-totalMes;
+  const [rStart,rEnd]=egresosRange();
+  const filtered=rStart?DB.egresos.filter(e=>e.fecha>=rStart&&e.fecha<=rEnd):DB.egresos;
+  const totalEg=filtered.reduce((s,e)=>s+e.monto,0);
+  // Cobrado del mismo periodo
+  const ventas=DB.citas.filter(c=>c.estado==='atendida'&&(!rStart||c.fecha>=rStart)&&(!rEnd||c.fecha<=hoy));
+  const cobradoPeriodo=ventas.reduce((s,c)=>s+montoCita(c),0);
+  const ganancia=cobradoPeriodo-totalEg;
+  const periodoLabel={dia:'hoy',sem:'esta semana',mes:'este mes',ano:'este año',todo:'total'}[egresosPeriod]||'';
   document.getElementById('egresoResumen').innerHTML=`<div class="stats">
-    <div class="stat"><div class="lbl">Gastos este mes</div><div class="val" style="color:var(--red)">${fmtMoney(totalMes)}</div></div>
-    <div class="stat"><div class="lbl">Cobrado este mes</div><div class="val" style="color:var(--green)">${fmtMoney(cobradoMes)}</div></div>
-    <div class="stat wide stat-hero"><div class="lbl">Ganancia neta</div><div class="val">${fmtMoney(ganancia)}</div><div class="sub">${fmtMoney(cobradoMes)} cobrado − ${fmtMoney(totalMes)} gastos</div></div>
+    <div class="stat"><div class="lbl">Gastos ${periodoLabel}</div><div class="val" style="color:var(--red)">${fmtMoney(totalEg)}</div></div>
+    <div class="stat"><div class="lbl">Cobrado ${periodoLabel}</div><div class="val" style="color:var(--green)">${fmtMoney(cobradoPeriodo)}</div></div>
+    <div class="stat wide stat-hero"><div class="lbl">Ganancia neta</div><div class="val">${fmtMoney(ganancia)}</div><div class="sub">${fmtMoney(cobradoPeriodo)} cobrado − ${fmtMoney(totalEg)} gastos</div></div>
   </div>`;
   const fe=document.getElementById('egresoFecha');if(fe&&!fe.value)fe.value=hoy;
   const list=document.getElementById('egresosList');
-  if(!DB.egresos.length){list.innerHTML='<div class="empty-mini">Sin egresos registrados.</div>';return;}
-  list.innerHTML=DB.egresos.map(e=>`<div class="egreso-item">
+  if(!filtered.length){list.innerHTML='<div class="empty-mini">Sin egresos en este periodo.</div>';return;}
+  list.innerHTML=filtered.map(e=>`<div class="egreso-item">
     <div class="ei-info"><div class="ei-concepto">${esc(e.concepto)}</div><div class="ei-fecha">${e.fecha}</div></div>
     <div class="ei-right"><div class="ei-monto">${fmtMoney(e.monto)}</div><button class="ei-del" onclick="deleteEgreso('${e.id}')">✕</button></div>
   </div>`).join('');
@@ -3490,7 +3526,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='4.1';
+const APP_VERSION='4.2';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
