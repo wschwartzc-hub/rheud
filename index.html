@@ -481,6 +481,8 @@ body::before{
 .cc-pick-item.sel{background:linear-gradient(150deg,var(--wine),var(--mauve));border-color:transparent;color:#fff}
 /* Cortesía en cita */
 .cortesia-picker{display:flex;flex-wrap:wrap;gap:7px}
+.cc-applied{background:rgba(91,140,110,.12);border:1px solid rgba(91,140,110,.3);border-radius:12px;padding:10px 13px;font-size:13.5px;color:var(--ink);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cc-quitar{background:none;border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-family:'Jost';font-size:11.5px;color:var(--muted);cursor:pointer;white-space:nowrap}
 /* Egresos */
 .egreso-form{background:var(--cream);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
 .dia-picker{display:flex;gap:8px;margin-top:8px;align-items:center}
@@ -1282,8 +1284,8 @@ function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),precios:Ar
 function svcToRow(s){return {negocio_id:NEGOCIO_ID,nombre:s.n,precio:Number(s.p||0),precios:Array.isArray(s.precios)?s.precios:[],costo_real:Number(s.costoReal||0),descripcion:s.desc||'',incluye:s.incluye||''}}
 function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',cumple:r.cumple||'',formaUna:r.forma_una||'',coloresFav:r.colores_fav||'',alergias:r.alergias||'',notasPrefs:r.notas_prefs||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
-function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),descMonto:Number(r.descuento_monto||0),abonado:(r.abonado==null?null:Number(r.abonado)),pagos:Array.isArray(r.pagos)?r.pagos:[],estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
-function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),descuento_monto:Number(c.descMonto||0),abonado:(c.abonado==null?null:Number(c.abonado)),pagos:Array.isArray(c.pagos)?c.pagos:[],estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
+function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),descMonto:Number(r.descuento_monto||0),abonado:(r.abonado==null?null:Number(r.abonado)),pagos:Array.isArray(r.pagos)?r.pagos:[],cortesiaId:r.cortesia_id||null,estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||''}}
+function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),descuento_monto:Number(c.descMonto||0),abonado:(c.abonado==null?null:Number(c.abonado)),pagos:Array.isArray(c.pagos)?c.pagos:[],cortesia_id:c.cortesiaId||null,estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
 function rowToPremio(r){return {id:r.id,nombre:r.nombre,nivel:r.nivel||'menor',desc:r.descripcion||''}}
 function premioToRow(p){return {negocio_id:NEGOCIO_ID,nombre:p.nombre,nivel:p.nivel||'menor',descripcion:p.desc||''}}
 function rowToCortesiaCat(r){return {id:r.id,nombre:r.nombre,desc:r.descripcion||'',vigencia:Number(r.vigencia_dias||30)}}
@@ -2530,12 +2532,20 @@ let apptCortesiaId=null;
 function renderApptCortesias(){
   const wrap=document.getElementById('apptCortesiaWrap');if(!wrap)return;
   if(!apptSelectedCliId){wrap.style.display='none';return;}
+  // si la cita ya tiene cortesía aplicada, mostrarla como info (no editable)
+  if(apptCortesiaId){
+    const cor=DB.cortesias.find(x=>x.id===apptCortesiaId);
+    wrap.style.display='block';
+    document.getElementById('apptCortesiaList').innerHTML=
+      `<div class="cc-applied">🎁 <b>${cor?esc(cor.desc):'Cortesía'}</b> aplicada${cor&&cor.usada?' · usada ✓':''}<button onclick="selectApptCortesia(null,null);renderApptCortesias()" class="cc-quitar">Quitar</button></div>`;
+    return;
+  }
   const vigentes=DB.cortesias.filter(c=>c.clientaId===apptSelectedCliId&&isCortesiaVigente(c));
-  if(!vigentes.length){wrap.style.display='none';apptCortesiaId=null;return;}
+  if(!vigentes.length){wrap.style.display='none';return;}
   wrap.style.display='block';
   const list=document.getElementById('apptCortesiaList');
-  list.innerHTML=`<div class="cc-pick-item ${!apptCortesiaId?'sel':''}" onclick="selectApptCortesia(null,this)">Sin cortesía</div>`
-    +vigentes.map(c=>`<div class="cc-pick-item ${apptCortesiaId===c.id?'sel':''}" onclick="selectApptCortesia('${c.id}',this)">${esc(c.desc)}</div>`).join('');
+  list.innerHTML=`<div class="cc-pick-item sel" onclick="selectApptCortesia(null,this)">Sin cortesía</div>`
+    +vigentes.map(c=>`<div class="cc-pick-item" onclick="selectApptCortesia('${c.id}',this)">${esc(c.desc)}</div>`).join('');
 }
 function selectApptCortesia(id,el){
   apptCortesiaId=id;
@@ -3214,7 +3224,7 @@ function editAppt(id){
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
   document.getElementById('apptCli').value=cli?cli.nombre:'';
   apptSelectedCliId=c.clientaId||null;document.getElementById('apptCliResults').innerHTML='';
-  apptCortesiaId=null;renderApptCortesias();
+  apptCortesiaId=c.cortesiaId||null;renderApptCortesias();
   document.getElementById('apptDate').value=c.fecha;
   document.getElementById('apptTime').value=c.hora||'';
   setApptDur(c.dur||60);
@@ -3463,11 +3473,13 @@ async function saveAppt(){
     pagos:pagosLimpios,
     descMonto:descMontoVal,
     cobrado:null,descPct:(precioNum>0&&descMontoVal>0?Math.round(descMontoVal/precioNum*100):null),abonado:null,
+    cortesiaId:apptCortesiaId||null,
     estado:curEstado,pago:isAtendida?pagoEstado:'',
     metodo:metodoPrincipal,pagadoFecha,
     comprobante:compVal,
     notas:document.getElementById('apptNotes').value.trim()
   };
+  // si hay cortesía nueva seleccionada, marcarla como usada después de guardar
   const wasAtendidaBefore=editingId?(DB.citas.find(c=>c.id===editingId)||{}).estado==='atendida':false;
   try{
     if(editingId){
@@ -3487,6 +3499,17 @@ async function saveAppt(){
   if(currentView==='clientas')renderClientas();
   if(currentView==='citas')renderCitas();
   toast(editingId?'Cita actualizada':'Cita agendada ✨');
+  // si se aplicó una cortesía nueva, marcarla como usada
+  if(apptCortesiaId){
+    const prevCortesia=editingId?(DB.citas.find(c=>c.id===editingId)||{}).cortesiaId:null;
+    if(apptCortesiaId!==prevCortesia){
+      const cor=DB.cortesias.find(x=>x.id===apptCortesiaId);
+      if(cor&&!cor.usada){
+        const hoy=ymd(new Date());cor.usada=true;cor.fechaUso=hoy;
+        sb.from('cortesias').update({usada:true,fecha_uso:hoy}).eq('id',apptCortesiaId).then();
+      }
+    }
+  }
   maybeOfferRebook(data,wasAtendidaBefore);
 }
 async function deleteAppt(){
@@ -3526,7 +3549,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='4.2';
+const APP_VERSION='4.3';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
