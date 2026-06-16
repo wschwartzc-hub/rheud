@@ -3557,7 +3557,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='4.4';
+const APP_VERSION='4.5';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
@@ -3566,19 +3566,28 @@ async function doLogin(){
   const pass=passEl.value;
   const err=document.getElementById('loginErr');err.textContent='';
   if(!email||!pass){err.textContent='Escribe correo y contraseña.';return;}
+  // Safari en modo privado bloquea localStorage — Supabase lo necesita
+  try{localStorage.setItem('_test','1');localStorage.removeItem('_test');}
+  catch(e){err.textContent='Activa el almacenamiento del navegador. En Safari: Configuración → Safari → desactiva "Navegación privada" o "Bloquear cookies".';return;}
   const btn=document.getElementById('loginBtn');
   btn.textContent='Entrando…';btn.disabled=true;
   try{
     const {error}=await sb.auth.signInWithPassword({email,password:pass});
     if(error){
       err.textContent='Correo o contraseña incorrectos.';
-      passEl.value=''; // limpia contraseña para reintentar limpio
+      passEl.value='';
       setTimeout(()=>passEl.focus(),100);
     }else{
-      await startApp();
+      try{
+        await startApp();
+      }catch(e2){
+        // muestra el error real para poder diagnosticar
+        err.textContent='Acceso correcto pero error al cargar: '+e2.message;
+        console.error('startApp error:',e2);
+      }
     }
   }catch(e){
-    err.textContent='Error de conexión. Revisa tu internet.';
+    err.textContent='Error de conexión ('+e.message+'). Revisa tu internet.';
     console.error(e);
   }finally{
     btn.textContent='Entrar';btn.disabled=false;
