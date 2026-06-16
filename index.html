@@ -3557,7 +3557,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='4.5';
+const APP_VERSION='4.7';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
@@ -3572,9 +3572,21 @@ async function doLogin(){
   const btn=document.getElementById('loginBtn');
   btn.textContent='Entrando…';btn.disabled=true;
   try{
+    // Limpia cualquier sesión vieja antes de entrar (fix para Safari)
+    await sb.auth.signOut();
     const {error}=await sb.auth.signInWithPassword({email,password:pass});
     if(error){
-      err.textContent='Correo o contraseña incorrectos.';
+      // muestra el error real de Supabase para diagnosticar
+      const msg=error.message||'Error desconocido';
+      if(msg.toLowerCase().includes('invalid')||msg.toLowerCase().includes('credentials')){
+        err.textContent='Correo o contraseña incorrectos.';
+      }else if(msg.toLowerCase().includes('email')){
+        err.textContent='Verifica tu correo: '+msg;
+      }else if(msg.toLowerCase().includes('rate')||msg.toLowerCase().includes('limit')){
+        err.textContent='Demasiados intentos. Espera unos minutos e intenta de nuevo.';
+      }else{
+        err.textContent='Error: '+msg;
+      }
       passEl.value='';
       setTimeout(()=>passEl.focus(),100);
     }else{
@@ -3777,8 +3789,21 @@ function renderAgendaWeather(){
 
 /* ---- arranque: sesión existente entra directo ---- */
 (async()=>{
-  const {data}=await sb.auth.getSession();
-  if(data&&data.session){await startApp();}
+  try{
+    const {data,error}=await sb.auth.getSession();
+    if(error){
+      // sesión corrupta — la limpiamos para que el login funcione
+      await sb.auth.signOut();
+      return;
+    }
+    if(data&&data.session){
+      await startApp();
+    }
+  }catch(e){
+    // si falla al arrancar, limpia y muestra login
+    try{await sb.auth.signOut();}catch(_){}
+    console.error('Init error:',e);
+  }
 })();
 </script>
 </body>
