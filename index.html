@@ -3552,15 +3552,29 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 const APP_VERSION='4.3';
 const APP_BUILD='10 jun';
 async function doLogin(){
-  const email=document.getElementById('loginEmail').value.trim();
-  const pass=document.getElementById('loginPass').value;
+  const emailEl=document.getElementById('loginEmail');
+  const passEl=document.getElementById('loginPass');
+  const email=emailEl.value.trim();
+  const pass=passEl.value;
   const err=document.getElementById('loginErr');err.textContent='';
   if(!email||!pass){err.textContent='Escribe correo y contraseña.';return;}
-  const btn=document.getElementById('loginBtn');btn.textContent='Entrando…';btn.disabled=true;
-  const {error}=await sb.auth.signInWithPassword({email,password:pass});
-  btn.textContent='Entrar';btn.disabled=false;
-  if(error){err.textContent='Correo o contraseña incorrectos.';return;}
-  await startApp();
+  const btn=document.getElementById('loginBtn');
+  btn.textContent='Entrando…';btn.disabled=true;
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error){
+      err.textContent='Correo o contraseña incorrectos.';
+      passEl.value=''; // limpia contraseña para reintentar limpio
+      setTimeout(()=>passEl.focus(),100);
+    }else{
+      await startApp();
+    }
+  }catch(e){
+    err.textContent='Error de conexión. Revisa tu internet.';
+    console.error(e);
+  }finally{
+    btn.textContent='Entrar';btn.disabled=false;
+  }
 }
 async function ensureNegocio(){
   // busca el negocio del usuario; si no hay miembro, crea negocio y lo asocia
