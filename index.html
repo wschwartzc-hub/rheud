@@ -473,7 +473,10 @@ body::before{
 .cc-used{background:#f0ece8;color:var(--muted)}
 .cc-notas{font-size:12px;color:var(--muted);margin-top:4px}
 .cc-usar{background:none;border:1px solid var(--mauve);border-radius:9px;padding:6px 12px;font-family:'Jost';font-size:12px;color:var(--wine);cursor:pointer;margin-top:8px;width:100%}
-.cc-used-details{margin-top:4px;font-size:12.5px;color:var(--muted)}
+.signout-wrap{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);text-align:center}
+.btn-signout{background:none;border:1.5px solid #e0caca;border-radius:13px;padding:12px 28px;font-family:'Jost';font-size:14px;font-weight:600;color:#a06060;cursor:pointer;letter-spacing:.3px}
+.btn-signout:active{background:#fdf4f4}
+.signout-ver{font-size:11px;color:var(--muted);margin-top:10px;letter-spacing:.3px}
 .cc-used-details summary{cursor:pointer;padding:6px 0;font-weight:500}
 /* Picker de catálogo */
 .cc-cat-picker{display:flex;flex-wrap:wrap;gap:7px}
@@ -861,6 +864,11 @@ body::before{
       <p class="premios-hint">Crea plantillas de cortesías para reutilizarlas fácilmente con cualquier clienta.</p>
       <div id="cortesiasCatList"></div>
       <button class="btn btn-line" style="margin-top:8px" onclick="openCortesiaCatSheet()">+ Agregar cortesía al catálogo</button>
+    </div>
+    <!-- Cerrar sesión -->
+    <div class="signout-wrap">
+      <button class="btn-signout" onclick="confirmSignOut()">Cerrar sesión</button>
+      <div class="signout-ver" id="signoutVer"></div>
     </div>
   </section>
 
@@ -3549,7 +3557,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='4.3';
+const APP_VERSION='4.4';
 const APP_BUILD='10 jun';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
@@ -3575,6 +3583,11 @@ async function doLogin(){
   }finally{
     btn.textContent='Entrar';btn.disabled=false;
   }
+}
+async function confirmSignOut(){
+  if(!confirm('¿Cerrar sesión?'))return;
+  await sb.auth.signOut();
+  window.location.reload();
 }
 async function ensureNegocio(){
   // busca el negocio del usuario; si no hay miembro, crea negocio y lo asocia
@@ -3613,6 +3626,7 @@ async function startApp(){
   document.getElementById('loadingScreen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('sbVer').textContent='v'+APP_VERSION+' · '+APP_BUILD;
+  const sv=document.getElementById('signoutVer');if(sv)sv.textContent='Rhēud Beauty v'+APP_VERSION;
   greet();renderAgenda();
   subscribeRealtime();
   startClock();
