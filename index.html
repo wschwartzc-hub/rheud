@@ -465,6 +465,7 @@ body::before{
 .btn-ia:active{transform:scale(.98)}
 .btn-promo{width:100%;background:linear-gradient(150deg,#25D366,#1DA851);color:#fff;border:none;border-radius:13px;padding:13px;font-family:'Jost';font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;letter-spacing:.2px}
 .btn-promo:active{transform:scale(.98)}
+.promo-preview{background:#DCF8C6;border:1px solid #b8e6a0;border-radius:13px;padding:14px 16px;font-family:'Jost';font-size:13.5px;line-height:1.6;white-space:pre-wrap;color:#1a1a1a;max-height:340px;overflow-y:auto}
 /* Cortesías en ficha */
 .cc-section{margin-bottom:6px}
 .cc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
@@ -864,7 +865,9 @@ body::before{
     <div id="menuServicios">
       <div id="svcList"></div>
       <button class="btn btn-line" style="margin-top:8px" onclick="openSvcSheet()">+ Agregar servicio</button>
+      <div class="divider">Difusión</div>
       <button class="btn-promo" onclick="enviarPromo()">📣 Enviar promociones por WhatsApp</button>
+      <button class="btn-line" style="margin-top:8px" onclick="openEditPromoSheet()">✏️ Editar plantilla del mensaje</button>
     </div>
     <div id="menuPremios" style="display:none">
       <p class="premios-hint">Crea los premios de tu tarjeta de lealtad. Luego los asignas a cada clienta a los 6 y 12 sellos.</p>
@@ -1204,6 +1207,21 @@ body::before{
   <button class="btn btn-line" onclick="backToCliFromQR()">Volver</button>
 </div>
 
+<!-- HOJA EDITAR PLANTILLA DE PROMOCIÓN -->
+<div class="sheet" id="editPromoSheet">
+  <div class="grab"></div>
+  <h3>✏️ Plantilla de promoción</h3>
+  <div class="acc-sub">Edita el texto libremente. Donde escribas <b>{{SERVICIOS}}</b> se insertará automáticamente la lista de tus servicios y precios actuales del Menú — así nunca queda desactualizada.</div>
+  <div class="field"><textarea id="promoTplText" rows="14" style="font-family:'Jost';font-size:13.5px;line-height:1.6"></textarea></div>
+  <button class="btn btn-line" onclick="previewPromo()">👁️ Ver vista previa</button>
+  <div id="promoPreviewWrap" style="display:none;margin-top:10px">
+    <div class="promo-preview" id="promoPreview"></div>
+  </div>
+  <button class="btn btn-primary" style="margin-top:14px" onclick="guardarPromoTpl()">Guardar plantilla</button>
+  <button class="btn btn-line" onclick="restaurarPromoDefault()">Restaurar plantilla original</button>
+  <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
+</div>
+
 <!-- HOJA CATÁLOGO CORTESÍA -->
 <div class="sheet" id="cortesiaCatSheet">
   <div class="grab"></div>
@@ -1295,6 +1313,20 @@ const DEFAULT_SVCS=[
 let DB={servicios:[],clientas:[],citas:[],premios:[],cortesiasCat:[],cortesias:[],egresos:[]};
 let NEGOCIO_ID=null;
 let PROMO_TEMPLATE='';
+let PROMO_BROADCAST='';
+const PROMO_DEFAULT=`✨ *PROMOCIONES RHĒUD* ✨
+
+💅 *Manicura · Gel semipermanente · Extensión de uñas · Diseños y más*
+
+🎨 Más de *250 tonos y efectos* para tus diseños
+📅 Agenda tu cita con anticipación 💕
+
+{{SERVICIOS}}
+
+😍 *Más de 250 tonos a elegir* 🎨
+
+📍 Rhēud Beauty · Monterrey
+Escríbenos para agendar tu espacio 🤍`;
 let onlineState=navigator.onLine;
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 
@@ -3269,28 +3301,41 @@ function editAppt(id){
 }
 /* ====== WhatsApp helpers reutilizables ====== */
 function waTel(cli){let tel=(cli&&cli.telefono?cli.telefono:'').replace(/\D/g,'');if(tel.length===10)tel='52'+tel;return tel;}
+function serviciosPromoText(){
+  if(!DB.servicios.length)return '(agrega servicios en el Menú para que aparezcan aquí)';
+  return DB.servicios.map(s=>{
+    const precios=(s.precios&&s.precios.length)?s.precios.join('/'):s.p;
+    return `🔹 ${s.n} — *$${precios}*`;
+  }).join('\n');
+}
 function enviarPromo(){
-  const msg=`✨ *PROMOCIONES RHĒUD* ✨
-
-💅 *Manicura · Gel semipermanente · Extensión de uñas · Diseños y más*
-
-🎨 Más de *250 tonos y efectos* para tus diseños
-📅 Agenda tu cita con anticipación 💕
-
-🔹 Esmaltado en gel express, liso o con glitter — *$200*
-🔹 Esmaltado en gel liso o con glitter + manicura rusa — *$330*
-🔹 Refuerzo y nivelación + esmaltado en gel liso o con glitter — *$380*
-🔹 Esmaltado en gel + dry manicure + baño de gel (refuerzo y nivelación en uña natural) — *$450*
-🔹 Extensión de uñas con polygel o soft gel, lisas largo 1-3 + dry manicure — antes $690, ahora *$590*
-🔹 Retiro de gel — *$50*
-🔹 Retiro de acrílico — *$120*
-🔹 *Mantenimiento* de extensiones de uñas (retoques)
-
-😍 *Más de 250 tonos a elegir* 🎨
-
-📍 Rhēud Beauty · Monterrey
-Escríbenos para agendar tu espacio 🤍`;
+  const tpl=PROMO_BROADCAST||PROMO_DEFAULT;
+  const msg=tpl.replace('{{SERVICIOS}}',serviciosPromoText());
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+function openEditPromoSheet(){
+  document.getElementById('promoTplText').value=PROMO_BROADCAST||PROMO_DEFAULT;
+  showSheet('editPromoSheet');
+}
+function previewPromo(){
+  const tpl=document.getElementById('promoTplText').value||PROMO_DEFAULT;
+  const msg=tpl.replace('{{SERVICIOS}}',serviciosPromoText());
+  document.getElementById('promoPreview').textContent=msg;
+  document.getElementById('promoPreviewWrap').style.display='block';
+}
+function restaurarPromoDefault(){
+  if(!confirm('¿Restaurar la plantilla original?'))return;
+  document.getElementById('promoTplText').value=PROMO_DEFAULT;
+}
+async function guardarPromoTpl(){
+  const txt=document.getElementById('promoTplText').value.trim();
+  if(!txt){toast('La plantilla no puede quedar vacía');return;}
+  if(!txt.includes('{{SERVICIOS}}')){
+    if(!confirm('No incluiste {{SERVICIOS}} — tus precios no aparecerán automáticamente. ¿Guardar de todas formas?'))return;
+  }
+  PROMO_BROADCAST=txt;
+  try{await sb.from('negocios').update({promo_broadcast:txt}).eq('id',NEGOCIO_ID);}catch(e){console.error(e);toast('Error al guardar');return;}
+  closeSheet();toast('Plantilla guardada ✓');
 }
 function waOpen(cli,msg){
   const tel=waTel(cli);
@@ -3591,8 +3636,8 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='4.8';
-const APP_BUILD='10 jun';
+const APP_VERSION='5.0';
+const APP_BUILD='5 jul';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
   const passEl=document.getElementById('loginPass');
@@ -3650,7 +3695,7 @@ async function ensureNegocio(){
   if(em)throw em;
   if(miembros&&miembros.length){
     NEGOCIO_ID=miembros[0].negocio_id;
-    try{const {data:neg}=await sb.from('negocios').select('promo_template').eq('id',NEGOCIO_ID).single();if(neg&&neg.promo_template)PROMO_TEMPLATE=neg.promo_template;}catch(e){}
+    try{const {data:neg}=await sb.from('negocios').select('promo_template,promo_broadcast').eq('id',NEGOCIO_ID).single();if(neg){if(neg.promo_template)PROMO_TEMPLATE=neg.promo_template;if(neg.promo_broadcast)PROMO_BROADCAST=neg.promo_broadcast;}}catch(e){}
     return;
   }
   // crear negocio y membresía
