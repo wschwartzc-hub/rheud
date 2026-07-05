@@ -682,8 +682,8 @@ body::before{
 .nav button{padding:6px 3px}
 
 /* ---------- CITAS TRACKER ---------- */
-.cfilters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.cfilters select{font-family:'Jost';font-size:12.5px;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:11px;padding:10px 11px;outline:none;-webkit-appearance:none;box-shadow:var(--shadow)}
+.cfilters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.cfilters select{flex:0 1 auto;min-width:0;font-family:'Jost';font-size:12.5px;color:var(--ink);background:var(--card) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="7" viewBox="0 0 10 7"><path d="M1 1l4 4 4-4" stroke="%239B6A78" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;border:1.5px solid var(--line);border-radius:11px;padding:10px 30px 10px 13px;outline:none;-webkit-appearance:none;box-shadow:var(--shadow)}
 .citas-summary{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .csum{flex:1;min-width:0;background:var(--card);border-radius:13px;padding:10px 12px;box-shadow:var(--shadow);text-align:center}
 .csum .cl{font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
@@ -3636,7 +3636,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='5.0';
+const APP_VERSION='5.1';
 const APP_BUILD='5 jul';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
