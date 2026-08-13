@@ -440,6 +440,13 @@ body::before{
 .al-info small{font-size:11.5px;color:var(--muted)}
 .al-wa{background:#25D366;color:#fff;border:none;border-radius:10px;padding:8px 13px;font-family:'Jost';font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
 .al-more{font-size:12px;color:var(--muted);text-align:center;padding-top:8px}
+.al-ver-todas{width:100%;background:none;border:1px solid var(--mauve);border-radius:11px;padding:10px;font-family:'Jost';font-size:12.5px;font-weight:600;color:var(--wine);cursor:pointer;margin-top:6px}
+.riesgo-full-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:9px;cursor:pointer}
+.rf-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rf-name{font-size:14px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.rf-days{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:var(--red);flex:0 0 auto}
+.rf-detail{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.rf-debt{color:var(--red);font-weight:600}
 .stat-esp{background:linear-gradient(150deg,#FCF7F1,#F3E6DC);border:1px solid var(--gold-soft)!important}
 .stat-hero{background:linear-gradient(150deg,var(--wine),#7A2A45)!important;color:#fff!important}
 .stat-hero .lbl{color:rgba(255,255,255,.7)!important}
@@ -1220,6 +1227,19 @@ body::before{
   <button class="btn btn-primary" style="margin-top:14px" onclick="guardarPromoTpl()">Guardar plantilla</button>
   <button class="btn btn-line" onclick="restaurarPromoDefault()">Restaurar plantilla original</button>
   <button class="btn btn-line" onclick="closeSheet()">Cerrar</button>
+</div>
+
+<!-- HOJA CLIENTAS EN RIESGO (lista completa) -->
+<div class="sheet" id="riesgoSheet">
+  <div class="grab"></div>
+  <h3>💔 No han vuelto <span id="riesgoCount" style="font-family:'Jost';font-size:15px;color:var(--muted);font-weight:500"></span></h3>
+  <div class="seg" id="riesgoOrdenSeg">
+    <button data-o="dias" class="on" onclick="riesgoSetOrden('dias')">Más urgente</button>
+    <button data-o="gasto" onclick="riesgoSetOrden('gasto')">Más gastado</button>
+    <button data-o="nombre" onclick="riesgoSetOrden('nombre')">A–Z</button>
+  </div>
+  <div id="riesgoFullList" style="margin-top:6px"></div>
+  <button class="btn btn-line" style="margin-top:14px" onclick="closeSheet()">Cerrar</button>
 </div>
 
 <!-- HOJA CATÁLOGO CORTESÍA -->
@@ -2172,10 +2192,51 @@ function renderCliAlerts(){
   if(riesgo.length){
     html+=`<div class="alert-card riesgo-card"><div class="al-title">💔 No han vuelto (${riesgo.length})</div>`;
     html+=riesgo.slice(0,5).map(x=>`<div class="al-row" onclick="openCli('${x.cl.id}')"><div class="al-info"><b>${esc(x.cl.nombre)}</b><small>Última visita hace ${x.days} días</small></div><button class="al-wa" onclick="event.stopPropagation();waTeExtranamos('${x.cl.id}')">WhatsApp</button></div>`).join('');
-    if(riesgo.length>5)html+=`<div class="al-more">y ${riesgo.length-5} más…</div>`;
+    html+=`<button class="al-ver-todas" onclick="openRiesgoSheet()">Ver detalle completo →</button>`;
     html+=`</div>`;
   }
   el.innerHTML=html;
+}
+function fechaLarga(ymdStr){
+  if(!ymdStr)return '';
+  const d=new Date(ymdStr+'T00:00:00');
+  return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+}
+function riesgoSort(list,mode){
+  const arr=list.slice();
+  if(mode==='gasto')arr.sort((a,b)=>b.st.spent-a.st.spent);
+  else if(mode==='nombre')arr.sort((a,b)=>a.cl.nombre.localeCompare(b.cl.nombre));
+  else arr.sort((a,b)=>b.days-a.days); // más días sin volver primero (más urgente)
+  return arr;
+}
+let riesgoOrden='dias';
+function openRiesgoSheet(){
+  riesgoOrden='dias';
+  renderRiesgoList();
+  showSheet('riesgoSheet');
+}
+function riesgoSetOrden(m){
+  riesgoOrden=m;
+  document.querySelectorAll('#riesgoOrdenSeg button').forEach(b=>b.classList.toggle('on',b.dataset.o===m));
+  renderRiesgoList();
+}
+function renderRiesgoList(){
+  const el=document.getElementById('riesgoFullList');if(!el)return;
+  let list=cliEnRiesgo().map(x=>({...x,st:clientStats(x.cl.id)}));
+  list=riesgoSort(list,riesgoOrden);
+  document.getElementById('riesgoCount').textContent=list.length;
+  if(!list.length){el.innerHTML='<div class="empty-mini">Ninguna clienta en riesgo por ahora 🎉</div>';return;}
+  el.innerHTML=list.map(x=>{
+    const seg=clientSegment(x.st);
+    return `<div class="riesgo-full-card" onclick="closeSheet();setTimeout(()=>openCli('${x.cl.id}'),260)">
+      <div class="rf-top">
+        <div class="rf-name">${esc(x.cl.nombre)} <span class="badge ${seg.cls}">${seg.label}</span></div>
+        <div class="rf-days">${x.days}d</div>
+      </div>
+      <div class="rf-detail">Última visita: ${fechaLarga(x.st.last)} · ${x.st.visits} visita${x.st.visits!==1?'s':''} · ${fmtMoney(x.st.spent)} gastado${x.st.debt?` · <span class="rf-debt">debe ${fmtMoney(x.st.debt)}</span>`:''}</div>
+      <button class="al-wa" style="margin-top:9px;width:100%" onclick="event.stopPropagation();waTeExtranamos('${x.cl.id}')">WhatsApp "te extrañamos"</button>
+    </div>`;
+  }).join('');
 }
 function waTeExtranamos(cliId){
   const cl=DB.clientas.find(x=>x.id===cliId);if(!cl)return;
@@ -3636,7 +3697,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='5.1';
+const APP_VERSION='5.2';
 const APP_BUILD='5 jul';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
