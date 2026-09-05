@@ -946,6 +946,22 @@ body{font-optical-sizing:auto}
 .rama-v{font-size:18px;color:var(--ink)}
 .rama-bar{height:8px;border-radius:4px;background:var(--line2);overflow:hidden}
 .rama-bar div{height:100%;border-radius:4px}
+/* --- v6.2: fotos, aviso de piel, insights por rama --- */
+.rama-intel{display:flex;flex-direction:column;gap:12px}
+.rama-intel .ct{margin-bottom:0}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.35}
+.appt-skin{margin-top:8px}
+.skin-hint{background:var(--skin-bg);color:var(--skin-ink);border-radius:12px;padding:10px 13px;font-size:12.5px;line-height:1.5}
+.skin-hint.warn{background:var(--warn-bg);color:#6b4a0e}
+.skin-hint b{font-weight:700}
+.skin-req{margin-top:6px;font-size:12px;opacity:.9}
+.fotos-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.foto{position:relative;aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:var(--line2)}
+.foto img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.foto .tag{position:absolute;left:6px;top:6px;background:rgba(255,255,255,.92)}
+.foto-x{position:absolute;right:6px;top:2px;color:#fff;font-size:20px;text-shadow:0 1px 3px rgba(0,0,0,.6);cursor:pointer}
+.fotos-actions{display:flex;gap:8px}
+.fotos-actions .btn{flex:1;padding:11px 6px;font-size:12.5px;margin-top:0}
 .btn-signout{border:1px solid var(--line);border-radius:var(--r2);color:var(--ink2)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1233,6 +1249,7 @@ body{font-optical-sizing:auto}
     <label>Servicios <span id="svcCount" style="color:var(--mauve);font-weight:400"></span></label>
     <div class="svc-picker" id="apptSvcPicker"></div>
     <div class="appt-seq" id="apptSeq"></div>
+    <div class="appt-skin" id="apptSkin"></div>
   </div>
   <div class="field"><label>Fecha</label><input type="date" id="apptDate" onchange="onApptDateChange()"></div>
   <div class="field-row">
@@ -1423,6 +1440,14 @@ body{font-optical-sizing:auto}
     <div id="pielEvolucion"></div>
     <div class="field" style="margin-top:8px"><textarea id="pielNota" placeholder="Nota de evolución de hoy: qué se observó, qué se hizo, qué sigue…"></textarea></div>
     <button class="btn btn-line" style="margin-top:0" onclick="addEvolucion()">+ Guardar nota</button>
+    <div class="fs-title" style="margin-top:16px">Fotos de seguimiento</div>
+    <div class="fotos-grid" id="pielFotos"></div>
+    <div class="fotos-actions">
+      <button class="btn btn-line" onclick="pickFoto('antes')">+ Antes</button>
+      <button class="btn btn-line" onclick="pickFoto('despues')">+ Después</button>
+      <button class="btn btn-line" onclick="pickFoto('seguimiento')">+ Seguimiento</button>
+    </div>
+    <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display:none" onchange="onFotoPicked(event)">
   </div>
   <div class="kv"><span class="k">Visitas</span><span class="v" id="cliVisits"></span></div>
   <div class="kv"><span class="k">Total gastado</span><span class="v" id="cliSpent"></span></div>
@@ -1610,7 +1635,7 @@ const DEFAULT_SVCS=[
 
 /* DB es el caché en memoria; las funciones de UI lo siguen usando igual.
    Cada registro guarda su id real de Supabase en .id (uuid). */
-let DB={servicios:[],clientas:[],citas:[],premios:[],cortesiasCat:[],cortesias:[],egresos:[],expedientes:[]};
+let DB={servicios:[],clientas:[],citas:[],premios:[],cortesiasCat:[],cortesias:[],egresos:[],expedientes:[],fotos:[]};
 let NEGOCIO_ID=null;
 let PROMO_TEMPLATE='';
 let PROMO_BROADCAST='';
@@ -1666,7 +1691,7 @@ function rowToEgreso(r){return {id:r.id,fecha:r.fecha||'',concepto:r.concepto||'
 
 /* ---- carga inicial completa desde Supabase ---- */
 async function loadAll(){
-  const [sv,cl,ci,pr,cc,co,eg,ex]=await Promise.all([
+  const [sv,cl,ci,pr,cc,co,eg,ex,fo]=await Promise.all([
     sb.from('servicios').select('*').order('created_at',{ascending:true}),
     sb.from('clientas').select('*').order('created_at',{ascending:true}),
     sb.from('citas').select('*').order('fecha',{ascending:true}),
@@ -1674,7 +1699,8 @@ async function loadAll(){
     sb.from('cortesias_catalogo').select('*').order('created_at',{ascending:true}),
     sb.from('cortesias').select('*').order('created_at',{ascending:false}),
     sb.from('egresos').select('*').order('fecha',{ascending:false}),
-    sb.from('expedientes_piel').select('*')
+    sb.from('expedientes_piel').select('*'),
+    sb.from('fotos_piel').select('*').order('fecha',{ascending:false})
   ]);
   if(sv.error||cl.error||ci.error){console.error(sv.error||cl.error||ci.error);throw (sv.error||cl.error||ci.error);}
   DB.servicios=(sv.data||[]).map(rowToSvc);
@@ -1685,6 +1711,7 @@ async function loadAll(){
   DB.cortesias=(co&&!co.error)?(co.data||[]).map(rowToCortesia):[];
   DB.egresos=(eg&&!eg.error)?(eg.data||[]).map(rowToEgreso):[];
   DB.expedientes=(ex&&!ex.error)?(ex.data||[]).map(rowToExp):[]; // la tabla puede no existir aún: se tolera
+  DB.fotos=(fo&&!fo.error)?(fo.data||[]).map(rowToFoto):[];
   // sembrar menú por defecto si está vacío
   if(DB.servicios.length===0){
     const rows=DEFAULT_SVCS.map(s=>({negocio_id:NEGOCIO_ID,nombre:s.n,precio:s.precio,costo_real:0,descripcion:'',incluye:''}));
@@ -2456,6 +2483,19 @@ function renderInteligencia(){
   let nuevas=0;clientasRango.forEach(id=>{const first=DB.citas.filter(c=>c.clientaId===id&&c.estado==='atendida').map(c=>c.fecha).sort()[0];if(first&&first>=startKey&&first<=endKey)nuevas++;});
   const recurrentes=clientasRango.length-nuevas;
 
+  // ===== POR RAMA (uñas vs skin care) =====
+  const rama={nails:{rev:0,n:0},skin:{rev:0,n:0},otro:{rev:0,n:0}};
+  cur.forEach(c=>{citaItems(c).forEach(it=>{const s=svcById(it.id);const cat=it.cat||(s?s.cat:'nails')||'nails';rama[cat]=rama[cat]||{rev:0,n:0};rama[cat].rev+=Number(it.p||0);rama[cat].n++;});});
+  const hasSkin=DB.servicios.some(s=>s.cat==='skin')||rama.skin.n>0;
+  // Retención: de las clientas atendidas en el periodo anterior, ¿qué % volvió en este?
+  const prevIds=new Set(prev.map(c=>c.clientaId)),curIds=new Set(cur.map(c=>c.clientaId));
+  let volvieron=0;prevIds.forEach(id=>{if(curIds.has(id))volvieron++;});
+  const retencion=prevIds.size?Math.round(volvieron/prevIds.size*100):null;
+  // Recompra: % de las clientas del periodo que ya habían venido antes
+  const recompra=clientasRango.length?Math.round(recurrentes/clientasRango.length*100):null;
+  // Venta cruzada: clientas de uñas con 2+ visitas que nunca han tomado un facial
+  const crossSell=hasSkin?DB.clientas.filter(cl=>{const cs=DB.citas.filter(c=>c.clientaId===cl.id&&c.estado==='atendida');return cs.length>=2&&!cs.some(c=>citaCats(c).includes('skin'));}):[];
+
   // ===== TENDENCIAS vs periodo anterior =====
   const prevNCitas=prev.length;
   const prevTicket=prevNCitas?Math.round(sumP(prev)/prevNCitas):0;
@@ -2486,6 +2526,7 @@ function renderInteligencia(){
     if(busyDay&&maxDow>0)tips.push(`🗓️ El <b>${busyDay}</b> es tu día más fuerte. Si quieres llenar días flojos, una promo entre semana puede ayudar.`);
     if(nuevas>0&&recurrentes>0&&recurrentes<nuevas)tips.push(`🔁 Tuviste más clientas nuevas que recurrentes. Una tarjeta de lealtad activa o recordatorio de "ya toca tu mantenimiento" ayuda a que regresen.`);
     if(porCobrar>0)tips.push(`💰 Tienes <b>${fmtMoney(porCobrar)}</b> por cobrar. Desde Citas → Acciones puedes mandar recordatorio por WhatsApp.`);
+    if(crossSell.length)tips.push(`💆 <b>${crossSell.length} clienta${crossSell.length!==1?'s':''} de uñas</b> con 2+ visitas nunca ${crossSell.length!==1?'han':'ha'} probado un facial (${crossSell.slice(0,3).map(c=>esc(c.nombre.split(' ')[0])).join(', ')}${crossSell.length>3?'…':''}). Un LED de cortesía tras su próxima cita suele convertir.`);
     if(!tips.length)tips.push(`✨ Todo se ve estable. Sigue registrando tus citas para detectar patrones con más datos.`);
   }
 
@@ -2521,9 +2562,12 @@ function renderInteligencia(){
       <div class="kpi"><div class="l">Ticket promedio</div><div class="v">${fmtMoney(ticket)}</div></div>
     </div>
     <div class="chartcard"><div class="ct">Ingresos por ${gran}</div><div class="bars">${barsHtml}</div></div>
+    ${hasSkin?`<div class="chartcard rama-intel"><div class="ct">Por rama</div>${['nails','skin'].map(cat=>{const x=rama[cat];const tot=rama.nails.rev+rama.skin.rev+(rama.otro?rama.otro.rev:0);const pct=tot?Math.round(x.rev/tot*100):0;const tk=x.n?Math.round(x.rev/x.n):0;const col=cat==='skin'?'#6A57B8':'#A03F66';return `<div class="rama-row"><div class="rama-top"><span class="rama-dot" style="background:${col}"></span><span class="rama-n">${catLabel(cat)}</span><span class="rama-meta">${x.n} servicio${x.n!==1?'s':''}${tk?` · ticket ${fmtMoney(tk)}`:''}</span><span class="rama-v num">${fmtMoney(x.rev)}</span></div><div class="rama-bar"><div style="width:${pct}%;background:${col}"></div></div></div>`;}).join('')}</div>`:''}
     <div class="kpis">
       <div class="kpi"><div class="l">Clientas nuevas</div><div class="v">${nuevas}</div></div>
       <div class="kpi"><div class="l">Recurrentes</div><div class="v">${recurrentes}</div></div>
+      <div class="kpi"><div class="l">Retención</div><div class="v">${retencion===null?'—':retencion+'%'}</div><div class="kpi-sub">${retencion===null?'sin datos del '+periodoPrevLabel:'de las clientas del '+periodoPrevLabel+' volvieron'}</div></div>
+      <div class="kpi"><div class="l">Recompra</div><div class="v">${recompra===null?'—':recompra+'%'}</div><div class="kpi-sub">de las atendidas ya habían venido</div></div>
     </div>
     <div class="divider">Servicios más vendidos</div>
     ${topSvc.length?topSvc.slice(0,5).map((s,i)=>`<div class="rank"><div class="num">${i+1}</div><div class="rn">${s.n}</div><div class="rc"><div class="a">${fmtMoney(s.rev)}</div><div class="b">${s.count} vez${s.count!==1?'es':''}</div></div></div>`).join(''):'<p style="color:var(--muted);font-size:13px;font-weight:300;padding:4px 2px">Sin datos todavía.</p>'}
@@ -2775,6 +2819,58 @@ function loadExpediente(cliId){
   document.getElementById('pielNota').value='';
   const when=document.getElementById('pielWhen');if(when)when.textContent=e.updatedAt?('act. '+fmtFechaCompleta(e.updatedAt.slice(0,10),'')):'';
   renderEvolucion(e);
+  renderFotos(cliId);
+}
+/* ---- fotos antes / después (bucket privado "expedientes", URL firmada al mostrar) ---- */
+function rowToFoto(r){return {id:r.id,clientaId:r.clienta_id,tipo:r.tipo||'seguimiento',fecha:r.fecha||'',path:r.path||'',nota:r.nota||''}}
+let fotoTipo='seguimiento';const FOTO_URL_CACHE={};
+function pickFoto(t){if(!openCliId)return;fotoTipo=t;const inp=document.getElementById('fotoInput');inp.value='';inp.click();}
+function compressImage(file,max,q){
+  return new Promise((res,rej)=>{
+    const img=new Image();const url=URL.createObjectURL(file);
+    img.onload=()=>{const sc=Math.min(1,max/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);cv.toBlob(b=>b?res(b):rej(new Error('No se pudo procesar la imagen')),'image/jpeg',q);};
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('Imagen inválida'));};
+    img.src=url;
+  });
+}
+async function onFotoPicked(ev){
+  const f=ev.target.files&&ev.target.files[0];if(!f||!openCliId)return;
+  const cliId=openCliId,tipo=fotoTipo;
+  toast('Subiendo foto…');
+  try{
+    const blob=await compressImage(f,1280,.82);
+    const path=`${NEGOCIO_ID}/${cliId}/${Date.now()}_${tipo}.jpg`;
+    const up=await sb.storage.from('expedientes').upload(path,blob,{contentType:'image/jpeg',upsert:false});
+    if(up.error)throw up.error;
+    const {data,error}=await sb.from('fotos_piel').insert({negocio_id:NEGOCIO_ID,clienta_id:cliId,tipo,fecha:ymd(new Date()),path}).select().single();
+    if(error)throw error;
+    DB.fotos.unshift(rowToFoto(data));
+    if(openCliId===cliId)renderFotos(cliId);
+    toast('Foto guardada');
+  }catch(e){console.error(e);toast('No se pudo subir la foto');}
+}
+async function fotoUrl(path){
+  const c=FOTO_URL_CACHE[path];if(c&&c.exp>Date.now())return c.url;
+  const {data,error}=await sb.storage.from('expedientes').createSignedUrl(path,3600);
+  if(error||!data)return '';
+  FOTO_URL_CACHE[path]={url:data.signedUrl,exp:Date.now()+50*60*1000};return data.signedUrl;
+}
+function renderFotos(cliId){
+  const el=document.getElementById('pielFotos');if(!el)return;
+  const list=DB.fotos.filter(f=>f.clientaId===cliId).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  if(!list.length){el.innerHTML='<p class="empty-mini" style="grid-column:1/-1">Sin fotos. Toma una “antes” en la primera cita y un “después” al cerrar la serie.</p>';return;}
+  const TL={antes:'Antes',despues:'Después',seguimiento:'Seguimiento'};
+  el.innerHTML=list.map(f=>{const d=new Date((f.fecha||ymd(new Date()))+'T00:00:00');return `<div class="foto"><img alt="" data-path="${esc(f.path)}"><span class="tag ${f.tipo==='despues'?'t-ok':(f.tipo==='antes'?'t-nails':'t-soft')}">${TL[f.tipo]||f.tipo} · ${d.getDate()} ${MON[d.getMonth()]}</span><span class="foto-x" onclick="delFoto('${f.id}')" title="Borrar">×</span></div>`;}).join('');
+  el.querySelectorAll('img[data-path]').forEach(async im=>{const u=await fotoUrl(im.dataset.path);if(u){im.src=u;im.onclick=()=>window.open(u,'_blank');}});
+}
+async function delFoto(id){
+  const f=DB.fotos.find(x=>x.id===id);if(!f)return;
+  if(!confirm('¿Borrar esta foto?'))return;
+  try{
+    await sb.storage.from('expedientes').remove([f.path]);
+    const {error}=await sb.from('fotos_piel').delete().eq('id',id);if(error)throw error;
+    DB.fotos=DB.fotos.filter(x=>x.id!==id);renderFotos(openCliId);
+  }catch(e){console.error(e);toast('No se pudo borrar la foto');}
 }
 function renderEvolucion(e){
   const el=document.getElementById('pielEvolucion');if(!el)return;
@@ -3605,7 +3701,29 @@ function renderSvcPicker(){
   const total=selectedSvcIds.reduce((t,id)=>{const s=DB.servicios.find(x=>x.id===id);if(!s)return t;const pr=(svcChosenPrice[id]!=null)?svcChosenPrice[id]:Number(s.p||0);return t+pr;},0);
   document.getElementById('svcCount').textContent=selectedSvcIds.length?`· ${selectedSvcIds.length} · ${fmtMoney(total)}`:'';
   renderApptSeq();
+  renderApptSkinHint();
   return total;
+}
+/* si la cita lleva skin care: resume el expediente de piel y los requisitos del servicio */
+function renderApptSkinHint(){
+  const el=document.getElementById('apptSkin');if(!el)return;
+  const items=selectedItems();const skin=items.filter(i=>i.cat==='skin');
+  if(!skin.length){el.innerHTML='';return;}
+  const reqs=skin.map(i=>svcById(i.id)).filter(s=>s&&s.requisitos).map(s=>`<b>${esc(s.n)}</b>: ${esc(s.requisitos)}`);
+  const cliId=apptSelectedCliId;
+  const exp=cliId?DB.expedientes.find(x=>x.clientaId===cliId):null;
+  const filled=exp&&(exp.tipo||exp.alergias||exp.contra||exp.fototipo);
+  let body,warn=false;
+  if(!cliId){body='Elige la clienta para revisar su expediente de piel.';}
+  else if(!filled){body='<b>Sin expediente de piel.</b> Antes del primer facial, llena tipo de piel, alergias y contraindicaciones en su ficha.';warn=true;}
+  else{
+    const parts=[];
+    if(exp.tipo)parts.push(`Piel ${exp.tipo.toLowerCase()}${exp.fototipo?` · fototipo ${exp.fototipo}`:''}`);
+    if(exp.alergias){parts.push(`<b>Alergias:</b> ${esc(exp.alergias)}`);warn=true;}
+    if(exp.contra){parts.push(`<b>Contraindicaciones:</b> ${esc(exp.contra)}`);warn=true;}
+    body=parts.join(' · ');
+  }
+  el.innerHTML=`<div class="skin-hint ${warn?'warn':''}"><div>${body}</div>${reqs.length?`<div class="skin-req">Requisitos · ${reqs.join(' · ')}</div>`:''}</div>`;
 }
 /* servicios seleccionados → items de la cita con duración y recurso */
 function selectedItems(){
@@ -3666,6 +3784,7 @@ function pickApptCli(id){
   document.getElementById('apptCli').value=c.nombre;
   document.getElementById('apptCliResults').innerHTML='';
   renderApptCortesias();
+  renderApptSkinHint();
 }
 
 /* schedule assistant */
@@ -4273,7 +4392,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='6.1';
+const APP_VERSION='6.2';
 const APP_BUILD='5 jul';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
@@ -4405,6 +4524,8 @@ function subscribeRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'cortesias_catalogo'},()=>refetch())
     .on('postgres_changes',{event:'*',schema:'public',table:'cortesias'},()=>refetch())
     .on('postgres_changes',{event:'*',schema:'public',table:'egresos'},()=>refetch())
+    .on('postgres_changes',{event:'*',schema:'public',table:'expedientes_piel'},()=>refetch())
+    .on('postgres_changes',{event:'*',schema:'public',table:'fotos_piel'},()=>refetch())
     .subscribe();
 }
 let refetchTimer=null;
@@ -4423,14 +4544,19 @@ function refetch(){
       if(cl.data)DB.clientas=cl.data.map(rowToCli);
       if(ci.data)DB.citas=ci.data.map(rowToCita);
       if(pr&&pr.data)DB.premios=pr.data.map(rowToPremio);
-      const [cc,co,eg]=await Promise.all([
+      const [cc,co,eg,ex,fo]=await Promise.all([
         sb.from('cortesias_catalogo').select('*').order('created_at',{ascending:true}),
         sb.from('cortesias').select('*').order('created_at',{ascending:false}),
-        sb.from('egresos').select('*').order('fecha',{ascending:false})
+        sb.from('egresos').select('*').order('fecha',{ascending:false}),
+        sb.from('expedientes_piel').select('*'),
+        sb.from('fotos_piel').select('*').order('fecha',{ascending:false})
       ]);
       if(cc&&cc.data)DB.cortesiasCat=cc.data.map(rowToCortesiaCat);
       if(co&&co.data)DB.cortesias=co.data.map(rowToCortesia);
       if(eg&&eg.data)DB.egresos=eg.data.map(rowToEgreso);
+      if(ex&&ex.data)DB.expedientes=ex.data.map(rowToExp);
+      if(fo&&fo.data)DB.fotos=fo.data.map(rowToFoto);
+      if(openCliId&&document.getElementById('cliSheet').classList.contains('show'))loadExpediente(openCliId);
       // re-render la vista actual
       if(currentView==='agenda')renderAgenda();
       else if(currentView==='ventas')renderVentas();

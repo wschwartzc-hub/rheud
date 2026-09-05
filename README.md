@@ -15,8 +15,8 @@ App de gestión para nail estudio profesional privado. Agenda de citas, control 
 - **Insights** — resumen inteligente, KPIs, gráfica de ingresos y ranking de servicios más vendidos.
 - **Menú de servicios multiservicio** — ramas *Nails Studio* / *Skin Care* / otros, subfamilias, precio, costo real y margen, **duración**, **tiempo de limpieza** y **recurso que ocupa** (mesa de uñas o cabina facial), insumos/máquinas y requisitos para la clienta.
 - **Agenda por recursos** — al agendar, cada servicio bloquea su recurso durante su duración + limpieza; el asistente detecta traslapes por separado en mesa y cabina, sugiere huecos válidos y arma la secuencia (uñas → facial) con la duración total. Vista **Carriles** (Mesa · Cabina) en el día.
-- **Expediente de piel** — por clienta: tipo de piel, fototipo, sensibilidad, alergias, contraindicaciones, objetivo, rutina en casa y notas de evolución fechadas. Vive en su propia tabla, sin acceso desde el portal público.
-- **Finanzas por rama** — cobrado, número de servicios y ticket promedio de uñas vs. skin care en el periodo.
+- **Expediente de piel** — por clienta: tipo de piel, fototipo, sensibilidad, alergias, contraindicaciones, objetivo, rutina en casa, notas de evolución fechadas y **fotos antes / después / seguimiento** (bucket privado, URL firmada). Vive en sus propias tablas, sin acceso desde el portal público. Al agendar un facial, la cita muestra el resumen del expediente y los requisitos del servicio.
+- **Finanzas e Insights por rama** — cobrado, servicios y ticket promedio de uñas vs. skin care; **retención** (clientas del periodo anterior que volvieron), **recompra** (atendidas que ya habían venido) y sugerencia de venta cruzada (clientas frecuentes de uñas sin ningún facial).
 
 ## 🎨 Diseño (v6)
 
@@ -43,12 +43,15 @@ Los tokens viven en `:root` dentro de `index.html`; cambiar la paleta es editar 
 ├── index.html                                   # La aplicación completa
 ├── portal.html                                  # Portal público de la clienta (código de cita, sellos)
 ├── supabase/migrations/20260905_multiservicio.sql  # Columnas de rama/duración/recurso, tabla expedientes_piel, índices
+├── supabase/migrations/20260905_fotos_piel.sql     # Tabla fotos_piel + bucket privado "expedientes" con políticas por negocio
 └── README.md                                    # Este archivo
 ```
 
-### Migración multiservicio (v6.1)
+### Migraciones multiservicio (v6.1 y v6.2)
 
 Antes de desplegar la v6.1 ejecuta `supabase/migrations/20260905_multiservicio.sql` en el SQL Editor del proyecto. Es aditiva: agrega columnas con valores por defecto a `servicios` (categoría `nails`, 60 min, recurso `mesa`), crea `expedientes_piel` con RLS por negocio (sin política de lectura para el portal) y dos índices en `citas`. Las citas anteriores siguen funcionando: sin `d`/`r` en sus `items`, la app las trata como un solo bloque en la mesa.
+
+La v6.2 añade `20260905_fotos_piel.sql`: tabla `fotos_piel` y el bucket privado `expedientes` (5 MB por foto, solo JPEG/PNG/WebP) con políticas de lectura/subida/borrado limitadas a la carpeta del negocio. Ambas migraciones ya están aplicadas en el proyecto de producción.
 
 ## 🛠️ Uso local
 
