@@ -13,7 +13,10 @@ App de gestión para nail estudio profesional privado. Agenda de citas, control 
 - **Ingresos y cobranza** — totales por día/semana/mes/rango, alertas de adeudos vencidos, buckets de antigüedad de la deuda y lista de deudoras.
 - **Clientas** — número de cliente automático, contacto (teléfono/email), historial completo, notas y clasificación dinámica por valor/frecuencia y comportamiento de pago.
 - **Insights** — resumen inteligente, KPIs, gráfica de ingresos y ranking de servicios más vendidos.
-- **Menú de servicios** — precio, costo real, margen, descripción y qué incluye.
+- **Menú de servicios multiservicio** — ramas *Nails Studio* / *Skin Care* / otros, subfamilias, precio, costo real y margen, **duración**, **tiempo de limpieza** y **recurso que ocupa** (mesa de uñas o cabina facial), insumos/máquinas y requisitos para la clienta.
+- **Agenda por recursos** — al agendar, cada servicio bloquea su recurso durante su duración + limpieza; el asistente detecta traslapes por separado en mesa y cabina, sugiere huecos válidos y arma la secuencia (uñas → facial) con la duración total. Vista **Carriles** (Mesa · Cabina) en el día.
+- **Expediente de piel** — por clienta: tipo de piel, fototipo, sensibilidad, alergias, contraindicaciones, objetivo, rutina en casa y notas de evolución fechadas. Vive en su propia tabla, sin acceso desde el portal público.
+- **Finanzas por rama** — cobrado, número de servicios y ticket promedio de uñas vs. skin care en el periodo.
 
 ## 🎨 Diseño (v6)
 
@@ -37,10 +40,15 @@ Los tokens viven en `:root` dentro de `index.html`; cambiar la paleta es editar 
 
 ```
 .
-├── index.html              # La aplicación completa
-├── supabase_schema.sql     # Esquema de base de datos para la nube
-└── README.md               # Este archivo
+├── index.html                                   # La aplicación completa
+├── portal.html                                  # Portal público de la clienta (código de cita, sellos)
+├── supabase/migrations/20260905_multiservicio.sql  # Columnas de rama/duración/recurso, tabla expedientes_piel, índices
+└── README.md                                    # Este archivo
 ```
+
+### Migración multiservicio (v6.1)
+
+Antes de desplegar la v6.1 ejecuta `supabase/migrations/20260905_multiservicio.sql` en el SQL Editor del proyecto. Es aditiva: agrega columnas con valores por defecto a `servicios` (categoría `nails`, 60 min, recurso `mesa`), crea `expedientes_piel` con RLS por negocio (sin política de lectura para el portal) y dos índices en `citas`. Las citas anteriores siguen funcionando: sin `d`/`r` en sus `items`, la app las trata como un solo bloque en la mesa.
 
 ## 🛠️ Uso local
 
