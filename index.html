@@ -974,6 +974,23 @@ body{font-optical-sizing:auto;font-feature-settings:'tnum' 1,'cv11' 1}
 .foto-x{position:absolute;right:6px;top:2px;color:#fff;font-size:20px;text-shadow:0 1px 3px rgba(0,0,0,.6);cursor:pointer}
 .fotos-actions{display:flex;gap:8px}
 .fotos-actions .btn{flex:1;padding:11px 6px;font-size:12.5px;margin-top:0}
+/* --- v6.4: barra de navegación limpia y visible --- */
+/* Las hojas ocultas (translateY(100%)) dejaban asomar sus sombras apiladas sobre el borde inferior:
+   ese era el "degradado" detrás del menú. Ocultas de verdad hasta que se abren. */
+.sheet{visibility:hidden;pointer-events:none;transition:transform .3s cubic-bezier(.3,.8,.3,1),visibility 0s linear .3s}
+.sheet.show{visibility:visible;pointer-events:auto;transition:transform .3s cubic-bezier(.3,.8,.3,1),visibility 0s}
+body::before{display:none}
+.nav{background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(74,18,36,.06);padding:6px 6px calc(6px + env(safe-area-inset-bottom));gap:2px}
+.nav button{position:relative;gap:2px;padding:4px 2px 6px;color:var(--ink2);min-height:56px;justify-content:flex-start}
+.nav button::before{content:"";display:block;position:static;width:52px;height:32px;border-radius:16px;background:transparent;margin-bottom:-32px;transition:background .18s}
+.nav button svg{width:24px;height:24px;stroke-width:1.8;position:relative;margin-top:4px;margin-bottom:4px}
+.nav button .t{font-size:11.5px;font-weight:500;letter-spacing:0;color:var(--ink2)}
+.nav button.on{color:var(--wine)}
+.nav button.on::before{background:var(--mauve-pale);top:auto;height:32px;width:52px}
+.nav button.on svg{stroke-width:2.1}
+.nav button.on .t{color:var(--wine);font-weight:700}
+.nav button:active{transform:scale(.96)}
+.fab{bottom:calc(88px + env(safe-area-inset-bottom))}
 .btn-signout{border:1px solid var(--line);border-radius:var(--r2);color:var(--ink2)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -4404,7 +4421,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='6.3';
+const APP_VERSION='6.4';
 const APP_BUILD='5 jul';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
