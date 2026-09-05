@@ -15,9 +15,16 @@ App de gestión para nail estudio profesional privado. Agenda de citas, control 
 - **Insights** — resumen inteligente, KPIs, gráfica de ingresos y ranking de servicios más vendidos.
 - **Menú de servicios** — precio, costo real, margen, descripción y qué incluye.
 
-## 🎨 Diseño
+## 🎨 Diseño (v6)
 
-Estética editorial premium: fondo crema (`#F8EFE6`), acentos en vino, mauve y dorado, tipografía serif (Cormorant Garamond) + sans (Jost). Pensada mobile-first.
+Estética editorial premium, pensada mobile-first:
+
+- **Color:** porcelana (`#F9F4EE`) de fondo, borgoña profundo (`#4A1224`) como color de marca, champán (`#C5A880`) para el botón flotante y acentos, malva (`#A07484`) secundario. Lavanda (`#6E5B9C`) reservada para la futura rama Skin Care.
+- **Tipografía:** Bodoni Moda (títulos, montos y horas) + Figtree (texto, listas y controles). Bodoni no baja de 17 px; por debajo manda Figtree.
+- **Estructura:** cabecera compacta (logo + estado), pantalla de inicio **Hoy** (siguiente cita, acciones rápidas y agenda del día en lista), 5 tabs — *Hoy · Citas · Clientas · Finanzas · Menú* — donde Finanzas reúne Ingresos, Egresos e Insights. Botón flotante con etiqueta que dice qué crea en cada pantalla.
+- **Componentes:** tarjetas blancas con borde fino y sombra suave (radio 20), segmentos con pastilla blanca, filtros como fila de chips, etiquetas de estado cortas con un color por significado.
+
+Los tokens viven en `:root` dentro de `index.html`; cambiar la paleta es editar esas variables.
 
 ## 🚀 Tecnología
 
