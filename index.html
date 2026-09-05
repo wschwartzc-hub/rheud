@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#F9F4EE">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   /* v6 · Dirección A: borgoña profundo + champán + porcelana */
@@ -40,8 +40,9 @@
   --skin:#6E5B9C;
   --skin-bg:#ECE7F4;
   --skin-ink:#4F3F7A;
-  --serif:'Bodoni Moda','Didot','Bodoni 72',Georgia,serif;
-  --sans:'Figtree',system-ui,'Segoe UI',sans-serif;
+  /* Legibilidad primero: una sola familia (Inter) para títulos, montos y texto */
+  --serif:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --shadow:0 6px 24px rgba(74,18,36,.05);
   --shadow-lg:0 18px 50px rgba(74,18,36,.14);
   --r:20px;
@@ -740,10 +741,21 @@ body::before{
 .amt-strike{color:var(--muted);text-decoration:line-through;font-size:13px;font-weight:400;margin-right:3px}
 
 /* =====================================================================
-   v6 · Rediseño UI/UX (Dirección A · Bodoni Moda + Figtree)
+   v6 · Rediseño UI/UX (Dirección A · Inter desde v6.3)
    Capa de sobreescritura sobre los componentes existentes.
    ===================================================================== */
-body{font-optical-sizing:auto}
+body{font-optical-sizing:auto;font-feature-settings:'tnum' 1,'cv11' 1}
+/* títulos y montos: Inter pesada, tracking cerrado, sin trazos finos */
+.section-title,.greet,.sheet h3,.stat .val,.kpi .v,.num,.price,.sc-p,.nc-name,.nc-price,.tl .pr,.appt .time .h,.appt .price,.csum .cv,.rank .num,.rank .rc .a,.tr-val,.histitem .hp,.detail-hero .nm,.agenda-label,.daychip .num,.wk-head .wd .dn,.code-val,.loy-head span:first-child,.pref-title,.evo-d .num,.rama-v,.ag-count .agc-num,.val-esp b,.frase-mot p,.login-sub{font-family:var(--sans);font-weight:700;letter-spacing:-.02em}
+.frase-mot p{font-weight:500;letter-spacing:0;font-size:15px}
+.pref-title{font-size:16px;letter-spacing:-.01em}
+/* textos pequeños un punto más grandes */
+.row .info .det,.det{font-size:12.5px}
+.tl .sv,.sc-desc,.svc-opt .om,.hoy-sub,.seq-lbl{font-size:13px}
+.nav button .t{font-size:11px}
+.tag,.pill,.badge,.pr-badge{font-size:11px}
+.sc-meta,.stat .sub,.kpi-sub{font-size:12.5px}
+.field label,.eyebrow,.divider,.stat .lbl,.kpi .l,.csum .cl,.chartcard .ct{font-size:11px;letter-spacing:1px}
 #app{padding-bottom:110px}
 /* --- cabecera compacta --- */
 .topbar{background:var(--ivory);color:var(--ink);padding:12px 20px 6px;text-align:left;box-shadow:none;display:flex;align-items:center;gap:10px}
@@ -760,7 +772,7 @@ body{font-optical-sizing:auto}
 .sb-conndot{width:7px;height:7px;background:var(--muted)}
 .sb-conn.on .sb-conndot{background:#4FBF8C}
 /* --- títulos --- */
-.section-title{font-family:var(--serif);font-size:30px;font-weight:600;color:var(--wine);letter-spacing:-.01em;line-height:1.05;margin:6px 2px 16px}
+.section-title{font-family:var(--serif);font-size:28px;font-weight:700;color:var(--wine);letter-spacing:-.02em;line-height:1.05;margin:6px 2px 16px}
 .section-title small{font-family:var(--sans);font-weight:500;font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink2)}
 .divider{font-size:10.5px;letter-spacing:1.4px;font-weight:600;color:var(--mauve);margin:22px 2px 10px}
 .eyebrow{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--mauve);font-weight:600}
@@ -769,7 +781,7 @@ body{font-optical-sizing:auto}
 .h2 .more{font-size:12px;color:var(--wine);font-weight:600}
 /* --- Hoy --- */
 .hoy-head{padding:6px 2px 14px}
-.greet{font-family:var(--serif);font-size:30px;font-weight:600;color:var(--wine);line-height:1.05;letter-spacing:-.01em;margin:0;max-height:none;opacity:1}
+.greet{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--wine);line-height:1.1;letter-spacing:-.02em;margin:0;max-height:none;opacity:1}
 .greet b{color:var(--wine);font-weight:600}
 .hoy-sub{font-size:13px;color:var(--ink2);margin-top:5px;line-height:1.45}
 .hoy-sub b{font-weight:600;color:var(--ink)}
@@ -4392,7 +4404,7 @@ function closeSheet(){
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='6.2';
+const APP_VERSION='6.3';
 const APP_BUILD='5 jul';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');

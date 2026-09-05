@@ -23,7 +23,7 @@ App de gestión para nail estudio profesional privado. Agenda de citas, control 
 Estética editorial premium, pensada mobile-first:
 
 - **Color:** porcelana (`#F9F4EE`) de fondo, borgoña profundo (`#4A1224`) como color de marca, champán (`#C5A880`) para el botón flotante y acentos, malva (`#A07484`) secundario. Lavanda (`#6E5B9C`) reservada para la futura rama Skin Care.
-- **Tipografía:** Bodoni Moda (títulos, montos y horas) + Figtree (texto, listas y controles). Bodoni no baja de 17 px; por debajo manda Figtree.
+- **Tipografía:** Inter en toda la app (v6.3). Títulos y montos en Inter 700 con tracking cerrado; texto y controles en 400–600, números tabulares. Se eligió por legibilidad en pantalla pequeña: la serif de alto contraste de la v6.0 cansaba la vista.
 - **Estructura:** cabecera compacta (logo + estado), pantalla de inicio **Hoy** (siguiente cita, acciones rápidas y agenda del día en lista), 5 tabs — *Hoy · Citas · Clientas · Finanzas · Menú* — donde Finanzas reúne Ingresos, Egresos e Insights. Botón flotante con etiqueta que dice qué crea en cada pantalla.
 - **Componentes:** tarjetas blancas con borde fino y sombra suave (radio 20), segmentos con pastilla blanca, filtros como fila de chips, etiquetas de estado cortas con un color por significado.
 
