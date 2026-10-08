@@ -148,7 +148,7 @@ async function recordatorios(vapid: Vapid) {
     if (!subs.length) continue;
     const { data, error } = await admin.from('citas')
       .select('id, clienta_id, items, fecha, hora, estado')
-      .eq('negocio_id', negocio).eq('estado', 'agendada').in('fecha', fechas);
+      .eq('negocio_id', negocio).eq('estado', 'agendada').in('fecha', fechas).is('deleted_at', null);
     if (error) throw error;
     const proximas = L.citasEnVentana(data ?? [], ahora, 25, 35) as Cita[];
     if (!proximas.length) continue;
@@ -178,7 +178,7 @@ async function resumen(vapid: Vapid) {
     if (!(await reclamar(negocio, 'resumen', ref))) continue;
     const { data, error } = await admin.from('citas')
       .select('id, fecha, hora, estado, precio, descuento_monto')
-      .eq('negocio_id', negocio).eq('fecha', hoy).neq('estado', 'cancelada');
+      .eq('negocio_id', negocio).eq('fecha', hoy).neq('estado', 'cancelada').is('deleted_at', null);
     if (error) { await soltar('resumen', ref); throw error; }
     const r = await enviarATodas(subs, L.msgResumen(data ?? []), vapid, { ttl: 4 * 3600, topic: 'resumen' });
     if (!r.enviadas && r.fallidas) await soltar('resumen', ref);
@@ -196,7 +196,8 @@ async function confirmar(vapid: Vapid) {
     if (!subs.length) continue;
     const { data, error } = await admin.from('citas')
       .select('id, clienta_id, fecha, hora, estado, confirmada_at')
-      .eq('negocio_id', negocio).eq('fecha', manana).eq('estado', 'agendada').is('confirmada_at', null);
+      .eq('negocio_id', negocio).eq('fecha', manana).eq('estado', 'agendada').is('confirmada_at', null)
+      .is('deleted_at', null);
     if (error) throw error;
     const citas = (data ?? []) as Cita[];
     if (!citas.length) continue;
@@ -217,7 +218,7 @@ async function cambio(body: Record<string, unknown>, vapid: Vapid) {
   if (!L.esUuid(body.cita_id)) return { omitido: 'cita_id inválido' };
   const { data: cita, error } = await admin.from('citas')
     .select('id, negocio_id, clienta_id, items, fecha, hora, estado')
-    .eq('id', body.cita_id as string).maybeSingle();
+    .eq('id', body.cita_id as string).is('deleted_at', null).maybeSingle();
   if (error) throw error;
   if (!cita) return { omitido: 'la cita ya no existe' };
   const hoy = L.ahoraLocal(new Date()).fecha;

@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Rhēud · Notificaciones push (PWA)                             2026-10-08 · v7
 -- Aditiva e idempotente: se puede volver a correr. Sin cambios destructivos.
+-- Requiere 20261008_01 (mis_negocios) y 20261008_12 (citas.deleted_at).
 --
 -- Antes de usarla, crea los secretos en Vault (los valores NO van en el repo):
 --
@@ -143,7 +144,7 @@ begin
             and (new.estado = 'agendada' or (new.estado = 'cancelada' and old.estado is distinct from 'cancelada'));
   end if;
 
-  if v_avisar and exists (select 1 from public.push_subs s where s.negocio_id = new.negocio_id) then
+  if v_avisar and new.deleted_at is null and exists (select 1 from public.push_subs s where s.negocio_id = new.negocio_id) then
     begin
       perform public.rheud_push_llamar(jsonb_build_object(
         'tarea',   'cambio',
@@ -184,6 +185,7 @@ begin
       select 1
         from public.citas c
        where c.estado = 'agendada'
+         and c.deleted_at is null
          and c.fecha between v_ahora::date and v_ahora::date + 1
          and exists (select 1 from public.push_subs s where s.negocio_id = c.negocio_id)
          and (case when c.hora ~ '^([01]?[0-9]|2[0-3]):[0-5][0-9]$' then c.fecha + c.hora::time end)
