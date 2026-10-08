@@ -1,0 +1,96 @@
+/* Rhēud · ajustes: notificaciones (js/push.js) y verificación en dos pasos
+   (js/seguridad.js). Reusa .sheet, .btn, .btn-primary, .btn-line y .field de
+   css/app.css; aquí solo va lo propio. Colores del diseño C. */
+
+.ntf-sheet, .mfa-sheet, .aj-fila, .mfa-gate {
+  --aj-fondo: #FBF9F7;
+  --aj-tinta: #231C1F;
+  --aj-tenue: #5F565A;
+  --aj-vino: #4A1224;
+  --aj-panel: #F2EEEA;
+  --aj-borde: #ECE6E1;
+  --aj-ok: #3F7A5A;
+  --aj-ok-fondo: #E6F0EA;
+  --aj-alerta: #9A3B33;
+  --aj-alerta-fondo: #F6E6E3;
+}
+
+.ntf-sheet h3, .mfa-sheet h3 { color: var(--aj-vino); }
+.ntf-cuerpo, .mfa-cuerpo { color: var(--aj-tinta); font-size: 15px; line-height: 1.5; }
+.ntf-cuerpo p, .mfa-cuerpo p { margin: 0 0 14px; }
+.ntf-intro { color: var(--aj-tinta); }
+.ntf-nota { font-size: 13px; color: var(--aj-tenue); }
+.ntf-cuerpo b, .mfa-cuerpo b { font-weight: 600; }
+
+/* Iconos de línea */
+.aj-svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.aj-svg-mini { width: 17px; height: 17px; vertical-align: -3px; }
+
+/* Pasos para instalar en iPhone */
+.ntf-pasos { list-style: none; margin: 4px 0 16px; padding: 0; counter-reset: paso; }
+.ntf-pasos li { counter-increment: paso; display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--aj-borde); }
+.ntf-pasos li:last-child { border-bottom: 0; }
+.ntf-ic { position: relative; flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--aj-panel); color: var(--aj-vino); display: flex; align-items: center; justify-content: center; }
+.ntf-ic::after { content: counter(paso); position: absolute; top: -6px; left: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--aj-vino); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.ntf-pasos .ntf-tx { padding-top: 2px; }
+
+/* Lista de tipos de aviso (estado desactivado) */
+.ntf-lista { list-style: none; margin: 0 0 16px; padding: 0; }
+.ntf-lista li { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; }
+.ntf-lista .aj-svg { color: var(--aj-vino); margin-top: 1px; }
+.ntf-lista small, .ntf-tog small, .mfa-fac small { display: block; font-size: 13px; color: var(--aj-tenue); line-height: 1.4; }
+
+/* Estado */
+.ntf-estado { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; margin: 0 0 14px; font-weight: 600; }
+.ntf-estado small { display: block; font-weight: 400; font-size: 13px; color: var(--aj-tenue); }
+.ntf-estado.ok { background: var(--aj-ok-fondo); color: var(--aj-ok); }
+.ntf-estado.bloq { background: var(--aj-alerta-fondo); color: var(--aj-alerta); }
+.ntf-estado.neutro { background: var(--aj-panel); color: var(--aj-tinta); }
+
+/* Interruptores */
+.ntf-togs { margin: 0 0 12px; border-top: 1px solid var(--aj-borde); }
+.ntf-tog { position: relative; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 0; border-bottom: 1px solid var(--aj-borde); cursor: pointer; }
+.ntf-tog-tx { flex: 1; min-width: 0; }
+.ntf-tog input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.ntf-sw { flex: none; position: relative; width: 51px; height: 31px; border-radius: 16px; background: #DDD5CF; transition: background .2s; }
+.ntf-sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(35, 28, 31, .2); transition: transform .2s; }
+.ntf-tog input:checked + .ntf-sw { background: var(--aj-vino); }
+.ntf-tog input:checked + .ntf-sw::after { transform: translateX(20px); }
+.ntf-tog input:focus-visible + .ntf-sw { outline: 2px solid var(--aj-vino); outline-offset: 2px; }
+.ntf-tog input:disabled + .ntf-sw { opacity: .55; }
+
+.ntf-sheet .btn, .mfa-sheet .btn, .mfa-gate .btn { min-height: 48px; }
+.ntf-sheet .btn:disabled, .mfa-sheet .btn:disabled, .mfa-gate .btn:disabled { opacity: .6; }
+.btn.aj-peligro { color: var(--aj-alerta); }
+
+/* Filas en "Más" → #masAjustes */
+.aj-fila { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 60px; padding: 10px 4px; background: none; border: 0; border-bottom: 1px solid var(--aj-borde); color: var(--aj-tinta); font: inherit; text-align: left; cursor: pointer; }
+.aj-fila:active { background: var(--aj-panel); }
+.aj-fila .aj-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--aj-panel); color: var(--aj-vino); display: flex; align-items: center; justify-content: center; }
+.aj-fila .aj-tx { flex: 1; min-width: 0; }
+.aj-fila .aj-tx b { display: block; font-weight: 600; font-size: 15px; }
+.aj-fila .aj-tx small { display: block; font-size: 13px; color: var(--aj-tenue); }
+.aj-fila .aj-chev { color: var(--aj-tenue); display: flex; }
+
+/* Verificación en dos pasos */
+.mfa-qr { display: flex; justify-content: center; margin: 4px 0 12px; }
+.mfa-qr img { width: 208px; height: 208px; background: #fff; border: 1px solid var(--aj-borde); border-radius: 14px; padding: 10px; }
+.mfa-clave { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; letter-spacing: .5px; word-break: break-all; background: var(--aj-panel); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; user-select: all; -webkit-user-select: all; }
+.mfa-acciones { display: flex; gap: 10px; margin: 0 0 16px; }
+.mfa-acciones .btn { margin-top: 0; flex: 1; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; }
+.mfa-codigo { font-size: 26px !important; letter-spacing: 10px; text-align: center; font-variant-numeric: tabular-nums; }
+.mfa-err { min-height: 20px; font-size: 13px; color: var(--aj-alerta); margin: -6px 0 8px; }
+.mfa-fac { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--aj-borde); }
+.mfa-fac .aj-svg { color: var(--aj-vino); }
+
+/* Pantalla de código al entrar */
+.mfa-gate { position: fixed; inset: 0; z-index: 210; background: var(--aj-fondo); display: flex; align-items: center; justify-content: center; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); overflow-y: auto; }
+.mfa-card { width: 100%; max-width: 360px; text-align: center; color: var(--aj-tinta); }
+.mfa-card .mfa-logo { height: 34px; width: auto; margin: 0 auto 22px; display: block; }
+.mfa-card .ntf-ic { margin: 0 auto 14px; }
+.mfa-card .ntf-ic::after { display: none; }
+.mfa-card h2 { font-size: 22px; font-weight: 700; color: var(--aj-vino); margin: 0 0 8px; letter-spacing: -.01em; }
+.mfa-card p { font-size: 15px; color: var(--aj-tenue); margin: 0 0 18px; line-height: 1.5; }
+.mfa-card .field { text-align: left; }
+.mfa-sep { margin-top: 14px !important; }
+.ntf-cuerpo .btn + .ntf-nota { margin-top: 10px; }
