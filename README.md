@@ -18,71 +18,95 @@ App de gestión para nail estudio profesional privado. Agenda de citas, control 
 - **Expediente de piel** — por clienta: tipo de piel, fototipo, sensibilidad, alergias, contraindicaciones, objetivo, rutina en casa, notas de evolución fechadas y **fotos antes / después / seguimiento** (bucket privado, URL firmada). Vive en sus propias tablas, sin acceso desde el portal público. Al agendar un facial, la cita muestra el resumen del expediente y los requisitos del servicio.
 - **Finanzas e Insights por rama** — cobrado, servicios y ticket promedio de uñas vs. skin care; **retención** (clientas del periodo anterior que volvieron), **recompra** (atendidas que ya habían venido) y sugerencia de venta cruzada (clientas frecuentes de uñas sin ningún facial).
 
-## 🎨 Diseño (v6)
+## 🎨 Diseño (v7 · Opción C «Spa multiservicio»)
 
-Estética editorial premium, pensada mobile-first:
+Mobile-first, pensado para usarse con una mano en el iPhone:
 
-- **Color:** porcelana (`#F9F4EE`) de fondo, borgoña profundo (`#4A1224`) como color de marca, champán (`#C5A880`) para el botón flotante y acentos, malva (`#A07484`) secundario. Lavanda (`#6E5B9C`) reservada para la futura rama Skin Care.
-- **Tipografía:** Inter en toda la app (v6.3). Títulos y montos en Inter 700 con tracking cerrado; texto y controles en 400–600, números tabulares. Se eligió por legibilidad en pantalla pequeña: la serif de alto contraste de la v6.0 cansaba la vista.
-- **Estructura:** cabecera compacta (logo + estado), pantalla de inicio **Hoy** (siguiente cita, acciones rápidas y agenda del día en lista), 5 tabs — *Hoy · Citas · Clientas · Finanzas · Menú* — donde Finanzas reúne Ingresos, Egresos e Insights. Botón flotante con etiqueta que dice qué crea en cada pantalla.
-- **Componentes:** tarjetas blancas con borde fino y sombra suave (radio 20), segmentos con pastilla blanca, filtros como fila de chips, etiquetas de estado cortas con un color por significado.
+- **Color:** fondo `#FBF9F7`, paneles `#F2EEEA`, tarjetas blancas con borde `#ECE6E1`. Tinta `#231C1F` / `#3E3540` / `#5F565A` (todo texto ≥ 4.5:1). Vino `#4A1224` solo para la acción principal, la selección activa y la marca. Cada rama tiene su color: uñas (rosa `#F9E8EE` / `#C9708E`) y piel (lila `#EEEAF7` / `#8C7BC0`). Estados: ok, aviso y adeudo con fondo suave y texto oscuro. Champán `#C5A880` solo como detalle.
+- **Tipografía:** Manrope 400–800 con números tabulares; campos a 16 px.
+- **Estructura:** cabecera con logo, «En línea» y campana; barra inferior *Hoy · Citas · [+] · Clientas · Más*, con el «+» central (Nueva cita). **Hoy** muestra la agenda por carriles (Mesa de uñas · Cabina facial) con limpieza rayada, línea de «ahora» y huecos libres para agendar. **Más** reúne Finanzas, Menú y premios, Datos del estudio y la sesión.
+- **Iconos:** solo de línea (`js/app/02-iconos.js`); los emojis quedan únicamente en los mensajes de WhatsApp.
+- **Accesibilidad:** etiquetas en todos los campos, hojas como diálogos (foco inicial, foco atrapado, Escape y retorno del foco), estados de pestañas y segmentados con ARIA, foco visible y objetivos táctiles de 44 px.
 
-Los tokens viven en `:root` dentro de `index.html`; cambiar la paleta es editar esas variables.
+Los tokens viven en `:root` dentro de `css/app.css`; cambiar la paleta es editar esas variables.
+
+## 🔔 Notificaciones (iPhone y Android)
+
+La app avisa en el celular: **recordatorio 30 min antes** de cada cita, **resumen del día** hacia las 8:00, **citas de mañana sin confirmar** hacia las 18:00 y **cambios** (cita nueva, movida, cancelada o reactivada) hechos por otra persona del estudio. Cada tipo se puede apagar por dispositivo.
+
+En iPhone (iOS 16.4 o más reciente) las notificaciones solo funcionan con la app instalada:
+
+1. Abrir la app en **Safari** → botón Compartir → **Agregar a pantalla de inicio**.
+2. Abrir Rhēud **desde el ícono** de la pantalla de inicio e iniciar sesión otra vez (la app instalada no comparte la sesión de Safari).
+3. Tocar la **campana** de la cabecera → *Activar notificaciones* → Permitir. Llega un aviso de prueba.
+
+Se activa en cada dispositivo por separado. Si se borra la app de la pantalla de inicio hay que volver a activarla.
 
 ## 🚀 Tecnología
 
-- **Frontend:** HTML, CSS y JavaScript en un solo archivo (`index.html`), sin dependencias de build.
-- **Almacenamiento actual:** `localStorage` (los datos viven en cada dispositivo).
-- **Almacenamiento en la nube (en progreso):** Supabase para sincronización multiusuario en tiempo real. Ver `supabase_schema.sql`.
-- **Hosting:** Netlify (PWA instalable en iOS y Android).
+- **Frontend:** HTML, CSS y JavaScript sin paso de build. `index.html` (app del estudio) y `portal.html` (portal de la clienta) cargan scripts clásicos desde `js/`; las librerías van copiadas en `vendor/` con su versión en la ruta (sin CDN).
+- **Datos:** [Supabase](https://supabase.com) (Postgres con RLS por negocio, Storage privado, Realtime, Auth con verificación en dos pasos opcional, pg_cron, Vault y una Edge Function para Web Push).
+- **Hosting:** Netlify, desplegado desde la rama `main`. PWA instalable (`manifest.webmanifest` + `sw.js`).
+- **Seguridad del navegador:** CSP estricta en `_headers` (sin scripts en línea; los eventos usan `data-on-*`, ver `js/app/00-eventos.js`).
 
 ## 📦 Estructura del repositorio
 
 ```
 .
-├── index.html                                   # La aplicación completa
-├── portal.html                                  # Portal público de la clienta (código de cita, sellos)
-├── supabase/migrations/20260905_multiservicio.sql  # Columnas de rama/duración/recurso, tabla expedientes_piel, índices
-├── supabase/migrations/20260905_fotos_piel.sql     # Tabla fotos_piel + bucket privado "expedientes" con políticas por negocio
-└── README.md                                    # Este archivo
+├── index.html                 # App del estudio (marcado; sin JS en línea)
+├── portal.html                # Portal público de la clienta (enlace de su cita o código)
+├── manifest.webmanifest, sw.js  # PWA: instalación, caché del cascarón y notificaciones push
+├── _headers                   # Cabeceras de Netlify (CSP, caché)
+├── css/app.css, css/ajustes.css
+├── js/
+│   ├── app/00-…15-*.js        # App por módulos, en orden de carga (eventos, datos, agenda, citas…)
+│   ├── nucleo.js              # Funciones puras (fechas, huecos de agenda, insights) — con tests
+│   ├── pagos.js               # Cálculo de pagos, saldos y descuentos — con tests
+│   ├── push.js                # Suscripción Web Push (campana)
+│   ├── seguridad.js           # Verificación en dos pasos (TOTP)
+│   └── portal.js              # Portal de la clienta (solo RPC portal_cita / portal_cita_codigo)
+├── assets/                    # Logo e íconos
+├── vendor/                    # supabase-js, html5-qrcode, qrcodejs
+├── supabase/
+│   ├── migrations/            # Cambios de base de datos, en orden
+│   ├── functions/rheud-push/  # Edge Function de notificaciones (Web Push con WebCrypto)
+│   └── esquema.sql            # Foto del esquema de producción (referencia)
+└── tests/                     # node --test (núcleo, pagos, push, eventos)
 ```
 
-### Migraciones multiservicio (v6.1 y v6.2)
-
-Antes de desplegar la v6.1 ejecuta `supabase/migrations/20260905_multiservicio.sql` en el SQL Editor del proyecto. Es aditiva: agrega columnas con valores por defecto a `servicios` (categoría `nails`, 60 min, recurso `mesa`), crea `expedientes_piel` con RLS por negocio (sin política de lectura para el portal) y dos índices en `citas`. Las citas anteriores siguen funcionando: sin `d`/`r` en sus `items`, la app las trata como un solo bloque en la mesa.
-
-La v6.2 añade `20260905_fotos_piel.sql`: tabla `fotos_piel` y el bucket privado `expedientes` (5 MB por foto, solo JPEG/PNG/WebP) con políticas de lectura/subida/borrado limitadas a la carpeta del negocio. Ambas migraciones ya están aplicadas en el proyecto de producción.
-
-## 🛠️ Uso local
-
-No requiere instalación ni servidor. Basta abrir `index.html` en un navegador moderno.
+## 🛠️ Desarrollo
 
 ```bash
-# Opción 1: abrir directamente el archivo
-open index.html
-
-# Opción 2: servirlo localmente
-python3 -m http.server 8000
-# luego visita http://localhost:8000
+npm test                       # pruebas (Node 20+, zona America/Monterrey)
+python3 -m http.server 8000    # servir en http://localhost:8000
 ```
+
+La CI de GitHub (`.github/workflows/ci.yml`) revisa la sintaxis de todos los scripts y corre `npm test` en cada PR.
 
 ## 🌐 Despliegue
 
-1. Crear una cuenta en [Netlify](https://app.netlify.com).
-2. Arrastrar `index.html` a la sección de despliegue (drag & drop).
-3. Asignar un nombre al sitio (ej. `rheud-beauty.netlify.app`).
-4. (Opcional) Conectar un dominio propio.
+Netlify publica automáticamente cada commit en `main` (sitio `rheud-app`) y crea una vista previa por PR. Se despliega **la carpeta completa** (no solo `index.html`): la app necesita `js/`, `css/`, `vendor/`, `assets/`, `sw.js`, `manifest.webmanifest` y `_headers`.
 
-Al actualizar la app, subir el nuevo `index.html` al mismo sitio **no borra** los datos guardados en cada dispositivo.
+Si un cambio necesita una migración, se aplica en Supabase **antes** de publicar la app que la usa (todas son aditivas, así que la versión anterior sigue funcionando). Excepción anotada en la propia migración: `20261008_10_sellos.sql` bloquea los cambios directos de sellos, por eso se aplica justo al publicar la v7.
 
-## ☁️ Nube en tiempo real (Supabase)
+## ☁️ Supabase
 
-Para que varias personas vean las mismas citas en tiempo real:
+Proyecto `wrplznjgravcnxkzfarn`. Las migraciones de `supabase/migrations` se aplican en orden por nombre; todas se pueden volver a correr.
 
-1. Crear un proyecto en [Supabase](https://supabase.com).
-2. Ejecutar `supabase_schema.sql` en el SQL Editor.
-3. Activar Realtime para las tablas `citas`, `clientas` y `servicios`.
-4. Conectar la app con el *Project URL* y la *anon key*.
+| Migración | Qué hace |
+|---|---|
+| `20260905_multiservicio` · `20260905_fotos_piel` | Ramas, duración y recurso de servicios; expediente y fotos de piel (bucket privado) |
+| `20261008_01_seguridad_portal` · `_02_cerrar_lectura_anonima` | RLS por negocio con `mis_negocios()`; el portal solo lee vía RPC con token o código |
+| `20261008_03_indices` | Índices para la carga paginada |
+| `20261008_10_sellos` | Sellos solo por RPC (`sumar_sello`, `ajustar_sellos`, `canjear_premio`) con historial `sellos_log` |
+| `20261008_11_baja_clienta` | Consentimiento de salud y `baja_clienta()` (anonimiza; derechos ARCO) |
+| `20261008_12_bitacora` | Borrado suave en citas y gastos, bitácora de cambios y reglas de precio/descuento/estado |
+| `20261008_20_push` | Suscripciones push, trigger de citas y trabajos de pg_cron |
+| `20261008_21_mfa` | Expedientes y fotos de piel piden verificación en dos pasos si la usuaria la activó |
+
+**Notificaciones:** la Edge Function `rheud-push` se despliega con `verify_jwt = false` porque se autentica sola (secreto de Vault para pg_cron y el trigger; JWT de la usuaria para el aviso de prueba). Las claves VAPID y el secreto viven en Vault (`rheud_vapid_public`, `rheud_vapid_private`, `rheud_vapid_subject`, `rheud_push_cron_secret`); los pasos para crearlos están al inicio de `20261008_20_push.sql`. Si se cambia la clave pública, actualizar también `VAPID_PUBLICA` en `js/push.js`.
+
+**Ajustes del panel de Supabase** (no se pueden hacer con SQL): en *Authentication* desactivar el registro de usuarias nuevas y activar la protección de contraseñas filtradas.
 
 ## 📄 Licencia
 

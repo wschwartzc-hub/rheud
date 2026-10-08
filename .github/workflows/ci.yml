@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sintaxis de los scripts
+        run: |
+          for f in js/*.js js/app/*.js $(ls sw.js 2>/dev/null); do
+            node --check "$f" || exit 1
+          done
+      - name: Tests
+        run: npm test
