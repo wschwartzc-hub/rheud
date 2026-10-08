@@ -408,7 +408,15 @@ b,strong{font-weight:800}
 .mr-go{color:var(--muted)}
 .mas-out .mr-ic{background:var(--bad-bg);color:var(--bad)}
 .mas-out b{color:var(--bad)}
-#masAjustes:not(:empty){margin:0 0 14px}
+/* Notificaciones y verificación en dos pasos (js/push.js, js/seguridad.js):
+   misma tarjeta que el resto de filas de Más */
+#masAjustes:not(:empty){display:flex;flex-direction:column;margin:0 0 14px;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+#masAjustes .aj-fila{min-height:68px;padding:12px 14px;border-bottom:0;border-top:1px solid var(--line)}
+#masAjustes .aj-fila:first-child{border-top:0}
+#masAjustes .aj-fila .aj-ic{width:44px;height:44px}
+#masAjustes .aj-fila .aj-tx b{font-size:16px;font-weight:800}
+#masAjustes .aj-fila .aj-tx small{font-weight:500;color:var(--muted)}
+#masAjustes .aj-fila .aj-chev{color:var(--muted)}
 .mas-ver{margin-top:6px;text-align:center;font-size:13px;color:var(--muted)}
 
 /* Finanzas */
