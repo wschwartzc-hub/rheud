@@ -10,6 +10,8 @@ document.getElementById('intelSeg').addEventListener('click',e=>{
 });
 function atendidasEntre(a,b){return DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=a&&c.fecha<=b)}
 function sumP(arr){return arr.reduce((s,c)=>s+montoCita(c),0)}
+/* lo cobrado de una cita repartido entre sus servicios según su precio */
+function cobradoPorServicio(c){const it=citaItems(c);const partes=NUC.repartir(montoCita(c),it.map(i=>i.p));return it.map((i,k)=>({it:i,monto:partes[k]}))}
 function bucketsFor(start,end){
   const days=Math.round((end-start)/86400000)+1,out=[];
   if(days<=14){
@@ -27,33 +29,28 @@ function bucketsFor(start,end){
 }
 function renderInteligencia(){
   const now=new Date();now.setHours(0,0,0,0);const todayKey=ymd(now);
-  let start,end,rangeLabel;
-  if(intelPeriod==='sem'){
-    const day=now.getDay(),diff=(day===0?6:day-1);
-    start=new Date(now);start.setDate(now.getDate()-diff);end=new Date(now);rangeLabel='Esta semana';
-  }else if(intelPeriod==='mes'){
-    start=new Date(now.getFullYear(),now.getMonth(),1);end=new Date(now);rangeLabel=MONF[now.getMonth()]+' '+now.getFullYear();
-  }else if(intelPeriod==='ano'){
-    start=new Date(now.getFullYear(),0,1);end=new Date(now);rangeLabel=String(now.getFullYear());
-  }else{
-    start=new Date((document.getElementById('iDesde').value||todayKey)+'T00:00:00');
-    end=new Date((document.getElementById('iHasta').value||todayKey)+'T00:00:00');
-    if(end<start){const t=start;start=end;end=t;}
-    rangeLabel=`${start.getDate()} ${MON[start.getMonth()]} – ${end.getDate()} ${MON[end.getMonth()]}`;
-  }
-  const startKey=ymd(start),endKey=ymd(end);
+  // periodo actual y el mismo tramo del periodo anterior (ver rangoInsights en js/nucleo.js)
+  const R=NUC.rangoInsights(intelPeriod,todayKey,document.getElementById('iDesde').value,document.getElementById('iHasta').value);
+  const start=NUC.parseYmd(R.desde),end=NUC.parseYmd(R.hasta);
+  let rangeLabel;
+  if(intelPeriod==='sem')rangeLabel='Esta semana';
+  else if(intelPeriod==='mes')rangeLabel=MONF[now.getMonth()]+' '+now.getFullYear();
+  else if(intelPeriod==='ano')rangeLabel=String(now.getFullYear());
+  else rangeLabel=`${start.getDate()} ${MON[start.getMonth()]} – ${end.getDate()} ${MON[end.getMonth()]}`;
+  const startKey=R.desde,endKey=R.hasta;
   const bf=bucketsFor(start,end),buckets=bf.buckets,gran=bf.gran;
-  const lenMs=end-start,prevEnd=new Date(start.getTime()-86400000),prevStart=new Date(prevEnd.getTime()-lenMs);
   const cur=atendidasEntre(startKey,endKey);
-  const prev=atendidasEntre(ymd(prevStart),ymd(prevEnd));
+  const prev=atendidasEntre(R.prevDesde,R.prevHasta);
   document.getElementById('intelRange').textContent=rangeLabel;
 
-  const ingresos=cur.reduce((s,c)=>s+Number(c.precio||0),0),cobrado=cur.reduce((s,c)=>s+montoCita(c),0),porCobrar=cur.reduce((s,c)=>s+deudaCita(c),0);
+  // misma métrica en ambos lados: lo cobrado
+  const cobrado=sumP(cur),porCobrar=cur.reduce((s,c)=>s+deudaCita(c),0);
+  const ingresos=cobrado;
   const nCitas=cur.length,ticket=nCitas?Math.round(ingresos/nCitas):0;
   const prevIng=sumP(prev);
   let delta=null;if(prevIng>0)delta=Math.round(((ingresos-prevIng)/prevIng)*100);
 
-  const svcMap={};cur.forEach(c=>{citaItems(c).forEach(it=>{const k=it.id||it.n;if(!svcMap[k])svcMap[k]={n:it.n||'Servicio',count:0,rev:0};svcMap[k].count++;svcMap[k].rev+=Number(it.p||0);});});
+  const svcMap={};cur.forEach(c=>{cobradoPorServicio(c).forEach(({it,monto})=>{const k=it.id||it.n;if(!svcMap[k])svcMap[k]={n:it.n||'Servicio',count:0,rev:0};svcMap[k].count++;svcMap[k].rev+=monto;});});
   const topSvc=Object.values(svcMap).sort((a,b)=>b.rev-a.rev);
   const dowTally=[0,0,0,0,0,0,0];cur.forEach(c=>{dowTally[new Date(c.fecha+'T00:00:00').getDay()]++});
   const maxDow=Math.max(...dowTally);const busyDay=maxDow>0?DOW[dowTally.indexOf(maxDow)]:null;
@@ -63,7 +60,7 @@ function renderInteligencia(){
 
   // ===== POR RAMA (uñas vs skin care) =====
   const rama={nails:{rev:0,n:0},skin:{rev:0,n:0},otro:{rev:0,n:0}};
-  cur.forEach(c=>{citaItems(c).forEach(it=>{const s=svcById(it.id);const cat=it.cat||(s?s.cat:'nails')||'nails';rama[cat]=rama[cat]||{rev:0,n:0};rama[cat].rev+=Number(it.p||0);rama[cat].n++;});});
+  cur.forEach(c=>{cobradoPorServicio(c).forEach(({it,monto})=>{const s=svcById(it.id);const cat=it.cat||(s?s.cat:'nails')||'nails';rama[cat]=rama[cat]||{rev:0,n:0};rama[cat].rev+=monto;rama[cat].n++;});});
   const hasSkin=DB.servicios.some(s=>s.cat==='skin')||rama.skin.n>0;
   // Retención: de las clientas atendidas en el periodo anterior, ¿qué % volvió en este?
   const prevIds=new Set(prev.map(c=>c.clientaId)),curIds=new Set(cur.map(c=>c.clientaId));
@@ -79,7 +76,7 @@ function renderInteligencia(){
   const prevTicket=prevNCitas?Math.round(sumP(prev)/prevNCitas):0;
   // clientas nuevas del periodo anterior
   const prevClientas=[...new Set(prev.map(c=>c.clientaId))];
-  let prevNuevas=0;prevClientas.forEach(id=>{const first=DB.citas.filter(c=>c.clientaId===id&&c.estado==='atendida').map(c=>c.fecha).sort()[0];if(first&&first>=ymd(prevStart)&&first<=ymd(prevEnd))prevNuevas++;});
+  let prevNuevas=0;prevClientas.forEach(id=>{const first=DB.citas.filter(c=>c.clientaId===id&&c.estado==='atendida').map(c=>c.fecha).sort()[0];if(first&&first>=R.prevDesde&&first<=R.prevHasta)prevNuevas++;});
   function pctChange(now,before){if(before<=0)return null;return Math.round(((now-before)/before)*100);}
   const dCitas=pctChange(nCitas,prevNCitas);
   const dTicket=pctChange(ticket,prevTicket);
@@ -127,7 +124,7 @@ function renderInteligencia(){
     ${nCitas>0?`<div class="divider">Tendencia vs ${periodoPrevLabel}</div>
     <div class="trends">
       ${trendChip('Citas',nCitas,prevNCitas,dCitas)}
-      ${trendChip('Ingresos',ingresos,prevIng,delta,fmtMoney)}
+      ${trendChip('Cobrado',ingresos,prevIng,delta,fmtMoney)}
       ${trendChip('Ticket prom.',ticket,prevTicket,dTicket,fmtMoney)}
       ${trendChip('Clientas nuevas',nuevas,prevNuevas,dNuevas)}
     </div>`:''}
@@ -140,7 +137,7 @@ function renderInteligencia(){
       <div class="kpi"><div class="l">Ticket promedio</div><div class="v">${fmtMoney(ticket)}</div></div>
     </div>
     <div class="chartcard"><div class="ct">Ingresos por ${gran}</div><div class="bars">${barsHtml}</div></div>
-    ${hasSkin?`<div class="chartcard rama-intel"><div class="ct">Por rama</div>${['nails','skin'].map(cat=>{const x=rama[cat];const tot=rama.nails.rev+rama.skin.rev+(rama.otro?rama.otro.rev:0);const pct=tot?Math.round(x.rev/tot*100):0;const tk=x.n?Math.round(x.rev/x.n):0;const col=cat==='skin'?'#6A57B8':'#A03F66';return `<div class="rama-row"><div class="rama-top"><span class="rama-dot" style="background:${col}"></span><span class="rama-n">${catLabel(cat)}</span><span class="rama-meta">${x.n} servicio${x.n!==1?'s':''}${tk?` · ticket ${fmtMoney(tk)}`:''}</span><span class="rama-v num">${fmtMoney(x.rev)}</span></div><div class="rama-bar"><div style="width:${pct}%;background:${col}"></div></div></div>`;}).join('')}</div>`:''}
+    ${hasSkin?`<div class="chartcard rama-intel"><div class="ct">Por rama</div>${['nails','skin'].map(cat=>{const x=rama[cat];const tot=rama.nails.rev+rama.skin.rev+(rama.otro?rama.otro.rev:0);const pct=tot?Math.round(x.rev/tot*100):0;const tk=x.n?Math.round(x.rev/x.n):0;const col=cat==='skin'?'#6A57B8':'#A03F66';return `<div class="rama-row"><div class="rama-top"><span class="rama-dot" style="background:${col}"></span><span class="rama-n">${catLabel(cat)}</span><span class="rama-meta">${x.n} servicio${x.n!==1?'s':''}${tk?` · ticket ${fmtMoney(tk)}`:''}</span><span class="rama-v num">${fmtMoney(Math.round(x.rev))}</span></div><div class="rama-bar"><div style="width:${pct}%;background:${col}"></div></div></div>`;}).join('')}</div>`:''}
     <div class="kpis">
       <div class="kpi"><div class="l">Clientas nuevas</div><div class="v">${nuevas}</div></div>
       <div class="kpi"><div class="l">Recurrentes</div><div class="v">${recurrentes}</div></div>
@@ -148,6 +145,6 @@ function renderInteligencia(){
       <div class="kpi"><div class="l">Recompra</div><div class="v">${recompra===null?'—':recompra+'%'}</div><div class="kpi-sub">de las atendidas ya habían venido</div></div>
     </div>
     <div class="divider">Servicios más vendidos</div>
-    ${topSvc.length?topSvc.slice(0,5).map((s,i)=>`<div class="rank"><div class="num">${i+1}</div><div class="rn">${s.n}</div><div class="rc"><div class="a">${fmtMoney(s.rev)}</div><div class="b">${s.count} vez${s.count!==1?'es':''}</div></div></div>`).join(''):'<p style="color:var(--muted);font-size:13px;font-weight:300;padding:4px 2px">Sin datos todavía.</p>'}
+    ${topSvc.length?topSvc.slice(0,5).map((s,i)=>`<div class="rank"><div class="num">${i+1}</div><div class="rn">${s.n}</div><div class="rc"><div class="a">${fmtMoney(Math.round(s.rev))}</div><div class="b">${s.count} vez${s.count!==1?'es':''}</div></div></div>`).join(''):'<p style="color:var(--muted);font-size:13px;font-weight:300;padding:4px 2px">Sin datos todavía.</p>'}
   `;
 }

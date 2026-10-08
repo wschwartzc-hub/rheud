@@ -7,18 +7,21 @@ function fmtMoney(n){return '$'+Number(n||0).toLocaleString('es-MX')}
 const ESC_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>ESC_MAP[c])}
 function getApptDur(){const h=Number(document.getElementById('apptDurH').value)||0;const m=Number(document.getElementById('apptDurM').value)||0;return h*60+m;}
-function setApptDur(min){min=Number(min)||60;const h=Math.floor(min/60);let m=min%60;if(![0,15,30,45].includes(m))m=Math.round(m/15)*15%60;const hSel=document.getElementById('apptDurH'),mSel=document.getElementById('apptDurM');hSel.value=String(Math.min(h,8));mSel.value=String(m);}
+/* los selectores van de 15 en 15: se redondea hacia arriba (55 min → 1 h, no 0) */
+function setApptDur(min){min=Math.min(Math.ceil((Number(min)||60)/15)*15,8*60+45);const h=Math.floor(min/60),m=min%60;document.getElementById('apptDurH').value=String(h);document.getElementById('apptDurM').value=String(m);}
 function fmtDur(min){min=Number(min)||0;const h=Math.floor(min/60),m=min%60;if(h&&m)return `${h} h ${m} min`;if(h)return `${h} h`;return `${m} min`;}
 function citaItems(c){if(c.items&&c.items.length)return c.items;const s=DB.servicios.find(x=>x.id===c.servicioId);return [{id:c.servicioId||'',n:(s?s.n:(c.svcName||'Servicio')),p:Number(c.precio||0)}]}
-/* monto realmente cobrado: usa 'cobrado' si la dueña aplicó descuento, si no el precio */
+/* cobrado y adeudo de citas atendidas; una sola fórmula (js/pagos.js) */
 function montoCita(c){
   if(c.estado!=='atendida')return 0;
-  return pagosSummary(c).cobrado;
+  return resumenPago(c).cobrado;
 }
 function deudaCita(c){
   if(c.estado!=='atendida')return 0;
-  return pagosSummary(c).deuda;
+  return resumenPago(c).saldo;
 }
+/* total a cobrar: precio − descuento */
+function totalNeto(c){return resumenPago(c).total}
 function svcDisplay(c){const it=citaItems(c);if(it.length<=1)return it[0]?it[0].n:(c.svcName||'Servicio');return it[0].n+' +'+(it.length-1)}
 function svcFull(c){return citaItems(c).map(i=>i.n).join(' · ')}
 function fmt12(t){if(!t)return '';let[h,m]=t.split(':').map(Number);const ap=h>=12?'PM':'AM';h=h%12||12;return {h:h+':'+String(m).padStart(2,'0'),ap}}
