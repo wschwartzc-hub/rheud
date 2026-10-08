@@ -8,7 +8,7 @@
    Si cambia algo dentro de assets/ (logo, iconos), sube VERSION: esos
    archivos se sirven de la caché y solo se renuevan con una versión nueva. */
 
-const VERSION = 'v7.0.1';
+const VERSION = 'v7.1.0';
 const CACHE = `rheud-${VERSION}`;
 const VAPID_PUBLICA = 'BAd_ntg7CVK5fkBBpbAD8rLlznVl27BJku_aKsYERCY4Z2_pwu9GSsCgytUXsEvgED7jOqzfr64xnNocAjgJpaw';
 const FUNCION_PUSH = 'https://wrplznjgravcnxkzfarn.supabase.co/functions/v1/rheud-push';
@@ -42,7 +42,8 @@ const SHELL = [
   'vendor/supabase-js-2.117.1/supabase.js',
   'vendor/qrcodejs-1.0.0/qrcode.min.js',
   'vendor/html5-qrcode-2.3.8/html5-qrcode.min.js',
-  'assets/logo.png',
+  'assets/logo.svg',
+  'assets/icon.svg',
   'assets/icon-192.png',
   'assets/icon-512.png',
   'assets/icon-maskable-192.png',
