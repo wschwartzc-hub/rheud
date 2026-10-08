@@ -472,6 +472,7 @@
   <!-- EXPEDIENTE DE PIEL (Skin Care) -->
   <div class="pref-section piel-section">
     <div class="pref-title">Expediente de piel <span class="pref-when" id="pielWhen"></span></div>
+    <label class="acc-check"><input type="checkbox" id="pielConsent" data-on-change="setConsentimiento(this.checked)"> <span>La clienta autorizó guardar sus datos de salud y fotos<span id="pielConsentFecha"></span></span></label>
     <div class="field"><label>Tipo de piel</label>
       <div class="chips" id="pielTipoChips">
         <div class="chip" data-t="Normal">Normal</div><div class="chip" data-t="Seca">Seca</div><div class="chip" data-t="Mixta">Mixta</div><div class="chip" data-t="Grasa">Grasa</div><div class="chip" data-t="Sensible">Sensible</div>
@@ -513,6 +514,7 @@
   <div id="cliHist"></div>
   <button class="btn btn-primary" style="margin-top:18px" data-on-click="openAccionesClienta()">Acciones · Comunicarme</button>
   <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button class="btn btn-ghost" id="cliBajaBtn" data-on-click="bajaClienta()">Eliminar datos de la clienta</button>
 </div>
 
 <!-- HOJA DE ACCIONES (reutilizable) -->

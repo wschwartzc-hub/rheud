@@ -1,25 +1,50 @@
 /* ---------------- EXPEDIENTE DE PIEL ---------------- */
-function rowToExp(r){return {id:r.id,clientaId:r.clienta_id,tipo:r.tipo||'',fototipo:r.fototipo||'',sensibilidad:r.sensibilidad||'',alergias:r.alergias||'',contra:r.contraindicaciones||'',objetivo:r.objetivo||'',rutina:r.rutina||'',evolucion:Array.isArray(r.evolucion)?r.evolucion:[],updatedAt:r.updated_at||''}}
+// cada nota lleva id; a las viejas sin id se les da uno estable (igual en cada carga)
+function rowToExp(r){const evo=Array.isArray(r.evolucion)?r.evolucion:[];return {id:r.id,clientaId:r.clienta_id,tipo:r.tipo||'',fototipo:r.fototipo||'',sensibilidad:r.sensibilidad||'',alergias:r.alergias||'',contra:r.contraindicaciones||'',objetivo:r.objetivo||'',rutina:r.rutina||'',evolucion:evo.map((n,i)=>(n&&n.id)?n:{...n,id:NUC.idNota(n,i)}),updatedAt:r.updated_at||''}}
 function expToRow(e){return {negocio_id:NEGOCIO_ID,clienta_id:e.clientaId,tipo:e.tipo||'',fototipo:e.fototipo||'',sensibilidad:e.sensibilidad||'',alergias:e.alergias||'',contraindicaciones:e.contra||'',objetivo:e.objetivo||'',rutina:e.rutina||'',evolucion:e.evolucion||[]}}
-function getExp(cliId){let e=DB.expedientes.find(x=>x.clientaId===cliId);if(!e){e={id:null,clientaId:cliId,tipo:'',fototipo:'',sensibilidad:'',alergias:'',contra:'',objetivo:'',rutina:'',evolucion:[],updatedAt:''};}return e;}
-function loadExpediente(cliId){
+/* expediente de la clienta; si aún no tiene, se crea uno vacío EN el caché para que
+   el tipo de piel o la primera nota no se pierdan antes de guardarse */
+function getExp(cliId){let e=DB.expedientes.find(x=>x.clientaId===cliId);if(!e){e={id:null,clientaId:cliId,tipo:'',fototipo:'',sensibilidad:'',alergias:'',contra:'',objetivo:'',rutina:'',evolucion:[],updatedAt:''};DB.expedientes.push(e);}return e;}
+const PIEL_CAMPOS={pielFoto:'fototipo',pielSens:'sensibilidad',pielAlergias:'alergias',pielContra:'contra',pielObjetivo:'objetivo',pielRutina:'rutina'};
+let pielCargado={}; // último valor puesto en cada campo: si el de pantalla difiere, hay cambios sin guardar
+/* suave=true (refresco por tiempo real): no toca el campo con foco, los que tienen
+   cambios sin guardar ni la nota que se está escribiendo */
+function loadExpediente(cliId,suave){
   const e=getExp(cliId);
   document.querySelectorAll('#pielTipoChips .chip').forEach(ch=>ch.classList.toggle('sel',ch.dataset.t===e.tipo));
-  document.getElementById('pielFoto').value=e.fototipo||'';
-  document.getElementById('pielSens').value=e.sensibilidad||'';
-  document.getElementById('pielAlergias').value=e.alergias||'';
-  document.getElementById('pielContra').value=e.contra||'';
-  document.getElementById('pielObjetivo').value=e.objetivo||'';
-  document.getElementById('pielRutina').value=e.rutina||'';
-  document.getElementById('pielNota').value='';
-  const when=document.getElementById('pielWhen');if(when)when.textContent=e.updatedAt?('act. '+fmtFechaCompleta(e.updatedAt.slice(0,10),'')):'';
+  Object.entries(PIEL_CAMPOS).forEach(([id,k])=>{
+    const el=document.getElementById(id);if(!el)return;const v=e[k]||'';
+    if(suave&&(el===document.activeElement||el.value!==(pielCargado[id]??'')))return;
+    el.value=v;pielCargado[id]=v;
+  });
+  if(!suave)document.getElementById('pielNota').value='';
+  const when=document.getElementById('pielWhen');if(when)when.textContent=e.updatedAt?('act. '+fmtFechaCompleta(NUC.fechaLocal(e.updatedAt),'')):'';
+  renderConsent(DB.clientas.find(x=>x.id===cliId));
   renderEvolucion(e);
   renderFotos(cliId);
+}
+/* consentimiento para guardar datos de salud y fotos (columnas de la migración 20261008_11) */
+function renderConsent(cl){
+  const ch=document.getElementById('pielConsent');if(!ch)return;
+  ch.checked=!!(cl&&cl.consentSalud);
+  const f=document.getElementById('pielConsentFecha');if(f)f.textContent=(cl&&cl.consentSalud&&cl.consentFecha)?' · '+fechaLarga(cl.consentFecha):'';
+}
+async function setConsentimiento(si){
+  const cl=DB.clientas.find(x=>x.id===openCliId);if(!cl)return;
+  const fecha=si?ymd(new Date()):null;
+  try{await guardar(sb.from('clientas').update({consentimiento_salud:!!si,consentimiento_fecha:fecha}).eq('id',cl.id));}
+  catch(e){renderConsent(cl);avisarError(e);return;}
+  cl.consentSalud=!!si;cl.consentFecha=fecha||'';renderConsent(cl);
 }
 /* ---- fotos antes / después (bucket privado "expedientes", URL firmada al mostrar) ---- */
 function rowToFoto(r){return {id:r.id,clientaId:r.clienta_id,tipo:r.tipo||'seguimiento',fecha:r.fecha||'',path:r.path||'',nota:r.nota||''}}
 let fotoTipo='seguimiento';const FOTO_URL_CACHE={};
-function pickFoto(t){if(!openCliId)return;fotoTipo=t;const inp=document.getElementById('fotoInput');inp.value='';inp.click();}
+function pickFoto(t){
+  if(!openCliId)return;
+  const cl=DB.clientas.find(x=>x.id===openCliId);
+  if(cl&&!cl.consentSalud&&!confirm('La clienta no ha autorizado guardar sus fotos. ¿Tomar la foto de todas formas?'))return;
+  fotoTipo=t;const inp=document.getElementById('fotoInput');inp.value='';inp.click();
+}
 function compressImage(file,max,q){
   return new Promise((res,rej)=>{
     const img=new Image();const url=URL.createObjectURL(file);
@@ -32,23 +57,27 @@ async function onFotoPicked(ev){
   const f=ev.target.files&&ev.target.files[0];if(!f||!openCliId)return;
   const cliId=openCliId,tipo=fotoTipo;
   toast('Subiendo foto…');
+  let huerfana=''; // archivo subido cuya fila no se pudo guardar: se borra
   try{
     const blob=await compressImage(f,1280,.82);
     const path=`${NEGOCIO_ID}/${cliId}/${Date.now()}_${tipo}.jpg`;
-    const up=await sb.storage.from('expedientes').upload(path,blob,{contentType:'image/jpeg',upsert:false});
-    if(up.error)throw up.error;
-    const {data,error}=await sb.from('fotos_piel').insert({negocio_id:NEGOCIO_ID,clienta_id:cliId,tipo,fecha:ymd(new Date()),path}).select().single();
-    if(error)throw error;
-    DB.fotos.unshift(rowToFoto(data));
+    await guardar(sb.storage.from('expedientes').upload(path,blob,{contentType:'image/jpeg',upsert:false}));
+    huerfana=path;
+    const data=await guardar(sb.from('fotos_piel').insert({negocio_id:NEGOCIO_ID,clienta_id:cliId,tipo,fecha:ymd(new Date()),path}).select().single());
+    huerfana='';
+    ponerEnCache('fotos',rowToFoto(data),true);
     if(openCliId===cliId)renderFotos(cliId);
     toast('Foto guardada');
-  }catch(e){console.error(e);toast('No se pudo subir la foto');}
+  }catch(e){
+    console.error(e);toast('No se pudo subir la foto');
+    if(huerfana)sb.storage.from('expedientes').remove([huerfana]).then(()=>{},()=>{});
+  }
 }
 async function fotoUrl(path){
   const c=FOTO_URL_CACHE[path];if(c&&c.exp>Date.now())return c.url;
-  const {data,error}=await sb.storage.from('expedientes').createSignedUrl(path,3600);
+  const {data,error}=await sb.storage.from('expedientes').createSignedUrl(path,300);
   if(error||!data)return '';
-  FOTO_URL_CACHE[path]={url:data.signedUrl,exp:Date.now()+50*60*1000};return data.signedUrl;
+  FOTO_URL_CACHE[path]={url:data.signedUrl,exp:Date.now()+4*60*1000};return data.signedUrl;
 }
 function renderFotos(cliId){
   const el=document.getElementById('pielFotos');if(!el)return;
@@ -56,85 +85,93 @@ function renderFotos(cliId){
   if(!list.length){el.innerHTML='<p class="empty-mini" style="grid-column:1/-1">Sin fotos. Toma una “antes” en la primera cita y un “después” al cerrar la serie.</p>';return;}
   const TL={antes:'Antes',despues:'Después',seguimiento:'Seguimiento'};
   el.innerHTML=list.map(f=>{const d=new Date((f.fecha||ymd(new Date()))+'T00:00:00');return `<div class="foto"><img alt="" data-path="${esc(f.path)}"><span class="tag ${f.tipo==='despues'?'t-ok':(f.tipo==='antes'?'t-nails':'t-soft')}">${TL[f.tipo]||f.tipo} · ${d.getDate()} ${MON[d.getMonth()]}</span><span class="foto-x" data-on-click="delFoto('${f.id}')" title="Borrar">×</span></div>`;}).join('');
-  el.querySelectorAll('img[data-path]').forEach(async im=>{const u=await fotoUrl(im.dataset.path);if(u){im.src=u;im.onclick=()=>window.open(u,'_blank');}});
+  el.querySelectorAll('img[data-path]').forEach(async im=>{const u=await fotoUrl(im.dataset.path);if(u){im.src=u;im.onclick=()=>window.open(u,'_blank','noopener');}});
 }
 async function delFoto(id){
   const f=DB.fotos.find(x=>x.id===id);if(!f)return;
   if(!confirm('¿Borrar esta foto?'))return;
   try{
-    await sb.storage.from('expedientes').remove([f.path]);
-    const {error}=await sb.from('fotos_piel').delete().eq('id',id);if(error)throw error;
+    await guardar(sb.storage.from('expedientes').remove([f.path]));
+    await guardar(sb.from('fotos_piel').delete().eq('id',id));
     DB.fotos=DB.fotos.filter(x=>x.id!==id);renderFotos(openCliId);
-  }catch(e){console.error(e);toast('No se pudo borrar la foto');}
+  }catch(e){avisarError(e,'No se pudo borrar la foto');}
 }
 function renderEvolucion(e){
   const el=document.getElementById('pielEvolucion');if(!el)return;
   const list=[...(e.evolucion||[])].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-  el.innerHTML=list.length?list.map((n,i)=>{const d=new Date((n.fecha||ymd(new Date()))+'T00:00:00');return `<div class="evo"><div class="evo-d"><span class="num">${d.getDate()}</span><span>${MON[d.getMonth()]}</span></div><div class="evo-b">${n.servicio?`<div class="evo-s">${esc(n.servicio)}</div>`:''}<div class="evo-t">${esc(n.nota)}</div></div><span class="evo-x" data-on-click="delEvolucion(${list.length-1-i})" title="Borrar">×</span></div>`;}).join(''):'<p class="empty-mini">Sin notas todavía. Después de cada facial, anota qué viste y qué sigue.</p>';
+  el.innerHTML=list.length?list.map(n=>{const d=new Date((n.fecha||ymd(new Date()))+'T00:00:00');return `<div class="evo"><div class="evo-d"><span class="num">${d.getDate()}</span><span>${MON[d.getMonth()]}</span></div><div class="evo-b">${n.servicio?`<div class="evo-s">${esc(n.servicio)}</div>`:''}<div class="evo-t">${esc(n.nota)}</div></div><span class="evo-x" data-id="${esc(n.id)}" data-on-click="delEvolucion(this.dataset.id)" title="Borrar">×</span></div>`;}).join(''):'<p class="empty-mini">Sin notas todavía. Después de cada facial, anota qué viste y qué sigue.</p>';
 }
-document.getElementById('pielTipoChips').addEventListener('click',e=>{const ch=e.target.closest('.chip');if(!ch||!openCliId)return;const ex=getExp(openCliId);ex.tipo=(ex.tipo===ch.dataset.t)?'':ch.dataset.t;document.querySelectorAll('#pielTipoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.t===ex.tipo));saveExpediente();});
+document.getElementById('pielTipoChips').addEventListener('click',async e=>{
+  const ch=e.target.closest('.chip');if(!ch||!openCliId)return;
+  const ex=getExp(openCliId),antes=ex.tipo;
+  ex.tipo=(ex.tipo===ch.dataset.t)?'':ch.dataset.t;
+  const pinta=()=>document.querySelectorAll('#pielTipoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.t===ex.tipo));
+  pinta();
+  if(!await saveExpediente()){ex.tipo=antes;pinta();}
+});
+/* guarda el expediente con lo que hay en pantalla; devuelve true si se guardó */
 async function saveExpediente(){
-  if(!openCliId)return;
-  const e=getExp(openCliId);
-  e.fototipo=document.getElementById('pielFoto').value;
-  e.sensibilidad=document.getElementById('pielSens').value;
-  e.alergias=document.getElementById('pielAlergias').value.trim();
-  e.contra=document.getElementById('pielContra').value.trim();
-  e.objetivo=document.getElementById('pielObjetivo').value.trim();
-  e.rutina=document.getElementById('pielRutina').value.trim();
+  if(!openCliId)return false;
+  const cliId=openCliId,e=getExp(cliId);
+  const vals={};Object.entries(PIEL_CAMPOS).forEach(([id,k])=>{const v=document.getElementById(id).value;vals[id]=(id==='pielFoto'||id==='pielSens')?v:v.trim();});
+  Object.entries(PIEL_CAMPOS).forEach(([id,k])=>{e[k]=vals[id];});
   const empty=!e.tipo&&!e.fototipo&&!e.sensibilidad&&!e.alergias&&!e.contra&&!e.objetivo&&!e.rutina&&!(e.evolucion||[]).length;
-  if(empty&&!e.id)return;
+  if(empty&&!e.id)return true;
   try{
-    const {data,error}=await sb.from('expedientes_piel').upsert(expToRow(e),{onConflict:'clienta_id'}).select().single();
-    if(error)throw error;
-    const fresh=rowToExp(data);const i=DB.expedientes.findIndex(x=>x.clientaId===openCliId);
+    const data=await guardar(sb.from('expedientes_piel').upsert(expToRow(e),{onConflict:'clienta_id'}).select().single());
+    const fresh=data?rowToExp(data):e;const i=DB.expedientes.findIndex(x=>x.clientaId===cliId);
     if(i>=0)DB.expedientes[i]=fresh;else DB.expedientes.push(fresh);
-    const when=document.getElementById('pielWhen');if(when)when.textContent='act. hoy';
-  }catch(err){console.error(err);toast('No se pudo guardar el expediente (¿falta la migración?)');}
+    if(openCliId===cliId){Object.keys(PIEL_CAMPOS).forEach(id=>{pielCargado[id]=vals[id];});const when=document.getElementById('pielWhen');if(when)when.textContent='act. hoy';}
+    return true;
+  }catch(err){avisarError(err,'No se pudo guardar el expediente. Revisa tu conexión.');return false;}
 }
 async function addEvolucion(){
   if(!openCliId)return;
   const ta=document.getElementById('pielNota');const nota=ta.value.trim();if(!nota){toast('Escribe la nota');return;}
-  const e=getExp(openCliId);
-  const today=ymd(new Date());
-  const skinToday=DB.citas.find(c=>c.clientaId===openCliId&&c.fecha===today&&c.estado!=='cancelada'&&citaCats(c).includes('skin'));
-  e.evolucion=[...(e.evolucion||[]),{fecha:today,servicio:skinToday?svcFull(skinToday):'',nota}];
-  ta.value='';renderEvolucion(e);
-  await saveExpediente();
+  const listo=ocupar('nota');if(!listo)return;
+  try{
+    const e=getExp(openCliId),antes=e.evolucion||[];
+    const today=ymd(new Date());
+    const skinToday=DB.citas.find(c=>c.clientaId===openCliId&&c.fecha===today&&c.estado!=='cancelada'&&citaCats(c).includes('skin'));
+    e.evolucion=[...antes,{id:uid(),fecha:today,servicio:skinToday?svcFull(skinToday):'',nota}];
+    renderEvolucion(e);
+    if(await saveExpediente()){ta.value='';renderEvolucion(getExp(openCliId));}
+    else{e.evolucion=antes;renderEvolucion(e);} // la nota se queda escrita para reintentar
+  }finally{listo();}
 }
-async function delEvolucion(idx){
-  if(!openCliId)return;const e=getExp(openCliId);
+async function delEvolucion(id){
+  if(!openCliId||!id)return;const e=getExp(openCliId);
   if(!confirm('¿Borrar esta nota?'))return;
-  e.evolucion=(e.evolucion||[]).filter((_,i)=>i!==idx);renderEvolucion(e);await saveExpediente();
+  const antes=e.evolucion||[];
+  e.evolucion=antes.filter(n=>n.id!==id);renderEvolucion(e);
+  if(!await saveExpediente()){e.evolucion=antes;renderEvolucion(e);}
 }
-async function saveCliNotes(){
-  if(!openCliId)return;
-  const cl=DB.clientas.find(x=>x.id===openCliId);cl.notas=document.getElementById('cliNotes').value.trim();
-  try{await sb.from('clientas').update({notas:cl.notas}).eq('id',openCliId);}catch(e){console.error(e);}
+/* ---- ficha de la clienta: cada campo se guarda al salir de él; el caché cambia solo si se guardó ---- */
+async function guardarClienta(cambios,aplicar){
+  const id=openCliId;if(!id)return false;
+  try{await guardar(sb.from('clientas').update(cambios).eq('id',id));}
+  catch(e){avisarError(e);return false;}
+  const cl=DB.clientas.find(x=>x.id===id);if(cl)aplicar(cl);
+  return true;
 }
-async function saveCliContact(){
-  if(!openCliId)return;
-  const cl=DB.clientas.find(x=>x.id===openCliId);
-  cl.telefono=document.getElementById('cliPhone').value.trim();
-  cl.email=document.getElementById('cliEmail').value.trim();
-  cl.cumple=document.getElementById('cliCumple').value||'';
-  try{await sb.from('clientas').update({telefono:cl.telefono,email:cl.email,cumple:cl.cumple||null}).eq('id',openCliId);}catch(e){console.error(e);}
+function saveCliNotes(){
+  const notas=document.getElementById('cliNotes').value.trim();
+  return guardarClienta({notas},cl=>{cl.notas=notas;});
 }
-async function saveCliPrefs(){
-  if(!openCliId)return;
-  const cl=DB.clientas.find(x=>x.id===openCliId);
-  cl.coloresFav=document.getElementById('cliColores').value.trim();
-  cl.alergias=document.getElementById('cliAlergias').value.trim();
-  cl.notasPrefs=document.getElementById('cliNotasPrefs').value.trim();
-  try{await sb.from('clientas').update({colores_fav:cl.coloresFav,alergias:cl.alergias,notas_prefs:cl.notasPrefs}).eq('id',openCliId);}catch(e){console.error(e);}
+function saveCliContact(){
+  const telefono=document.getElementById('cliPhone').value.trim(),email=document.getElementById('cliEmail').value.trim(),cumple=document.getElementById('cliCumple').value||'';
+  return guardarClienta({telefono,email,cumple:cumple||null},cl=>{cl.telefono=telefono;cl.email=email;cl.cumple=cumple;});
+}
+function saveCliPrefs(){
+  const coloresFav=document.getElementById('cliColores').value.trim(),alergias=document.getElementById('cliAlergias').value.trim(),notasPrefs=document.getElementById('cliNotasPrefs').value.trim();
+  return guardarClienta({colores_fav:coloresFav,alergias,notas_prefs:notasPrefs},cl=>{cl.coloresFav=coloresFav;cl.alergias=alergias;cl.notasPrefs=notasPrefs;});
 }
 let curForma='';
-function setForma(f){
-  curForma=f;
-  document.querySelectorAll('#formaChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.f===f));
+function pintarForma(){document.querySelectorAll('#formaChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.f===curForma));}
+async function setForma(f){
+  const antes=curForma;curForma=f;pintarForma();
   if(!openCliId)return;
-  const cl=DB.clientas.find(x=>x.id===openCliId);
-  if(cl){cl.formaUna=f;sb.from('clientas').update({forma_una:f}).eq('id',openCliId).then();}
+  if(!await guardarClienta({forma_una:f},cl=>{cl.formaUna=f;})){curForma=antes;pintarForma();}
 }
 document.getElementById('formaChips').addEventListener('click',e=>{
   const c=e.target.closest('.chip');if(c&&c.dataset.f){
@@ -144,7 +181,7 @@ document.getElementById('formaChips').addEventListener('click',e=>{
 });
 function loadCliPrefs(cl){
   curForma=cl.formaUna||'';
-  document.querySelectorAll('#formaChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.f===curForma));
+  pintarForma();
   document.getElementById('cliColores').value=cl.coloresFav||'';
   document.getElementById('cliAlergias').value=cl.alergias||'';
   document.getElementById('cliNotasPrefs').value=cl.notasPrefs||'';
@@ -184,25 +221,24 @@ function addCliFromAppt(){
 async function saveNewCli(){
   const nombre=document.getElementById('ncName').value.trim();
   if(!nombre){toast('Escribe el nombre');return;}
-  const existing=DB.clientas.find(c=>c.nombre.toLowerCase()===nombre.toLowerCase());
+  const existing=DB.clientas.find(c=>normTxt(c.nombre)===normTxt(nombre));
   if(existing&&!cliCreateReturnToAppt){toast('Ya existe una clienta con ese nombre');return;}
-  let cli=existing;
+  // desde una cita: puede ser la misma clienta o una homónima; se pregunta
+  let cli=(existing&&confirm(`Ya existe una clienta llamada ${existing.nombre}${existing.telefono?' ('+existing.telefono+')':''}. ¿Agendar con ella?\n\nCancelar crea una clienta nueva.`))?existing:null;
   if(!cli){
-    const draft={nombre,telefono:document.getElementById('ncPhone').value.trim(),email:document.getElementById('ncEmail').value.trim(),notas:document.getElementById('ncNotes').value.trim()};
+    const listo=ocupar('nuevaCli',document.querySelector('#cliCreateSheet .btn-primary'),'Guardando…');if(!listo)return;
     try{
-      const {data:ins,error}=await sb.from('clientas').insert(cliToRow(draft)).select().single();
-      if(error)throw error;
-      cli=rowToCli(ins);DB.clientas.push(cli);
-    }catch(e){toast('Error al guardar clienta');console.error(e);return;}
+      const draft={nombre,telefono:document.getElementById('ncPhone').value.trim(),email:document.getElementById('ncEmail').value.trim(),notas:document.getElementById('ncNotes').value.trim()};
+      cli=ponerEnCache('clientas',rowToCli(await guardar(sb.from('clientas').insert(cliToRow(draft)).select().single())));
+    }catch(e){avisarError(e,'No se pudo guardar la clienta. Revisa tu conexión.');return;}
+    finally{listo();}
   }
   if(cliCreateReturnToAppt){
     cliCreateReturnToAppt=false;
-    apptSelectedCliId=cli.id;
-    document.getElementById('apptCli').value=cli.nombre;
-    document.getElementById('apptCliResults').innerHTML='';
     document.getElementById('cliCreateSheet').classList.remove('show');
     curSheet='apptSheet';
     requestAnimationFrame(()=>document.getElementById('apptSheet').classList.add('show'));
+    pickApptCli(cli.id);
     toast('Clienta agregada 💗');
   }else{
     closeSheet();renderClientas();toast('Clienta agregada 💗');

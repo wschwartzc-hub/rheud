@@ -1,5 +1,6 @@
 /* ---------------- CLIENTAS ---------------- */
-function daysSince(key){return Math.round((Date.now()-new Date(key+'T00:00:00').getTime())/86400000)}
+/* días desde una fecha contando medianoches locales (Math.round sumaba uno después de mediodía) */
+function daysSince(key){return NUC.daysSince(key)??0}
 function nextCliNum(){let mx=0;DB.clientas.forEach(c=>{if(c.num&&c.num>mx)mx=c.num;});return mx+1;}
 function ensureCliNumbers(){let changed=false;DB.clientas.forEach(c=>{if(!c.num){c.num=nextCliNum();changed=true;}});if(changed)persist();}
 function cliNumLabel(n){return n?'Cliente #'+String(n).padStart(3,'0'):''}
@@ -163,9 +164,9 @@ function exportCSV(){
   DB.citas.filter(c=>c.estado==='atendida').sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora)).forEach(c=>{
     const cl=DB.clientas.find(x=>x.id===c.clientaId);
     const sm=pagosSummary(c);
-    rows.push([c.fecha,c.hora||'',cl?cl.nombre:'',svcFull(c),c.precio||0,c.descMonto||0,sm.cobrado,sm.deuda,sm.estado,metodoLabel(c.metodo||''),c.codigo||'']);
+    rows.push([c.fecha,c.hora||'',cl?cl.nombre:'',svcFull(c),Number(c.precio||0),Number(c.descMonto||0),sm.cobrado,sm.deuda,sm.estado,metodoLabel(c.metodo||''),c.codigo||'']);
   });
-  const csv=rows.map(r=>r.map(v=>{v=String(v??'');return (v.includes(',')||v.includes('"'))?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')).join('\n');
+  const csv=NUC.csv(rows); // neutraliza fórmulas (= + - @) y entrecomilla comas, comillas y saltos de línea
   const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -225,8 +226,36 @@ function openCli(id){
     const pg=c.estado==='atendida'?(c.pago==='deuda'?' · debe':(c.metodo?' · '+metodoLabel(c.metodo):' · pagado')):'';
     return `<div class="histitem"><div><div class="hs">${svcFull(c)}</div>
     <div class="hd">${fmtFechaCompleta(c.fecha,c.hora)} · ${c.estado}${pg}</div></div>
-    <div class="hp">${fmtMoney(montoCita(c)||c.precio)}${deudaCita(c)>0?`<small class="hp-debe">debe ${fmtMoney(deudaCita(c))}</small>`:''}</div></div>`;
+    <div class="hp">${fmtMoney(montoCita(c)||totalNeto(c))}${deudaCita(c)>0?`<small class="hp-debe">debe ${fmtMoney(deudaCita(c))}</small>`:''}</div></div>`;
   }).join(''):'<p style="color:var(--muted);font-size:13px;font-weight:300">Sin historial.</p>';
   document.getElementById('cliLoyalty').innerHTML=loyaltyCardHtml(cl);
   showSheet('cliSheet');
+}
+
+/* ============ BAJA DE CLIENTA (derechos ARCO) ============
+   Borra sus fotos del bucket y después llama a baja_clienta() (migración
+   20261008_11): anonimiza la ficha, borra expediente y fotos, y deja las
+   citas, sin datos personales, para las finanzas. */
+async function bajaClienta(){
+  const cl=DB.clientas.find(x=>x.id===openCliId);if(!cl)return;
+  if(!confirm(`¿Eliminar los datos de ${cl.nombre}?\n\nSe borran su nombre, contacto, notas, preferencias, expediente de piel y fotos. Sus citas se quedan, sin datos personales, para tus finanzas.`))return;
+  if(!confirm(`Esto no se puede deshacer. ¿Eliminar definitivamente los datos de ${cl.nombre}?`))return;
+  const listo=ocupar('baja',document.getElementById('cliBajaBtn'),'Eliminando…');if(!listo)return;
+  try{
+    // 1) fotos del bucket: las registradas y cualquier archivo que quede en su carpeta
+    const rutas=new Set(DB.fotos.filter(f=>f.clientaId===cl.id).map(f=>f.path).filter(Boolean));
+    const carpeta=NEGOCIO_ID+'/'+cl.id;
+    const lista=await guardar(sb.storage.from('expedientes').list(carpeta,{limit:1000}));
+    (lista||[]).forEach(o=>{if(o&&o.name)rutas.add(carpeta+'/'+o.name);});
+    if(rutas.size)await guardar(sb.storage.from('expedientes').remove([...rutas]));
+    // 2) datos en la base: anonimiza y borra expediente y fotos en una sola transacción
+    await guardar(sb.rpc('baja_clienta',{p_clienta:cl.id}));
+  }catch(e){listo();avisarError(e,'No se pudieron eliminar los datos. Revisa tu conexión e intenta de nuevo.');return;}
+  listo();
+  Object.assign(cl,{nombre:'Clienta eliminada',telefono:'',email:'',notas:'',cumple:'',formaUna:'',coloresFav:'',alergias:'',notasPrefs:'',consentSalud:false,consentFecha:''});
+  DB.expedientes=DB.expedientes.filter(x=>x.clientaId!==cl.id);
+  DB.fotos=DB.fotos.filter(x=>x.clientaId!==cl.id);
+  DB.citas.forEach(c=>{if(c.clientaId===cl.id)c.notas='';});
+  DB.cortesias.forEach(c=>{if(c.clientaId===cl.id)c.notas='';});
+  closeSheet();toast('Datos de la clienta eliminados');
 }
