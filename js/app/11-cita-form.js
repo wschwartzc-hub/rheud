@@ -1,5 +1,9 @@
 /* ---------------- APPOINTMENT SHEET ---------------- */
 let curEstado='agendada',curPago='pagado',editingId=null,curColor='rosa',curMetodo='efectivo';
+// duración guardada de la cita que se edita: los selectores van de 15 en 15 y no
+// deben redondear una duración que nadie tocó (p. ej. 50 min)
+let apptDurCargada=null;
+function duracionElegida(){const d=getApptDur()||60;return (apptDurCargada&&d===apptDurCargada.mostrada)?apptDurCargada.min:d}
 function renderColorChips(){
   document.getElementById('colorChips').innerHTML=PAL_ORDER.map(k=>`<div class="swatch ${k===curColor?'sel':''}" data-c="${k}" style="background:${PALETTE[k].br}"></div>`).join('');
 }
@@ -51,11 +55,20 @@ function renderApptSkinHint(){
   }
   el.innerHTML=`<div class="skin-hint ${warn?'warn':''}"><div>${body}</div>${reqs.length?`<div class="skin-req">Requisitos · ${reqs.join(' · ')}</div>`:''}</div>`;
 }
-/* servicios seleccionados → items de la cita con duración y recurso */
+/* servicios seleccionados → items de la cita con duración y recurso.
+   Al editar, los servicios que ya estaban en la cita conservan el nombre, la
+   duración y el recurso guardados (el menú pudo cambiar o el servicio borrarse). */
+let apptPrevItems={}; // id → item tal como está guardado en la cita que se edita
 function selectedItems(){
-  return selectedSvcIds.map(id=>{const s=svcById(id);if(!s)return null;const pr=(svcChosenPrice[id]!=null)?Number(svcChosenPrice[id]):Number(s.p||0);return {id:s.id,n:s.n,p:pr,d:Number(s.dur||60),r:s.recurso||'mesa',l:Number(s.limpieza||0),cat:s.cat||'nails'};}).filter(Boolean);
+  return selectedSvcIds.map(id=>{
+    const prev=apptPrevItems[id],s=svcById(id);
+    const pr=(svcChosenPrice[id]!=null)?Number(svcChosenPrice[id]):(prev?Number(prev.p||0):Number(s&&s.p||0));
+    if(prev)return {...prev,p:pr};
+    if(!s)return null;
+    return {id:s.id,n:s.n,p:pr,d:Number(s.dur||60),r:s.recurso||'mesa',l:Number(s.limpieza||0),cat:s.cat||'nails'};
+  }).filter(Boolean);
 }
-function selectedDur(){return selectedItems().reduce((t,i)=>t+i.d,0)}
+function selectedDur(){return selectedItems().reduce((t,i)=>t+(Number(i.d)||0),0)}
 function renderApptSeq(){
   const el=document.getElementById('apptSeq');if(!el)return;
   const items=selectedItems();
@@ -68,7 +81,7 @@ function renderApptSeq(){
   const recs=[...new Set(items.map(i=>RECURSOS[i.r]||i.r))].join(' → ');
   el.innerHTML=`<div class="seq-bar">${bar}</div><div class="seq-lbl">Duración sugerida <b>${fmtDur(total)}</b>${s0!=null?` · termina ${minLabel(s0+total)}`:''} · ${recs}</div>`;
 }
-function syncApptDur(){const d=selectedDur();if(d>0)setApptDur(d);}
+function syncApptDur(){const d=selectedDur();if(d>0){setApptDur(d);apptDurCargada=null;}}
 function toggleSvc(id){
   const i=selectedSvcIds.indexOf(id);
   if(i>=0){selectedSvcIds.splice(i,1);delete svcChosenPrice[id];}
@@ -123,16 +136,10 @@ function busyIntervals(key,excludeId){
   });
   return out.sort((a,b)=>a.s-b.s);
 }
-/* segmentos que ocuparía la cita que se está capturando, empezando en t */
-function proposedSegments(t,dur){
-  const items=selectedItems();
-  if(!items.length)return [{r:'mesa',s:t,e:t+dur,l:0}];
-  let cur=t;return items.map(i=>{const sg={r:i.r,s:cur,e:cur+i.d,l:i.l,n:i.n};cur+=i.d;return sg;});
-}
-function segsClash(props,busy){
-  for(const p of props){if(p.r==='ninguno')continue;for(const b of busy){if(b.r!==p.r||b.r==='ninguno')continue;if(p.s<b.e&&(p.e+(p.l||0))>b.s)return {p,b};}}
-  return null;
-}
+/* segmentos que ocuparía la cita que se está capturando, empezando en t y
+   durando dur (la duración elegida manda, igual que en citaSegments) */
+function proposedSegments(t,dur){return NUC.segmentos(t,selectedItems(),dur,svcById)}
+function segsClash(props,busy){return NUC.segsClash(props,busy)}
 function onApptDateChange(){
   const date=document.getElementById('apptDate').value;
   if(date){agAnchor=new Date(date+'T00:00:00');selectedDate=date;if(currentView==='agenda')renderAgenda();}
@@ -145,21 +152,25 @@ function renderAssist(){
   if(!date){el.innerHTML='';return;}
   const busy=busyIntervals(date,editingId);
   const winS=AS_START*60,winE=AS_END*60,winLen=winE-winS;
-  const dur=getApptDur()||60;
+  const dur=duracionElegida();
   const time=document.getElementById('apptTime').value;
   const propS=time?toMin(time):null,propE=propS!=null?propS+dur:null;
   renderApptSeq();
   // conflict check: por recurso (mesa vs cabina), contando la limpieza de cabina
   let conflict=null,clash=null;
   if(propS!=null){clash=segsClash(proposedSegments(propS,dur),busy);if(clash)conflict=clash.b;}
-  // free minutes within window
-  let freeMin=winLen;busy.forEach(b=>{freeMin-=Math.max(0,Math.min(b.e,winE)-Math.max(b.s,winS));});
-  freeMin=Math.max(0,freeMin);
-  // suggestions: scan 30-min steps for slots that fit dur
-  const sug=[];
-  for(let t=winS;t+dur<=winE&&sug.length<4;t+=30){
-    if(!segsClash(proposedSegments(t,dur),busy))sug.push(t);
-  }
+  // minutos libres por recurso (mesa y cabina trabajan en paralelo)
+  const usados=[...new Set(proposedSegments(winS,dur).map(x=>x.r).filter(r=>r!=='ninguno'))];
+  const recursos=usados.length?usados:['mesa'];
+  // hoy solo cuenta lo que queda del día
+  const hoyKey=ymd(new Date()),nowM=new Date().getHours()*60+new Date().getMinutes();
+  const ini=date===hoyKey?Math.min(winE,Math.max(winS,nowM)):winS;
+  const libres=NUC.libresPorRecurso(busy,ini,winE,recursos);
+  const freeMin=Math.min(...recursos.map(r=>libres[r]));
+  const NOM_R={mesa:'la mesa',cabina:'la cabina'};
+  const libresTxt=recursos.map((r,i)=>`~${Math.round(libres[r]/60)} h ${i?'':'libres '}en ${NOM_R[r]||r}`).join(' · ');
+  // horas sugeridas cada 30 min; hoy, solo desde ahora; días pasados, ninguna
+  const sug=date<hoyKey?[]:NUC.huecos(busy,t=>proposedSegments(t,dur),winS,winE,dur,date===hoyKey?nowM:null,4);
   // status
   let cls,icon,msg;
   if(propS!=null&&conflict){
@@ -168,18 +179,20 @@ function renderAssist(){
     const enLimpieza=clash&&clash.p.s>=conflict.svcEnd;
     const rec=RECURSOS[conflict.r]||'el espacio';
     msg=enLimpieza
-      ?`La <b>${rec.toLowerCase()}</b> está en limpieza hasta las <b>${minLabel(conflict.e)}</b> (después de ${cli?cli.nombre:'otra cita'}). ${sug.length?'Elige un hueco abajo.':''}`
-      :`La <b>${rec.toLowerCase()}</b> se encima con <b>${cli?cli.nombre:'otra cita'}</b> (${minLabel(conflict.s)}–${minLabel(conflict.e)}). ${sug.length?'Mira los espacios libres abajo.':'Ese día está lleno.'}`;
+      ?`La <b>${rec.toLowerCase()}</b> está en limpieza hasta las <b>${minLabel(conflict.e)}</b> (después de ${cli?esc(cli.nombre):'otra cita'}). ${sug.length?'Elige un hueco abajo.':''}`
+      :`La <b>${rec.toLowerCase()}</b> se encima con <b>${cli?esc(cli.nombre):'otra cita'}</b> (${minLabel(conflict.s)}–${minLabel(conflict.e)}). ${sug.length?'Mira los espacios libres abajo.':'Ese día está lleno.'}`;
   }else if(propS!=null){
     cls='as-free';icon='✨';msg=`Perfecto, hay espacio a las <b>${minLabel(propS)}</b>.`;
+  }else if(date<hoyKey){
+    cls='as-tight';icon='🕰️';msg='Ese día ya pasó. Escribe la hora en que fue la cita.';
+  }else if(!sug.length){
+    cls='as-conflict';icon='⛔';msg=freeMin<dur?'Día lleno, no cabe este servicio.':'Ya no quedan horas libres para este servicio ese día.';
   }else if(busy.length===0){
     cls='as-free';icon='🌿';msg='Día libre — cualquier horario funciona.';
-  }else if(freeMin<dur){
-    cls='as-conflict';icon='⛔';msg='Día lleno, no cabe este servicio.';
-  }else if(freeMin< (winLen*0.35)){
-    cls='as-tight';icon='⏳';msg=`Día apretado — quedan ~${Math.round(freeMin/60)} h libres. Elige un hueco:`;
+  }else if(freeMin<((winE-ini)*0.35)){
+    cls='as-tight';icon='⏳';msg=`Día apretado — ${libresTxt}. Elige un hueco:`;
   }else{
-    cls='as-free';icon='🌿';msg=`Hay buen espacio (~${Math.round(freeMin/60)} h libres). Elige un hueco:`;
+    cls='as-free';icon='🌿';msg=`Hay buen espacio (${libresTxt}). Elige un hueco:`;
   }
   // timeline blocks
   const usedR=new Set(proposedSegments(winS,dur).map(x=>x.r));
@@ -202,14 +215,15 @@ function pickSlot(t){
 function setEstado(e){
   curEstado=e;
   document.querySelectorAll('#estadoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.e===e));
-  const atendida=e==='atendida';
-  document.getElementById('pagosWrap').style.display=atendida?'block':'none';
-  document.getElementById('compWrap').style.display=atendida?'block':'none';
-  if(atendida){updateDescInfo();renderPagos();}
+  // pagos y comprobante también en agendadas (anticipos); en canceladas solo si ya hay algo registrado
+  const conPagos=e!=='cancelada'||curPagos.length>0||!!curComp;
+  document.getElementById('pagosWrap').style.display=conPagos?'block':'none';
+  document.getElementById('compWrap').style.display=conPagos?'block':'none';
+  if(conPagos){updateDescInfo();renderPagos();}
 }
 /* ====== Pagos múltiples ====== */
 const METODOS=[['efectivo','Efectivo'],['transferencia','Transfer.'],['tarjeta','Tarjeta'],['cupon','Cupón'],['otro','Otro']];
-let curPagos=[]; // [{monto, metodo}]
+let curPagos=[]; // [{monto, metodo, fecha}]
 let curDescuento=0; // monto de descuento
 function precioBase(){return Number(document.getElementById('apptPrice').value)||0;}
 function totalACobrar(){return Math.max(0,precioBase()-curDescuento);}
@@ -252,7 +266,7 @@ function renderPagos(){
 function addPago(){
   const pagado=curPagos.reduce((s,p)=>s+(Number(p.monto)||0),0);
   const resto=Math.max(0,totalACobrar()-pagado);
-  curPagos.push({monto:resto||'',metodo:'efectivo'});
+  curPagos.push({monto:resto||'',metodo:'efectivo',fecha:ymd(new Date())});
   renderPagos();
 }
 function delPago(i){curPagos.splice(i,1);renderPagos();}
@@ -264,7 +278,8 @@ function updatePagosResumen(){
   const pagado=curPagos.reduce((s,p)=>s+(Number(p.monto)||0),0);
   const pend=total-pagado;
   let estado,color;
-  if(pagado<=0){estado='Sin pago';color='var(--red)';}
+  if(pagado<=0&&curEstado!=='atendida'){estado='Sin anticipo';color='var(--muted)';}
+  else if(pagado<=0){estado='Sin pago';color='var(--red)';}
   else if(pend>0){estado='Parcial · debe '+fmtMoney(pend);color='#8a6a1e';}
   else if(pend<0){estado='Cobró '+fmtMoney(Math.abs(pend))+' de más';color='var(--red)';}
   else {estado='Pagado completo';color='var(--green)';}
@@ -272,34 +287,46 @@ function updatePagosResumen(){
     <div class="pr-line"><span>Cobrado</span><b style="color:var(--green)">${fmtMoney(pagado)}</b></div>
     <div class="pr-estado" style="color:${color}">${estado}</div>`;
 }
+/* resumen de pagos (cobrado / deuda / estado) con la fórmula única de js/pagos.js */
 function pagosSummary(c){
-  const base=Number(c.precio||0);
-  const desc=Number(c.descMonto||0);
-  const total=Math.max(0,base-desc);
-  if(Array.isArray(c.pagos)&&c.pagos.length){
-    const cobrado=c.pagos.reduce((s,p)=>s+(Number(p.monto)||0),0);
-    return {cobrado,deuda:Math.max(0,total-cobrado),estado:(cobrado<=0?'deuda':(cobrado<total?'parcial':'pagado'))};
-  }
-  // compatibilidad con citas viejas
-  if(c.pago==='parcial'){const ab=Number(c.abonado||0);return {cobrado:ab,deuda:Math.max(0,base-ab),estado:'parcial'};}
-  if(c.pago==='deuda')return {cobrado:0,deuda:base,estado:'deuda'};
-  const cob=(c.cobrado!=null&&!isNaN(c.cobrado))?Number(c.cobrado):base;
-  return {cobrado:cob,deuda:0,estado:'pagado'};
+  const r=resumenPago(c);
+  return {cobrado:r.cobrado,deuda:r.saldo,total:r.total,estado:r.estado==='pagado'?'pagado':(r.estado==='parcial'?'parcial':'deuda')};
 }
+/* ---- Comprobantes: solo rutas del bucket o una foto recién tomada (data:image) ---- */
 let curComp='';
 function renderCompPreview(){
   const el=document.getElementById('compPreview');
-  if(!curComp){el.innerHTML='';return;}
-  if(curComp.startsWith('data:')){
-    el.innerHTML=`<img src="${curComp}"><span class="rm" data-on-click="removeComp()">Quitar comprobante</span>`;
+  const tipo=NUC.tipoComprobante(curComp);
+  if(!curComp||!tipo){el.innerHTML='';return;}
+  if(tipo==='data'){
+    el.innerHTML=`<img alt="Comprobante" src="${curComp}"><span class="rm" data-on-click="removeComp()">Quitar comprobante</span>`;
   }else{
-    el.innerHTML=`<span class="comp-link" data-on-click="viewCompRaw('${curComp}')">📎 Ver comprobante actual</span> <span class="rm" data-on-click="removeComp()">Quitar</span>`;
+    el.innerHTML=`<span class="comp-link" data-on-click="verCompActual()">📎 Ver comprobante actual</span> <span class="rm" data-on-click="removeComp()">Quitar</span>`;
   }
 }
-async function viewCompRaw(path){
-  let url=path;
-  if(!path.startsWith('http')){try{const {data}=await sb.storage.from('comprobantes').createSignedUrl(path,3600);url=data.signedUrl;}catch(e){console.error(e);}}
-  const w=window.open();if(w)w.document.write('<img src="'+url+'" style="max-width:100%">');
+function verCompActual(){verComprobante(curComp)}
+/* muestra el comprobante en una hoja de la app (URL firmada de 5 min) y al
+   cerrarla regresa a la hoja de donde vino */
+let compVolverA=null;
+async function verComprobante(valor){
+  const tipo=NUC.tipoComprobante(valor);
+  if(!tipo){toast('Comprobante no válido');return;}
+  let url=valor;
+  if(tipo==='ruta'){
+    try{url=(await guardar(sb.storage.from('comprobantes').createSignedUrl(valor,300))).signedUrl;}
+    catch(e){avisarError(e,'No se pudo abrir el comprobante');return;}
+  }
+  const img=document.getElementById('compVerImg');img.removeAttribute('src');img.src=url;
+  compVolverA=curSheet&&curSheet!=='compSheet'?curSheet:null;
+  if(compVolverA){document.getElementById(compVolverA).classList.remove('show');curSheet='compSheet';requestAnimationFrame(()=>document.getElementById('compSheet').classList.add('show'));}
+  else showSheet('compSheet');
+}
+function cerrarComp(){
+  document.getElementById('compVerImg').removeAttribute('src');
+  if(!compVolverA){closeSheet();return;}
+  document.getElementById('compSheet').classList.remove('show');
+  const volver=compVolverA;curSheet=volver;compVolverA=null;
+  requestAnimationFrame(()=>document.getElementById(volver).classList.add('show'));
 }
 function removeComp(){curComp='';renderCompPreview();}
 function onCompFile(e){
@@ -326,12 +353,12 @@ function openApptSheet(){
   document.getElementById('apptDelBtn').style.display='none';
   document.getElementById('apptCodeBar').style.display='none';
   document.getElementById('apptCli').value='';
-  selectedSvcIds=[];svcChosenPrice={};renderSvcPicker();
+  apptPrevItems={};selectedSvcIds=[];svcChosenPrice={};renderSvcPicker();
   apptCortesiaId=null;
   apptSelectedCliId=null;document.getElementById('apptCliResults').innerHTML='';
   document.getElementById('apptDate').value=selectedDate;
   document.getElementById('apptTime').value='';
-  setApptDur(60);
+  setApptDur(60);apptDurCargada=null;
   document.getElementById('apptPrice').value='';
   document.getElementById('apptNotes').value='';
   curColor='rosa';renderColorChips();
@@ -352,6 +379,7 @@ function editAppt(id){
   if(c.codigo){document.getElementById('apptCodeVal').textContent=c.codigo;bar.style.display='block';}
   else bar.style.display='none';
   selectedSvcIds=citaItems(c).map(i=>i.id).filter(Boolean);
+  apptPrevItems={};(c.items||[]).forEach(i=>{if(i&&i.id)apptPrevItems[i.id]={...i};});
   svcChosenPrice={};citaItems(c).forEach(i=>{if(i.id)svcChosenPrice[i.id]=Number(i.p||0);});
   renderSvcPicker();
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
@@ -360,7 +388,7 @@ function editAppt(id){
   apptCortesiaId=c.cortesiaId||null;renderApptCortesias();
   document.getElementById('apptDate').value=c.fecha;
   document.getElementById('apptTime').value=c.hora||'';
-  setApptDur(c.dur||60);
+  setApptDur(c.dur||60);apptDurCargada={min:Number(c.dur)||60,mostrada:getApptDur()};
   document.getElementById('apptPrice').value=c.precio||'';
   document.getElementById('apptNotes').value=c.notas||'';
   curColor=c.color||'rosa';renderColorChips();
@@ -370,10 +398,10 @@ function editAppt(id){
   document.getElementById('apptDescPct').value=(curDescuento>0&&c.precio>0)?Math.round(curDescuento/c.precio*100):'';
   // cargar pagos: si la cita ya tiene lista de pagos úsala; si no, migra los campos viejos
   if(Array.isArray(c.pagos)&&c.pagos.length){
-    curPagos=c.pagos.map(p=>({monto:Number(p.monto)||0,metodo:p.metodo||'efectivo'}));
+    curPagos=c.pagos.map(p=>({...p,monto:Number(p.monto)||0,metodo:p.metodo||'efectivo'}));
   }else if(c.estado==='atendida'){
     const sm=pagosSummary(c);
-    curPagos=sm.cobrado>0?[{monto:sm.cobrado,metodo:c.metodo||'efectivo'}]:[];
+    curPagos=sm.cobrado>0?[{monto:sm.cobrado,metodo:c.metodo||'efectivo',fecha:c.pagadoFecha||c.fecha}]:[];
   }else{
     curPagos=[];
   }

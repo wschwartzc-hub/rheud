@@ -286,7 +286,7 @@ function renderHoyHead(){
   if(!sub||!box)return;
   const today=new Date(),key=ymd(today);
   const hoy=DB.citas.filter(c=>c.fecha===key&&c.estado!=='cancelada');
-  const esperado=hoy.reduce((s,c)=>s+Number(c.precio||0),0);
+  const esperado=hoy.reduce((s,c)=>s+totalNeto(c),0);
   const DOWFULL=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   sub.innerHTML=`${DOWFULL[today.getDay()]} ${today.getDate()} de ${MONF[today.getMonth()].toLowerCase()} · <b>${hoy.length} cita${hoy.length!==1?'s':''}</b>${esperado?` · <b>${fmtMoney(esperado)}</b> esperados`:''}`;
   // siguiente cita: hoy por atender con hora, la más próxima; si no, la próxima futura
@@ -310,7 +310,7 @@ function renderHoyHead(){
           <div class="nc-name">${esc(cli?cli.nombre:'Clienta')}</div>
           <div class="nc-svc">${esc(svcFull(c))}${c.dur?` · ${c.dur} min`:''}</div>
         </div>
-        <div class="nc-price">${fmtMoney(c.precio||0)}</div>
+        <div class="nc-price">${fmtMoney(totalNeto(c))}</div>
       </div>
       <div class="nc-actions">
         <button class="nc-btn" data-on-click="event.stopPropagation();editAppt('${c.id}')">Abrir cita</button>
@@ -340,6 +340,6 @@ function renderLista(){
       <div class="tm">${c.hora?minLabel(s).replace(' ','<br>'):'—'}</div>
       <div class="bar" style="background:${pal.br}"></div>
       <div class="bd"><div class="nm">${esc(cli?cli.nombre:'Clienta')}</div><div class="sv">${esc(svcFull(c))}${c.dur?` · ${c.dur} min`:''}</div>${tags.length?`<div class="tags">${tags.join('')}</div>`:''}</div>
-      <div class="pr">${fmtMoney(c.precio||0)}</div>
+      <div class="pr">${fmtMoney(totalNeto(c))}</div>
     </div>`;}).join('')+`</div>`;
 }

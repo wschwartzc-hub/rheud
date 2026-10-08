@@ -32,8 +32,9 @@ async function guardarPromoTpl(){
   if(!txt.includes('{{SERVICIOS}}')){
     if(!confirm('No incluiste {{SERVICIOS}} — tus precios no aparecerán automáticamente. ¿Guardar de todas formas?'))return;
   }
+  try{await guardar(sb.from('negocios').update({promo_broadcast:txt}).eq('id',NEGOCIO_ID));}
+  catch(e){avisarError(e);return;}
   PROMO_BROADCAST=txt;
-  try{await sb.from('negocios').update({promo_broadcast:txt}).eq('id',NEGOCIO_ID);}catch(e){console.error(e);toast('Error al guardar');return;}
   closeSheet();toast('Plantilla guardada ✓');
 }
 function waOpen(cli,msg){
@@ -104,7 +105,10 @@ function msgInfoCita(c,cli){
   msg+=`Tu cita en *Rhēud Beauty*:\n\n`;
   msg+=`📅 ${fechaHora}\n`;
   msg+=`💖 ${servicios}\n`;
-  if(c.precio)msg+=`💵 Total: $${c.precio}\n`;
+  // total neto (precio − descuento); si ya dejó anticipo, cuánto falta
+  const r=resumenPago(c);
+  if(r.total>0)msg+=`💵 Total: ${fmtMoney(r.total)}\n`;
+  if(r.total>0&&r.cobrado>0)msg+=r.saldo>0?`✅ Pagado: ${fmtMoney(r.cobrado)} · resta ${fmtMoney(r.saldo)}\n`:`✅ Pagado\n`;
   const w=wxForDate(c.fecha);
   if(w)msg+=`${WX_ICON[w.code]||'🌡️'} Clima estimado: ${wxText(w.code)}, ${w.mx}°/${w.mn}°\n`;
   msg+=`\n🔖 Código de tu cita: *${c.codigo||'—'}*\n`;
@@ -182,9 +186,9 @@ function backToAcciones(){
 async function accEnviarCortesia(){
   const txt=document.getElementById('cortesiaText').value.trim();
   if(!txt){toast('Escribe el mensaje');return;}
-  if(document.getElementById('cortesiaSave').checked){
-    PROMO_TEMPLATE=txt;
-    try{await sb.from('negocios').update({promo_template:txt}).eq('id',NEGOCIO_ID);}catch(e){console.error(e);}
+  if(document.getElementById('cortesiaSave').checked&&txt!==PROMO_TEMPLATE){
+    try{await guardar(sb.from('negocios').update({promo_template:txt}).eq('id',NEGOCIO_ID));PROMO_TEMPLATE=txt;}
+    catch(e){avisarError(e,'No se pudo guardar la plantilla; el mensaje sí se envía.');}
   }
   const cli=accCli();
   let msg=`¡Hola${cli?' '+cli.nombre.split(' ')[0]:''}! 🎁\n\n${txt}\n\n— *Rhēud Beauty* 🤍`;
@@ -207,111 +211,126 @@ function openAccionesFromAppt(){
   openAcciones(c.clientaId, c.id);
 }
 async function uploadComprobante(dataUri){
-  if(!dataUri||!dataUri.startsWith('data:'))return dataUri||'';
+  if(NUC.tipoComprobante(dataUri)!=='data')return '';
   try{
     const blob=await (await fetch(dataUri)).blob();
     const path=NEGOCIO_ID+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,7)+'.jpg';
-    const {error}=await sb.storage.from('comprobantes').upload(path,blob,{contentType:'image/jpeg',upsert:false});
-    if(error)throw error;
+    await guardar(sb.storage.from('comprobantes').upload(path,blob,{contentType:'image/jpeg',upsert:false}));
     return path; // guardamos la ruta; se firma al mostrar
   }catch(e){console.error('comprobante',e);return '';}
 }
+/* borra del bucket un comprobante que ya no usa ninguna cita (sin bloquear la UI) */
+function borrarComprobante(path){
+  if(NUC.tipoComprobante(path)!=='ruta')return;
+  sb.storage.from('comprobantes').remove([path]).then(r=>{if(r&&r.error)console.error('borrar comprobante',r.error);},e=>console.error('borrar comprobante',e));
+}
+function repintarTrasCita(){
+  renderAgenda();
+  if(currentView==='ventas')renderVentas();
+  if(currentView==='ventas'&&ventasModeActive==='insights')renderInteligencia();
+  if(currentView==='clientas')renderClientas();
+  if(currentView==='citas')renderCitas();
+}
 async function saveAppt(){
+  // el botón queda desactivado mientras guarda: un doble toque no crea dos citas
+  const listo=ocupar('cita',document.querySelector('#apptSheet .btn-primary'),'Guardando…');if(!listo)return;
+  try{await guardarCita();}finally{listo();}
+}
+async function guardarCita(){
   const nombre=document.getElementById('apptCli').value.trim();
   if(!nombre){toast('Escribe el nombre de la clienta');return;}
   const date=document.getElementById('apptDate').value;
   if(!date){toast('Elige una fecha');return;}
-  const btn=document.querySelector('#apptSheet .btn-primary');if(btn)btn.textContent='Guardando…';
+  const hora=document.getElementById('apptTime').value;
+  if(!hora){toast('Elige la hora de la cita');return;}
+  const prev=editingId?DB.citas.find(c=>c.id===editingId):null;
+  if(editingId&&!prev){toast('Esta cita ya no existe');closeSheet();return;}
+  // clienta: debe elegirse de la lista; un nombre escrito que no está se confirma como nueva
   let cli=apptSelectedCliId?DB.clientas.find(c=>c.id===apptSelectedCliId):null;
-  if(!cli)cli=DB.clientas.find(c=>c.nombre.toLowerCase()===nombre.toLowerCase());
   if(!cli){
-    try{const {data:ins,error}=await sb.from('clientas').insert(cliToRow({nombre})).select().single();if(error)throw error;cli=rowToCli(ins);DB.clientas.push(cli);}
-    catch(e){toast('Error al crear clienta');console.error(e);if(btn)btn.textContent='Guardar cita';return;}
+    const iguales=DB.clientas.filter(c=>normTxt(c.nombre)===normTxt(nombre));
+    if(iguales.length){toast(iguales.length>1?'Hay varias clientas con ese nombre: elige una de la lista':'Toca a la clienta en la lista para elegirla');onApptCliInput();return;}
+    if(!confirm(`Crear clienta nueva: ${nombre}`))return;
   }
   const items=selectedItems();
-  const svcName=items.map(i=>i.n).join(' · ');
-  const todayKey=ymd(new Date());
+  const dur=duracionElegida();
+  // traslape con otra cita en el mismo recurso (mesa o cabina, con limpieza)
+  if(curEstado!=='cancelada'){
+    const clash=segsClash(proposedSegments(toMin(hora),dur),busyIntervals(date,editingId));
+    if(clash){
+      const otra=DB.clientas.find(x=>x.id===clash.b.c.clientaId);
+      if(!confirm(`Se encima con ${otra?otra.nombre:'otra cita'} a las ${minLabel(clash.b.c&&clash.b.c.hora?toMin(clash.b.c.hora):clash.b.s)}. ¿Guardar de todas formas?`))return;
+    }
+  }
+  const hoy=ymd(new Date());
   const isAtendida=curEstado==='atendida';
   const precioNum=Number(document.getElementById('apptPrice').value)||0;
-  const descMontoVal=isAtendida?Math.min(curDescuento,precioNum):0;
-  const totalCobrar=Math.max(0,precioNum-descMontoVal);
-  // pagos: limpia los que tengan monto > 0
-  const pagosLimpios=isAtendida?curPagos.filter(p=>Number(p.monto)>0).map(p=>({monto:Number(p.monto),metodo:p.metodo||'efectivo'})):[];
+  if(precioNum<0){toast('El total no puede ser negativo');return;}
+  const descMontoVal=Math.min(Math.max(0,curDescuento),precioNum);
+  // pagos y anticipos: se guardan en cualquier estado; cambiar el estado nunca los borra
+  const pagosLimpios=curPagos.filter(p=>Number(p.monto)>0).map(p=>({...p,monto:Number(p.monto),metodo:p.metodo||'efectivo',fecha:p.fecha||hoy}));
   const cobradoTot=pagosLimpios.reduce((s,p)=>s+p.monto,0);
-  let pagoEstado='';
-  if(isAtendida){
-    if(cobradoTot<=0)pagoEstado='deuda';
-    else if(cobradoTot<totalCobrar)pagoEstado='parcial';
-    else pagoEstado='pagado';
+  if(curEstado==='cancelada'&&cobradoTot>0&&!(prev&&prev.estado==='cancelada')){
+    if(!confirm(`Esta cita tiene pagos por ${fmtMoney(cobradoTot)}. Se conservan registrados aunque la canceles. ¿Cancelar la cita?`))return;
   }
-  let pagadoFecha='';
-  if(isAtendida&&pagoEstado==='pagado'){
-    const prev=editingId?DB.citas.find(c=>c.id===editingId):null;
-    if(prev&&prev.pagadoFecha&&prev.estado==='atendida')pagadoFecha=prev.pagadoFecha;
-    else pagadoFecha=todayKey;
+  const pagoEstado=isAtendida?window.RheudPagos.campoPago({precio:precioNum,descMonto:descMontoVal,pagos:pagosLimpios,pago:'deuda',estado:'atendida'}):'';
+  let pagadoFecha=prev?(prev.pagadoFecha||''):'';
+  if(isAtendida)pagadoFecha=pagoEstado==='pagado'?((prev&&prev.estado==='atendida'&&prev.pagadoFecha)||hoy):'';
+  // comprobante: una foto nueva se sube; una ruta del bucket se conserva
+  let compVal=NUC.tipoComprobante(curComp)?curComp:'';
+  let subido='';
+  if(NUC.tipoComprobante(compVal)==='data'){
+    compVal=await uploadComprobante(compVal);
+    if(!compVal){toast('No se pudo subir el comprobante. Revisa tu conexión.');return;}
+    subido=compVal;
   }
-  // comprobante: si es data URI nuevo, súbelo; si ya era ruta, déjalo
-  let compVal=isAtendida?curComp:'';
-  if(compVal&&compVal.startsWith('data:'))compVal=await uploadComprobante(compVal);
-  // método principal (primer pago) para compatibilidad/etiquetas
-  const metodoPrincipal=pagosLimpios.length?pagosLimpios[0].metodo:'';
+  if(!cli){
+    try{cli=ponerEnCache('clientas',rowToCli(await guardar(sb.from('clientas').insert(cliToRow({nombre})).select().single())));}
+    catch(e){if(subido)borrarComprobante(subido);avisarError(e,'No se pudo crear la clienta. Revisa tu conexión.');return;}
+  }
   const data={
-    clientaId:cli.id,items,servicioId:items[0]?items[0].id:'',svcName,
-    fecha:date,hora:document.getElementById('apptTime').value,
-    dur:getApptDur()||60,
+    clientaId:cli.id,items,servicioId:items[0]?items[0].id:'',svcName:items.map(i=>i.n).join(' · '),
+    fecha:date,hora,dur,
     color:curColor,
     precio:precioNum,
     pagos:pagosLimpios,
     descMonto:descMontoVal,
     cobrado:null,descPct:(precioNum>0&&descMontoVal>0?Math.round(descMontoVal/precioNum*100):null),abonado:null,
     cortesiaId:apptCortesiaId||null,
-    estado:curEstado,pago:isAtendida?pagoEstado:'',
-    metodo:metodoPrincipal,pagadoFecha,
+    estado:curEstado,pago:pagoEstado,
+    metodo:pagosLimpios.length?pagosLimpios[0].metodo:'',pagadoFecha, // método principal = primer pago
     comprobante:compVal,
     notas:document.getElementById('apptNotes').value.trim()
   };
-  // si hay cortesía nueva seleccionada, marcarla como usada después de guardar
-  const wasAtendidaBefore=editingId?(DB.citas.find(c=>c.id===editingId)||{}).estado==='atendida':false;
+  const wasAtendidaBefore=prev?prev.estado==='atendida':false;
+  const prevCortesia=prev?prev.cortesiaId:null,prevComp=prev?prev.comprobante:'';
   try{
-    if(editingId){
-      const {error}=await sb.from('citas').update(citaToRow(data)).eq('id',editingId);if(error)throw error;
-      Object.assign(DB.citas.find(c=>c.id===editingId),data);
-    }else{
-      const {data:ins,error}=await sb.from('citas').insert(citaToRow(data)).select().single();if(error)throw error;
-      DB.citas.push(rowToCita(ins));
-    }
-  }catch(e){toast('Error al guardar la cita');console.error(e);if(btn)btn.textContent='Guardar cita';return;}
-  if(btn)btn.textContent='Guardar cita';
+    if(prev){
+      await guardar(sb.from('citas').update(citaToRow(data)).eq('id',prev.id));
+      Object.assign(DB.citas.find(c=>c.id===prev.id)||prev,data);
+    }else ponerEnCache('citas',rowToCita(await guardar(sb.from('citas').insert(citaToRow(data)).select().single())));
+  }catch(e){if(subido)borrarComprobante(subido);avisarError(e,'No se pudo guardar la cita. Revisa tu conexión.');return;}
+  // el comprobante que se quitó o se reemplazó se borra del bucket
+  if(prevComp&&prevComp!==compVal)borrarComprobante(prevComp);
   closeSheet();
   agAnchor=new Date(date+'T00:00:00');selectedDate=date;
-  renderAgenda();
-  if(currentView==='ventas')renderVentas();
-  if(currentView==='ventas'&&ventasModeActive==='insights')renderInteligencia();
-  if(currentView==='clientas')renderClientas();
-  if(currentView==='citas')renderCitas();
-  toast(editingId?'Cita actualizada':'Cita agendada ✨');
-  // si se aplicó una cortesía nueva, marcarla como usada
-  if(apptCortesiaId){
-    const prevCortesia=editingId?(DB.citas.find(c=>c.id===editingId)||{}).cortesiaId:null;
-    if(apptCortesiaId!==prevCortesia){
-      const cor=DB.cortesias.find(x=>x.id===apptCortesiaId);
-      if(cor&&!cor.usada){
-        const hoy=ymd(new Date());cor.usada=true;cor.fechaUso=hoy;
-        sb.from('cortesias').update({usada:true,fecha_uso:hoy}).eq('id',apptCortesiaId).then();
-      }
-    }
-  }
+  repintarTrasCita();
+  toast(prev?'Cita actualizada':'Cita agendada ✨');
+  // la cortesía se consume al quedar atendida y vuelve si se cancela o se quita
+  await sincronizarCortesias([prevCortesia,data.cortesiaId]);
   maybeOfferRebook(data,wasAtendidaBefore);
 }
+/* borrado suave: la cita queda en la base con deleted_at (y en la bitácora) */
 async function deleteAppt(){
-  if(!editingId||!confirm('¿Eliminar esta cita?'))return;
-  try{const {error}=await sb.from('citas').delete().eq('id',editingId);if(error)throw error;}
-  catch(e){toast('Error al eliminar');console.error(e);return;}
-  DB.citas=DB.citas.filter(c=>c.id!==editingId);closeSheet();
-  renderAgenda();
-  if(currentView==='ventas')renderVentas();
-  if(currentView==='ventas'&&ventasModeActive==='insights')renderInteligencia();
-  if(currentView==='clientas')renderClientas();
-  if(currentView==='citas')renderCitas();
+  const c=editingId?DB.citas.find(x=>x.id===editingId):null;if(!c)return;
+  const cob=resumenPago(c).cobrado;
+  if(!confirm(c.pagos.length&&cob>0?`Esta cita tiene pagos por ${fmtMoney(cob)}. ¿Eliminarla de todas formas?`:'¿Eliminar esta cita?'))return;
+  const listo=ocupar('borrarCita',document.getElementById('apptDelBtn'));if(!listo)return;
+  try{await guardar(sb.from('citas').update({deleted_at:new Date().toISOString()}).eq('id',c.id));}
+  catch(e){avisarError(e,'No se pudo eliminar la cita. Revisa tu conexión.');return;}
+  finally{listo();}
+  DB.citas=DB.citas.filter(x=>x.id!==c.id);closeSheet();
+  repintarTrasCita();
   toast('Cita eliminada');
+  await sincronizarCortesias([c.cortesiaId]);
 }
