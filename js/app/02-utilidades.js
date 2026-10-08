@@ -3,7 +3,9 @@ const DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MON=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function fmtMoney(n){return '$'+Number(n||0).toLocaleString('es-MX')}
-function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+/* Escapa texto para meterlo en HTML (contenido o atributo entre comillas). */
+const ESC_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>ESC_MAP[c])}
 function getApptDur(){const h=Number(document.getElementById('apptDurH').value)||0;const m=Number(document.getElementById('apptDurM').value)||0;return h*60+m;}
 function setApptDur(min){min=Number(min)||60;const h=Math.floor(min/60);let m=min%60;if(![0,15,30,45].includes(m))m=Math.round(m/15)*15%60;const hSel=document.getElementById('apptDurH'),mSel=document.getElementById('apptDurM');hSel.value=String(Math.min(h,8));mSel.value=String(m);}
 function fmtDur(min){min=Number(min)||0;const h=Math.floor(min/60),m=min%60;if(h&&m)return `${h} h ${m} min`;if(h)return `${h} h`;return `${m} min`;}
