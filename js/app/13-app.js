@@ -137,60 +137,69 @@ function setupScrollShrink(){
 }
 function logout(){sb.auth.signOut().then(()=>location.reload());}
 
-/* ---- Realtime: refresca el caché cuando otro dispositivo cambia algo ---- */
-let rtChannel=null;
+/* ---- Tiempo real: cada cambio llega con su fila y se aplica al caché ----
+   Canal filtrado por negocio. Los DELETE no admiten filtro (solo traen el id),
+   así que se escuchan aparte y solo quitan del caché lo que ya estaba ahí. */
+let rtChannel=null,rtCaido=false;
 function subscribeRealtime(){
   if(rtChannel)return;
-  rtChannel=sb.channel('rheud-rt')
-    .on('postgres_changes',{event:'*',schema:'public',table:'citas'},()=>refetch('citas'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'clientas'},()=>refetch('clientas'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'servicios'},()=>refetch('servicios'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'premios'},()=>refetch('premios'))
-    .on('postgres_changes',{event:'*',schema:'public',table:'cortesias_catalogo'},()=>refetch())
-    .on('postgres_changes',{event:'*',schema:'public',table:'cortesias'},()=>refetch())
-    .on('postgres_changes',{event:'*',schema:'public',table:'egresos'},()=>refetch())
-    .on('postgres_changes',{event:'*',schema:'public',table:'expedientes_piel'},()=>refetch())
-    .on('postgres_changes',{event:'*',schema:'public',table:'fotos_piel'},()=>refetch())
-    .subscribe();
+  let ch=sb.channel('rheud-rt-'+NEGOCIO_ID);
+  Object.keys(TABLAS).forEach(t=>{
+    ch=ch.on('postgres_changes',{event:'*',schema:'public',table:t,filter:'negocio_id=eq.'+NEGOCIO_ID},p=>aplicarCambio(t,p))
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:t},p=>aplicarCambio(t,p));
+  });
+  rtChannel=ch.subscribe(estado=>{
+    // si el canal se cayó, al volver se recarga todo (pudo perder cambios)
+    if(estado==='CHANNEL_ERROR'||estado==='TIMED_OUT'||estado==='CLOSED')rtCaido=true;
+    else if(estado==='SUBSCRIBED'&&rtCaido){rtCaido=false;recargarTodo();}
+  });
 }
-let refetchTimer=null;
-function refetch(){
-  // debounce: varias señales seguidas -> una sola recarga
-  clearTimeout(refetchTimer);
-  refetchTimer=setTimeout(async()=>{
-    try{
-      const [sv,cl,ci,pr]=await Promise.all([
-        sb.from('servicios').select('*').order('created_at',{ascending:true}),
-        sb.from('clientas').select('*').order('created_at',{ascending:true}),
-        sb.from('citas').select('*').order('fecha',{ascending:true}),
-        sb.from('premios').select('*').order('created_at',{ascending:true})
-      ]);
-      if(sv.data)DB.servicios=sv.data.map(rowToSvc);
-      if(cl.data)DB.clientas=cl.data.map(rowToCli);
-      if(ci.data)DB.citas=ci.data.map(rowToCita);
-      if(pr&&pr.data)DB.premios=pr.data.map(rowToPremio);
-      const [cc,co,eg,ex,fo]=await Promise.all([
-        sb.from('cortesias_catalogo').select('*').order('created_at',{ascending:true}),
-        sb.from('cortesias').select('*').order('created_at',{ascending:false}),
-        sb.from('egresos').select('*').order('fecha',{ascending:false}),
-        sb.from('expedientes_piel').select('*'),
-        sb.from('fotos_piel').select('*').order('fecha',{ascending:false})
-      ]);
-      if(cc&&cc.data)DB.cortesiasCat=cc.data.map(rowToCortesiaCat);
-      if(co&&co.data)DB.cortesias=co.data.map(rowToCortesia);
-      if(eg&&eg.data)DB.egresos=eg.data.map(rowToEgreso);
-      if(ex&&ex.data)DB.expedientes=ex.data.map(rowToExp);
-      if(fo&&fo.data)DB.fotos=fo.data.map(rowToFoto);
-      if(openCliId&&document.getElementById('cliSheet').classList.contains('show'))loadExpediente(openCliId);
-      // re-render la vista actual
-      if(currentView==='agenda')renderAgenda();
-      else if(currentView==='ventas')renderVentas();
-      else if(currentView==='ventas'&&ventasModeActive==='insights')renderInteligencia();
-      else if(currentView==='clientas')renderClientas();
-      else if(currentView==='citas')renderCitas();
-      else if(currentView==='servicios')renderServicios();
-    }catch(e){console.error('refetch',e);}
-  },350);
+function aplicarCambio(tabla,p){
+  const t=TABLAS[tabla];if(!t||!p)return;
+  const nueva=(p.new&&p.new.id)?p.new:null,id=nueva?nueva.id:(p.old&&p.old.id);
+  if(!id)return;
+  if(nueva&&nueva.negocio_id&&nueva.negocio_id!==NEGOCIO_ID)return;
+  const lista=DB[t.k];
+  // el expediente se identifica por clienta (puede haber un borrador sin id en el caché)
+  const i=lista.findIndex(x=>x.id===id||(t.k==='expedientes'&&nueva&&x.clientaId===nueva.clienta_id));
+  if(p.eventType==='DELETE'||!nueva||(t.viva&&!t.viva(nueva))){
+    if(i<0)return;
+    lista.splice(i,1);
+  }else{
+    const obj=t.map(nueva);
+    if(i>=0)lista[i]=obj;else if(t.alInicio)lista.unshift(obj);else lista.push(obj);
+  }
+  programarRepintado();
+}
+/* repinta solo lo que se ve, una vez por ráfaga de cambios */
+let repintarTimer=null;
+function programarRepintado(){clearTimeout(repintarTimer);repintarTimer=setTimeout(repintarVista,200);}
+function repintarVista(){
+  try{
+    if(currentView==='agenda')renderAgenda();
+    else if(currentView==='ventas'){if(ventasModeActive==='insights')renderInteligencia();else if(ventasModeActive==='egresos')renderEgresos();else renderVentas();}
+    else if(currentView==='clientas')renderClientas();
+    else if(currentView==='citas')renderCitas();
+    else if(currentView==='servicios'){
+      if(document.getElementById('menuPremios').style.display==='block')renderPremios();
+      else if(document.getElementById('menuCortesias').style.display==='block')renderCortesiasCat();
+      else renderServicios();
+    }
+    // ficha abierta: refresco suave (no pisa lo que se está escribiendo)
+    if(openCliId&&document.getElementById('cliSheet').classList.contains('show')){
+      const cl=DB.clientas.find(x=>x.id===openCliId);
+      loadExpediente(openCliId,true);renderCliCortesias(openCliId);
+      if(cl)refreshLoyalty(cl);
+    }
+    if(curSheet==='apptSheet')renderAssist();
+  }catch(e){console.error('repintar',e);}
+}
+/* al reconectar se recarga todo: los cambios de mientras no llegaron por el canal */
+let recargando=null;
+function recargarTodo(){
+  if(recargando)return recargando;
+  recargando=cargarTablas().then(repintarVista,e=>console.error('recarga',e)).finally(()=>{recargando=null;});
+  return recargando;
 }
 
 /* ---- Reloj + fecha ---- */
@@ -207,8 +216,15 @@ function updateConn(){
   c.className='sb-conn '+(onlineState?'on':'off');
   document.getElementById('sbConnTxt').textContent=onlineState?'En línea':'Sin conexión';
 }
-window.addEventListener('online',()=>{updateConn();refetch();toast('Conexión restaurada ✨');});
+window.addEventListener('online',()=>{updateConn();if(NEGOCIO_ID)recargarTodo();toast('Conexión restaurada ✨');});
 window.addEventListener('offline',updateConn);
+// el teléfono suspende la conexión en segundo plano: tras un rato fuera, se recarga al volver
+let ocultaDesde=0;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){ocultaDesde=Date.now();return;}
+  if(NEGOCIO_ID&&ocultaDesde&&Date.now()-ocultaDesde>60000)recargarTodo();
+  ocultaDesde=0;
+});
 
 /* ---- Clima (Open-Meteo, sin API key) ---- */
 let WX_CACHE=null;

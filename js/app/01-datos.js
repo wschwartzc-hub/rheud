@@ -34,6 +34,20 @@ const PROMO_DEFAULT=`✨ *PROMOCIONES RHĒUD* ✨
 Escríbenos para agendar tu espacio 🤍`;
 let onlineState=navigator.onLine;
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+const NUC=window.RheudNucleo,resumenPago=window.RheudPagos.resumenPago;
+
+/* ---- escrituras: supabase-js no lanza, devuelve {error}; aquí sí se lanza ---- */
+async function guardar(q){const {data,error}=await q;if(error)throw error;return data}
+function avisarError(e,msg){console.error(e);toast(msg||'No se pudo guardar. Revisa tu conexión e intenta de nuevo.')}
+/* evita dobles toques: la acción queda ocupada y su botón desactivado mientras guarda */
+const OCUPADO={};
+function ocupar(clave,btn,texto){
+  if(OCUPADO[clave])return null;OCUPADO[clave]=true;
+  const prev=btn?btn.textContent:'';if(btn){btn.disabled=true;if(texto)btn.textContent=texto;}
+  return ()=>{OCUPADO[clave]=false;if(btn){btn.disabled=false;btn.textContent=prev;}};
+}
+/* inserta o reemplaza por id (el eco de tiempo real puede llegar antes que la respuesta) */
+function ponerEnCache(k,obj,alInicio){const l=DB[k];const i=l.findIndex(x=>x.id===obj.id);if(i>=0)l[i]=obj;else if(alInicio)l.unshift(obj);else l.push(obj);return obj}
 
 /* ---- mapeo fila Supabase -> objeto que usa la UI ---- */
 function rowToSvc(r){return {id:r.id,n:r.nombre,p:Number(r.precio||0),precios:Array.isArray(r.precios)?r.precios.map(Number):[],costoReal:Number(r.costo_real||0),desc:r.descripcion||'',incluye:r.incluye||'',cat:r.categoria||'nails',sub:r.subfamilia||'',dur:Number(r.duracion_min||60),limpieza:Number(r.limpieza_min||0),recurso:r.recurso||'mesa',insumos:Array.isArray(r.insumos)?r.insumos:[],requisitos:r.requisitos||''}}
@@ -45,21 +59,11 @@ const SUBFAMILIAS={nails:['Retiros','Soft Gel','Acrílico','Dry Manicure','Gel S
 function svcById(id){return DB.servicios.find(x=>x.id===id)}
 function catLabel(c){return (CATS[c]||CATS.otro).n}
 function fmtDur(m){m=Number(m)||0;const h=Math.floor(m/60),r=m%60;return h?(r?`${h} h ${r}`:`${h} h`):`${r} min`}
-/* cada servicio de la cita ocupa un recurso durante d min y lo deja bloqueado l min más (limpieza) */
-function citaSegments(c){
-  const s0=toMin(c.hora);if(s0==null)return [];
-  const items=(c.items&&c.items.length)?c.items:[];
-  const withDur=items.filter(i=>Number(i.d)>0);
-  if(!withDur.length){
-    const first=items[0]?svcById(items[0].id):null;
-    return [{r:(items[0]&&items[0].r)||(first?first.recurso:'mesa')||'mesa',s:s0,e:s0+(Number(c.dur)||60),l:0,cat:(items[0]&&items[0].cat)||(first?first.cat:'nails'),c}];
-  }
-  let cur=s0;const segs=[];
-  items.forEach(i=>{const d=Number(i.d)||0;if(!d)return;segs.push({r:i.r||'mesa',s:cur,e:cur+d,l:Number(i.l)||0,cat:i.cat||'nails',n:i.n,c});cur+=d;});
-  return segs;
-}
+/* cada servicio de la cita ocupa un recurso durante d min y lo deja bloqueado l min más (limpieza);
+   la duración de la cita editada a mano alarga o recorta el último bloque (ver js/nucleo.js) */
+function citaSegments(c){return NUC.segmentos(toMin(c.hora),c.items,c.dur,svcById).map(sg=>(sg.c=c,sg))}
 function citaCats(c){const set=new Set();(c.items||[]).forEach(i=>{const s=svcById(i.id);set.add(i.cat||(s?s.cat:'nails'));});if(!set.size)set.add('nails');return [...set];}
-function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',cumple:r.cumple||'',formaUna:r.forma_una||'',coloresFav:r.colores_fav||'',alergias:r.alergias||'',notasPrefs:r.notas_prefs||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado}}
+function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefono||'',email:r.email||'',notas:r.notas||'',cumple:r.cumple||'',formaUna:r.forma_una||'',coloresFav:r.colores_fav||'',alergias:r.alergias||'',notasPrefs:r.notas_prefs||'',sellos:Number(r.sellos||0),premioMenorId:r.premio_menor_id||null,premioMayorId:r.premio_mayor_id||null,menorCanjeado:!!r.menor_canjeado,mayorCanjeado:!!r.mayor_canjeado,consentSalud:!!r.consentimiento_salud,consentFecha:r.consentimiento_fecha||''}}
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
 function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),descMonto:Number(r.descuento_monto||0),abonado:(r.abonado==null?null:Number(r.abonado)),pagos:Array.isArray(r.pagos)?r.pagos:[],cortesiaId:r.cortesia_id||null,estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||'',portalToken:r.portal_token||'',confirmadaAt:r.confirmada_at||''}}
 function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),descuento_monto:Number(c.descMonto||0),abonado:(c.abonado==null?null:Number(c.abonado)),pagos:Array.isArray(c.pagos)?c.pagos:[],cortesia_id:c.cortesiaId||null,estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
@@ -69,34 +73,54 @@ function rowToCortesiaCat(r){return {id:r.id,nombre:r.nombre,desc:r.descripcion|
 function rowToCortesia(r){return {id:r.id,clientaId:r.clienta_id,catalogoId:r.catalogo_id||null,desc:r.descripcion||'',vigencia:Number(r.vigencia_dias||30),fechaInicio:r.fecha_inicio||'',fechaVence:r.fecha_vence||'',usada:!!r.usada,fechaUso:r.fecha_uso||'',notas:r.notas||''}}
 function rowToEgreso(r){return {id:r.id,fecha:r.fecha||'',concepto:r.concepto||'',monto:Number(r.monto||0),notas:r.notas||''}}
 
+/* ---- tablas del caché: se cargan completas y se escuchan en tiempo real ----
+   k: clave en DB · orden: [columna, ascendente] · viva: filas que sí entran
+   (las citas borradas quedan en la base con deleted_at) · opcional: si falla
+   la consulta (tabla aún sin migrar) la app carga igual · alInicio: dónde
+   entra una fila nueva. */
+const TABLAS={
+  servicios:{k:'servicios',map:r=>rowToSvc(r),orden:['created_at',true]},
+  clientas:{k:'clientas',map:r=>rowToCli(r),orden:['created_at',true]},
+  citas:{k:'citas',map:r=>rowToCita(r),orden:['fecha',true],viva:r=>!r.deleted_at},
+  premios:{k:'premios',map:r=>rowToPremio(r),orden:['created_at',true],opcional:true},
+  cortesias_catalogo:{k:'cortesiasCat',map:r=>rowToCortesiaCat(r),orden:['created_at',true],opcional:true},
+  cortesias:{k:'cortesias',map:r=>rowToCortesia(r),orden:['created_at',false],opcional:true,alInicio:true},
+  egresos:{k:'egresos',map:r=>rowToEgreso(r),orden:['fecha',false],opcional:true,alInicio:true},
+  expedientes_piel:{k:'expedientes',map:r=>rowToExp(r),opcional:true},
+  fotos_piel:{k:'fotos',map:r=>rowToFoto(r),orden:['fecha',false],opcional:true,alInicio:true}
+};
+/* PostgREST corta en 1000 filas: se pide por páginas hasta que llega una incompleta.
+   El orden secundario por id hace estable la paginación. */
+const PAGINA=1000;
+async function traerTodo(tabla){
+  const t=TABLAS[tabla];let filas=[];
+  for(let desde=0;;desde+=PAGINA){
+    let q=sb.from(tabla).select('*').eq('negocio_id',NEGOCIO_ID);
+    if(t.orden)q=q.order(t.orden[0],{ascending:t.orden[1]});
+    const data=await guardar(q.order('id',{ascending:true}).range(desde,desde+PAGINA-1));
+    filas=filas.concat(data||[]);
+    if(!data||data.length<PAGINA)break;
+  }
+  return filas;
+}
+async function cargarTablas(){
+  const nombres=Object.keys(TABLAS);
+  const res=await Promise.all(nombres.map(n=>traerTodo(n).then(f=>({f}),e=>({e}))));
+  nombres.forEach((n,i)=>{if(res[i].e&&!TABLAS[n].opcional)throw res[i].e;});
+  nombres.forEach((n,i)=>{
+    const t=TABLAS[n],r=res[i];
+    if(r.e){console.error('carga '+n,r.e);return;} // opcional: se queda lo que había
+    DB[t.k]=r.f.filter(f=>!t.viva||t.viva(f)).map(t.map);
+  });
+}
 /* ---- carga inicial completa desde Supabase ---- */
 async function loadAll(){
-  const [sv,cl,ci,pr,cc,co,eg,ex,fo]=await Promise.all([
-    sb.from('servicios').select('*').order('created_at',{ascending:true}),
-    sb.from('clientas').select('*').order('created_at',{ascending:true}),
-    sb.from('citas').select('*').order('fecha',{ascending:true}),
-    sb.from('premios').select('*').order('created_at',{ascending:true}),
-    sb.from('cortesias_catalogo').select('*').order('created_at',{ascending:true}),
-    sb.from('cortesias').select('*').order('created_at',{ascending:false}),
-    sb.from('egresos').select('*').order('fecha',{ascending:false}),
-    sb.from('expedientes_piel').select('*'),
-    sb.from('fotos_piel').select('*').order('fecha',{ascending:false})
-  ]);
-  if(sv.error||cl.error||ci.error){console.error(sv.error||cl.error||ci.error);throw (sv.error||cl.error||ci.error);}
-  DB.servicios=(sv.data||[]).map(rowToSvc);
-  DB.clientas=(cl.data||[]).map(rowToCli);
-  DB.citas=(ci.data||[]).map(rowToCita);
-  DB.premios=(pr&&!pr.error)?(pr.data||[]).map(rowToPremio):[];
-  DB.cortesiasCat=(cc&&!cc.error)?(cc.data||[]).map(rowToCortesiaCat):[];
-  DB.cortesias=(co&&!co.error)?(co.data||[]).map(rowToCortesia):[];
-  DB.egresos=(eg&&!eg.error)?(eg.data||[]).map(rowToEgreso):[];
-  DB.expedientes=(ex&&!ex.error)?(ex.data||[]).map(rowToExp):[]; // la tabla puede no existir aún: se tolera
-  DB.fotos=(fo&&!fo.error)?(fo.data||[]).map(rowToFoto):[];
+  await cargarTablas();
   // sembrar menú por defecto si está vacío
   if(DB.servicios.length===0){
     const rows=DEFAULT_SVCS.map(s=>({negocio_id:NEGOCIO_ID,nombre:s.n,precio:s.precio,costo_real:0,descripcion:'',incluye:''}));
-    const {data}=await sb.from('servicios').insert(rows).select();
-    DB.servicios=(data||[]).map(rowToSvc);
+    try{DB.servicios=(await guardar(sb.from('servicios').insert(rows).select())||[]).map(rowToSvc);}
+    catch(e){console.error('menú por defecto',e);}
   }
 }
 
