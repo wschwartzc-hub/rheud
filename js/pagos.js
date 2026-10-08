@@ -43,7 +43,24 @@
     return { base, descuento: desc, total, cobrado, saldo, extra, estado };
   }
 
-  const api = { resumenPago };
+  /* Valor de la columna "pago" de una cita atendida: pagado / parcial / deuda. */
+  function campoPago(c) {
+    const e = resumenPago(c).estado;
+    return e === 'pagado' ? 'pagado' : (e === 'parcial' ? 'parcial' : 'deuda');
+  }
+
+  /* Pagos para liquidar el saldo: conserva los que ya hay y agrega uno por lo
+     que falta. En citas viejas sin lista, lo ya cobrado pasa primero a la lista
+     para no perder el abono. */
+  function pagosConSaldo(c, metodo, fecha) {
+    const r = resumenPago(c);
+    const lista = Array.isArray(c.pagos) ? c.pagos.slice() : [];
+    if (!lista.length && r.cobrado > 0) lista.push({ monto: r.cobrado, metodo: c.metodo || 'efectivo', fecha: c.pagadoFecha || c.fecha || fecha });
+    if (r.saldo > 0) lista.push({ monto: r.saldo, metodo: metodo || 'efectivo', fecha });
+    return lista;
+  }
+
+  const api = { resumenPago, campoPago, pagosConSaldo };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RheudPagos = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -71,3 +71,31 @@ test('montos como texto o vacíos no rompen el cálculo', () => {
   const r = resumenPago({ precio: '450', descMonto: '', pagos: [{ monto: '200' }, { monto: null }], estado: 'atendida' });
   assert.deepEqual([r.total, r.cobrado, r.saldo], [450, 200, 250]);
 });
+
+const { campoPago, pagosConSaldo } = require('../js/pagos.js');
+
+test('campoPago: pagado / parcial / deuda según los pagos y el descuento', () => {
+  assert.equal(campoPago({ precio: 500, descMonto: 100, pagos: [{ monto: 400 }], estado: 'atendida' }), 'pagado');
+  assert.equal(campoPago({ precio: 500, descMonto: 100, pagos: [{ monto: 100 }], estado: 'atendida' }), 'parcial');
+  assert.equal(campoPago({ precio: 500, pagos: [], pago: 'deuda', estado: 'atendida' }), 'deuda');
+  assert.equal(campoPago({ precio: 0, pagos: [], pago: 'deuda', estado: 'atendida' }), 'pagado');
+});
+
+test('pagosConSaldo agrega el saldo neto y conserva los abonos', () => {
+  const c = { precio: 500, descMonto: 100, pagos: [{ monto: 150, metodo: 'transferencia', fecha: '2026-10-01' }], estado: 'atendida' };
+  const l = pagosConSaldo(c, 'tarjeta', '2026-10-08');
+  assert.deepEqual(l, [{ monto: 150, metodo: 'transferencia', fecha: '2026-10-01' }, { monto: 250, metodo: 'tarjeta', fecha: '2026-10-08' }]);
+  assert.equal(resumenPago({ ...c, pagos: l }).saldo, 0);
+  assert.equal(c.pagos.length, 1); // no modifica la cita original
+});
+
+test('pagosConSaldo en cita vieja "parcial" pasa el abono a la lista', () => {
+  const c = { precio: 500, pagos: [], pago: 'parcial', abonado: 200, metodo: 'efectivo', fecha: '2026-09-30', estado: 'atendida' };
+  const l = pagosConSaldo(c, 'transferencia', '2026-10-08');
+  assert.deepEqual(l, [{ monto: 200, metodo: 'efectivo', fecha: '2026-09-30' }, { monto: 300, metodo: 'transferencia', fecha: '2026-10-08' }]);
+});
+
+test('pagosConSaldo sin saldo no agrega nada', () => {
+  const c = { precio: 300, pagos: [{ monto: 300, metodo: 'efectivo' }], estado: 'atendida' };
+  assert.deepEqual(pagosConSaldo(c, 'efectivo', '2026-10-08'), c.pagos);
+});

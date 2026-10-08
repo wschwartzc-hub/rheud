@@ -412,7 +412,7 @@
   </div>
   <div class="field"><label>Insumos y máquinas</label><input id="svcInsumos" placeholder="Ej. Máquina Hidrafacial, Suero HA, Panel LED"><small class="field-hint">Separados por coma.</small></div>
   <div class="field"><label>Requisitos para la clienta</label><input id="svcReq" placeholder="Ej. Ficha de piel vigente · sin retinoides 7 días"></div>
-  <div class="field"><label>Precios variables (opcional)</label><input id="svcPrecios" placeholder="Ej. 80, 100, 130" inputmode="numeric"><small class="field-hint">Si este servicio tiene varios precios a elegir, escríbelos separados por coma. Al agendar podrás elegir cuál.</small></div>
+  <div class="field"><label>Precios variables (opcional)</label><input id="svcPrecios" placeholder="Ej. 80 / 100 / 1,300" autocomplete="off" data-on-input="svcPreciosHint()"><small class="field-hint" id="svcPreciosHint">Si tiene varios precios a elegir, sepáralos con / (ej. 80 / 100 / 1,300). Al agendar podrás elegir cuál.</small></div>
   <div class="field"><label>Descripción</label><textarea id="svcDesc" placeholder="Breve descripción del servicio…"></textarea></div>
   <div class="field"><label>¿Qué incluye?</label><textarea id="svcIncl" placeholder="Ej. Limado, cutícula, esmaltado, decoración simple…"></textarea></div>
   <button class="btn btn-primary" data-on-click="saveSvc()">Guardar</button>
@@ -472,6 +472,7 @@
   <!-- EXPEDIENTE DE PIEL (Skin Care) -->
   <div class="pref-section piel-section">
     <div class="pref-title">Expediente de piel <span class="pref-when" id="pielWhen"></span></div>
+    <label class="acc-check"><input type="checkbox" id="pielConsent" data-on-change="setConsentimiento(this.checked)"> <span>La clienta autorizó guardar sus datos de salud y fotos<span id="pielConsentFecha"></span></span></label>
     <div class="field"><label>Tipo de piel</label>
       <div class="chips" id="pielTipoChips">
         <div class="chip" data-t="Normal">Normal</div><div class="chip" data-t="Seca">Seca</div><div class="chip" data-t="Mixta">Mixta</div><div class="chip" data-t="Grasa">Grasa</div><div class="chip" data-t="Sensible">Sensible</div>
@@ -513,6 +514,32 @@
   <div id="cliHist"></div>
   <button class="btn btn-primary" style="margin-top:18px" data-on-click="openAccionesClienta()">Acciones · Comunicarme</button>
   <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button class="btn btn-ghost" id="cliBajaBtn" data-on-click="bajaClienta()">Eliminar datos de la clienta</button>
+</div>
+
+<!-- HOJA REGISTRAR PAGO (Marcar pagada) -->
+<div class="sheet" id="cobroSheet">
+  <div class="grab"></div>
+  <h3>Registrar pago <span id="cobroMonto"></span></h3>
+  <div class="acc-sub" id="cobroSub"></div>
+  <div class="field"><label>¿Cómo pagó?</label>
+    <div class="chips" id="cobroMetodos">
+      <div class="chip sel" data-m="efectivo" data-on-click="setCobroMetodo('efectivo')">Efectivo</div>
+      <div class="chip" data-m="transferencia" data-on-click="setCobroMetodo('transferencia')">Transferencia</div>
+      <div class="chip" data-m="tarjeta" data-on-click="setCobroMetodo('tarjeta')">Tarjeta</div>
+      <div class="chip" data-m="otro" data-on-click="setCobroMetodo('otro')">Otro</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" id="cobroBtn" data-on-click="confirmarCobro()">Registrar pago</button>
+  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+</div>
+
+<!-- HOJA VER COMPROBANTE -->
+<div class="sheet" id="compSheet">
+  <div class="grab"></div>
+  <h3>Comprobante</h3>
+  <img id="compVerImg" alt="Comprobante de pago" style="display:block;max-width:100%;border-radius:11px;border:1px solid var(--line);margin:0 auto 12px">
+  <button class="btn btn-line" data-on-click="cerrarComp()">Cerrar</button>
 </div>
 
 <!-- HOJA DE ACCIONES (reutilizable) -->
@@ -671,6 +698,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="js/pagos.js"></script>
+<script src="js/nucleo.js"></script>
 <script src="js/app/00-eventos.js"></script>
 <script src="js/app/01-datos.js"></script>
 <script src="js/app/02-utilidades.js"></script>

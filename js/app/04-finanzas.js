@@ -28,11 +28,12 @@ function renderVentas(){
   if(ventasPeriod==='mes'){const d=new Date();endKeyFull=ymd(new Date(d.getFullYear(),d.getMonth()+1,0));}
   else if(ventasPeriod==='sem'){const d=new Date(startKey+'T00:00:00');d.setDate(d.getDate()+6);endKeyFull=ymd(d);}
   const sales=DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=startKey&&c.fecha<=endKey);
-  const total=sales.reduce((s,c)=>s+Number(c.precio||0),0);
-  const cobrado=sales.reduce((s,c)=>s+montoCita(c),0);
-  const deuda=sales.reduce((s,c)=>s+deudaCita(c),0);
   const agendadas=DB.citas.filter(c=>c.estado==='agendada'&&c.fecha>=startKey&&c.fecha<=endKeyFull);
-  const esperadoAgendadas=agendadas.reduce((s,c)=>s+Number(c.precio||0),0);
+  // por atender: los anticipos ya están cobrados; lo pendiente es el saldo neto (precio − descuento − anticipos)
+  const anticipos=agendadas.reduce((s,c)=>s+resumenPago(c).cobrado,0);
+  const cobrado=sales.reduce((s,c)=>s+montoCita(c),0)+anticipos;
+  const deuda=sales.reduce((s,c)=>s+deudaCita(c),0);
+  const esperadoAgendadas=agendadas.reduce((s,c)=>s+resumenPago(c).saldo,0);
   const totalEsperado=cobrado+deuda+esperadoAgendadas;
   const nTodo=sales.length+agendadas.length;
   document.getElementById('ventasStats').innerHTML=`

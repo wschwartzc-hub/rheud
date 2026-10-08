@@ -46,15 +46,28 @@ function loyaltyCardHtml(cli){
     </div>
   </div>`;
 }
+/* Los sellos se cambian solo con funciones de la base (migración 20261008_10):
+   sumar_sello(cita) liga cada sello a una cita atendida; ajustar_sellos es el
+   ajuste manual de la dueña; canjear_premio reinicia la tarjeta al canjear el mayor. */
+async function ajustarSellos(cliId,delta){
+  const s=Number(await guardar(sb.rpc('ajustar_sellos',{p_clienta:cliId,p_delta:delta})));
+  const cli=DB.clientas.find(x=>x.id===cliId);if(cli&&isFinite(s))cli.sellos=s;
+  return s;
+}
 async function addSello(delta){
   const cli=DB.clientas.find(x=>x.id===openCliId);if(!cli)return;
-  let s=(cli.sellos||0)+delta;
-  if(s<0)s=0;if(s>MAX_SELLOS)s=MAX_SELLOS;
-  cli.sellos=s;
-  try{await sb.from('clientas').update({sellos:s}).eq('id',cli.id);}catch(e){console.error(e);}
+  if(delta<0&&!(cli.sellos>0))return;
+  if(delta>0&&cli.sellos>=MAX_SELLOS){toast('La tarjeta ya está completa');return;}
+  const listo=ocupar('sello');if(!listo)return;
+  let s;
+  try{s=await ajustarSellos(cli.id,delta);}
+  catch(e){avisarError(e,errorSellos(e));return;}
+  finally{listo();}
   refreshLoyalty(cli);
   if(delta>0&&(s===6||s===12))toast(s===6?'¡Llegó a 6 sellos! 🎁':'¡Tarjeta completa! 🏆');
 }
+/* mensaje legible para errores de las funciones de sellos */
+function errorSellos(e){const m=(e&&e.message)||'';return /sello|tarjeta|premio|cita|clienta|dueña/i.test(m)?m:'No se pudo actualizar la tarjeta. Revisa tu conexión.'}
 function refreshLoyalty(cli){
   const box=document.getElementById('cliLoyalty');
   if(box)box.innerHTML=loyaltyCardHtml(cli);
@@ -82,8 +95,9 @@ async function assignPremio(premioId){
   const cli=DB.clientas.find(x=>x.id===openCliId);if(!cli)return;
   const field=pickNivel==='menor'?'premio_menor_id':'premio_mayor_id';
   const val=premioId||null;
+  try{await guardar(sb.from('clientas').update({[field]:val}).eq('id',cli.id));}
+  catch(e){avisarError(e);return;}
   if(pickNivel==='menor')cli.premioMenorId=val;else cli.premioMayorId=val;
-  try{await sb.from('clientas').update({[field]:val}).eq('id',cli.id);}catch(e){console.error(e);}
   // vuelve a la ficha de clienta (estaba debajo)
   document.getElementById('pickPremioSheet').classList.remove('show');
   curSheet='cliSheet';
@@ -92,11 +106,21 @@ async function assignPremio(premioId){
 }
 async function canjearPremio(nivel){
   const cli=DB.clientas.find(x=>x.id===openCliId);if(!cli)return;
-  const field=nivel==='menor'?'menor_canjeado':'mayor_canjeado';
-  if(nivel==='menor')cli.menorCanjeado=true;else cli.mayorCanjeado=true;
-  try{await sb.from('clientas').update({[field]:true}).eq('id',cli.id);}catch(e){console.error(e);}
+  const premio=DB.premios.find(p=>p.id===(nivel==='menor'?cli.premioMenorId:cli.premioMayorId));
+  const nombre=premio?premio.nombre:'el premio';
+  const msg=nivel==='mayor'
+    ?`¿Canjear "${nombre}"?\n\nLa tarjeta se reinicia: sellos en 0 y empieza un ciclo nuevo.${!cli.menorCanjeado?'\nOjo: aún no canjea el premio de 6 sellos y se pierde.':''}`
+    :`¿Canjear "${nombre}"?`;
+  if(!confirm(msg))return;
+  const listo=ocupar('canje');if(!listo)return;
+  let s;
+  try{s=Number(await guardar(sb.rpc('canjear_premio',{p_clienta:cli.id,p_nivel:nivel})));}
+  catch(e){avisarError(e,errorSellos(e));return;}
+  finally{listo();}
+  if(nivel==='mayor'){cli.sellos=isFinite(s)?s:0;cli.menorCanjeado=false;cli.mayorCanjeado=false;}
+  else{cli.menorCanjeado=true;if(isFinite(s))cli.sellos=s;}
   refreshLoyalty(cli);
-  toast('Premio canjeado ✓');
+  toast(nivel==='mayor'?'Premio canjeado ✓ · tarjeta nueva':'Premio canjeado ✓');
 }
 
 /* ====== QR: mostrar el de la clienta ====== */
@@ -121,7 +145,9 @@ function backToCliFromQR(){
 
 /* ====== QR: escanear para sumar sello ====== */
 let qrScanner=null;
+let escaneando=false; // el lector llama varias veces por el mismo QR: solo cuenta la primera
 function openScanner(){
+  escaneando=false;
   document.getElementById('scanResult').innerHTML='';
   showSheet('scanSheet');
   // pequeño delay para que el contenedor esté visible
@@ -139,33 +165,68 @@ function startScan(){
       console.error(err);
     });
 }
+const BTN_OTRA='<button class="btn btn-primary" style="margin-top:12px" data-on-click="restartScan()">Escanear otra</button>';
 async function onScanSuccess(text){
+  if(escaneando)return; // bandera síncrona: las lecturas repetidas del mismo QR se ignoran
+  const out=document.getElementById('scanResult');
   if(!text||!text.startsWith('RHEUD-CLI:')){
-    document.getElementById('scanResult').innerHTML='<div class="scan-err">Ese QR no es de una clienta de Rhēud.</div>';
+    out.innerHTML='<div class="scan-err">Ese QR no es de una clienta de Rhēud.</div>';
     return;
   }
   const id=text.replace('RHEUD-CLI:','');
   const cli=DB.clientas.find(x=>x.id===id);
   if(!cli){
-    document.getElementById('scanResult').innerHTML='<div class="scan-err">No encontré a esa clienta.</div>';
+    out.innerHTML='<div class="scan-err">No encontré a esa clienta.</div>';
     return;
   }
-  // pausa el escáner para no leer mil veces
-  try{await qrScanner.stop();}catch(e){}
-  let s=Math.min((cli.sellos||0)+1,MAX_SELLOS);
-  cli.sellos=s;
-  try{await sb.from('clientas').update({sellos:s}).eq('id',cli.id);}catch(e){console.error(e);}
-  let extra='';
-  if(s===6)extra=' · ¡llegó a 6 sellos! 🎁';
-  else if(s===12)extra=' · ¡tarjeta completa! 🏆';
-  document.getElementById('scanResult').innerHTML=`<div class="scan-ok"><b>${cli.nombre}</b><br>Sello sumado: ${s}/12${extra}</div><button class="btn btn-primary" style="margin-top:12px" data-on-click="restartScan()">Escanear otra</button>`;
+  escaneando=true;
+  try{if(qrScanner)await qrScanner.stop();}catch(e){}
+  out.innerHTML='<div class="scan-ok">Buscando la cita de hoy…</div>';
+  try{
+    // el sello va ligado a la cita atendida de hoy que aún no tiene sello
+    const hoy=ymd(new Date());
+    const citas=DB.citas.filter(c=>c.clientaId===id&&c.fecha===hoy&&c.estado==='atendida');
+    let cita=null;
+    if(citas.length){
+      const con=await guardar(sb.from('sellos_log').select('cita_id').in('cita_id',citas.map(c=>c.id)));
+      const selladas=new Set((con||[]).map(r=>r.cita_id));
+      cita=citas.find(c=>!selladas.has(c.id))||null;
+    }
+    if(!cita){
+      const agendada=DB.citas.some(c=>c.clientaId===id&&c.fecha===hoy&&c.estado==='agendada');
+      out.innerHTML=`<div class="scan-err"><b>${esc(cli.nombre)}</b><br>${citas.length?'Su cita de hoy ya sumó su sello.':(agendada?'Su cita de hoy sigue como agendada: márcala como atendida para sumar el sello.':'No tiene una cita atendida hoy.')}</div>`
+        +`<button class="btn btn-line" style="margin-top:12px" data-on-click="selloManualScan('${cli.id}')">Sumar sello manual</button>`+BTN_OTRA;
+      return;
+    }
+    const s=Number(await guardar(sb.rpc('sumar_sello',{p_cita:cita.id})));
+    if(isFinite(s))cli.sellos=s;
+    mostrarSelloSumado(cli,s);
+  }catch(e){
+    console.error(e);
+    out.innerHTML=`<div class="scan-err">${esc(errorSellos(e))}</div>`+BTN_OTRA;
+  }
+}
+function mostrarSelloSumado(cli,s){
+  const extra=s===6?' · ¡llegó a 6 sellos! 🎁':(s===12?' · ¡tarjeta completa! 🏆':'');
+  document.getElementById('scanResult').innerHTML=`<div class="scan-ok"><b>${esc(cli.nombre)}</b><br>Sello sumado: ${s}/12${extra}</div>`+BTN_OTRA;
+}
+/* ajuste manual desde el escáner (sin cita atendida hoy) */
+async function selloManualScan(cliId){
+  const cli=DB.clientas.find(x=>x.id===cliId);if(!cli)return;
+  if(!confirm(`¿Sumar un sello manual a ${cli.nombre}? No queda ligado a ninguna cita.`))return;
+  const listo=ocupar('sello');if(!listo)return;
+  try{mostrarSelloSumado(cli,await ajustarSellos(cliId,1));}
+  catch(e){console.error(e);document.getElementById('scanResult').innerHTML=`<div class="scan-err">${esc(errorSellos(e))}</div>`+BTN_OTRA;}
+  finally{listo();}
 }
 function restartScan(){
+  escaneando=false;
   document.getElementById('scanResult').innerHTML='';
   startScan();
 }
 async function closeScanner(){
   if(qrScanner){try{await qrScanner.stop();}catch(e){}try{qrScanner.clear();}catch(e){}qrScanner=null;}
+  escaneando=false;
   closeSheet();
   if(currentView==='clientas')renderClientas();
 }
@@ -224,6 +285,7 @@ function openSvcSheet(){
   document.getElementById('svcDur').value=60;document.getElementById('svcLimp').value='';
   document.getElementById('svcInsumos').value='';document.getElementById('svcReq').value='';
   document.getElementById('svcMargin').innerHTML='';
+  svcPreciosHint();
   showSheet('svcSheet');
 }
 function editSvc(id){
@@ -236,7 +298,8 @@ function editSvc(id){
   document.getElementById('svcCost').value=s.costoReal||'';
   document.getElementById('svcDesc').value=s.desc||'';
   document.getElementById('svcIncl').value=s.incluye||'';
-  document.getElementById('svcPrecios').value=(s.precios&&s.precios.length)?s.precios.join(', '):'';
+  document.getElementById('svcPrecios').value=(s.precios&&s.precios.length)?s.precios.join(' / '):'';
+  svcPreciosHint();
   setSvcCat(s.cat||'nails',false);setSvcRec(s.recurso||'mesa');
   document.getElementById('svcSub').value=s.sub||'';
   document.getElementById('svcDur').value=s.dur||60;
@@ -265,12 +328,18 @@ function svcMarginHint(){
   el.innerHTML=`<div class="margin-hint">Margen estimado <b>${fmtMoney(m)} · ${pct}%</b></div>`;
 }
 document.getElementById('svcPrice').addEventListener('input',svcMarginHint);
-function parsePrecios(str){
-  return (str||'').split(',').map(x=>Number(x.trim())).filter(x=>!isNaN(x)&&x>0);
+/* precios separados por / o ; (la coma pegada a 3 dígitos es de miles: "1,200 / 1,500") */
+function parsePrecios(str){return NUC.parsePrecios(str)}
+// muestra cómo se van a guardar los precios variables mientras se escriben
+function svcPreciosHint(){
+  const el=document.getElementById('svcPreciosHint');if(!el)return;
+  const v=document.getElementById('svcPrecios').value.trim(),p=parsePrecios(v);
+  el.textContent=!v?'Si tiene varios precios a elegir, sepáralos con / (ej. 80 / 100 / 1,300). Al agendar podrás elegir cuál.':(p.length?'Se guardarán: '+p.map(fmtMoney).join(' · '):'No entendí esos precios. Sepáralos con /');
 }
 async function saveSvc(){
   const n=document.getElementById('svcName').value.trim();
   if(!n){toast('Escribe el nombre');return;}
+  if(document.getElementById('svcPrecios').value.trim()&&!parsePrecios(document.getElementById('svcPrecios').value).length){toast('Revisa los precios variables: sepáralos con /');return;}
   const precios=parsePrecios(document.getElementById('svcPrecios').value);
   let p=Number(document.getElementById('svcPrice').value)||0;
   // si hay precios variables y no hay precio base, usa el primero como referencia
@@ -288,19 +357,17 @@ async function saveSvc(){
     insumos:document.getElementById('svcInsumos').value.split(',').map(x=>x.trim()).filter(Boolean),
     requisitos:document.getElementById('svcReq').value.trim()
   };
+  const listo=ocupar('svc',document.querySelector('#svcSheet .btn-primary'),'Guardando…');if(!listo)return;
+  const editando=editingSvcId;
   try{
-    if(editingSvcId){
-      const {error}=await sb.from('servicios').update(svcToRow(data)).eq('id',editingSvcId);
-      if(error)throw error;
-      Object.assign(DB.servicios.find(s=>s.id===editingSvcId),data);
-    }else{
-      const {data:ins,error}=await sb.from('servicios').insert(svcToRow(data)).select().single();
-      if(error)throw error;
-      DB.servicios.push(rowToSvc(ins));
-    }
+    if(editando){
+      await guardar(sb.from('servicios').update(svcToRow(data)).eq('id',editando));
+      const s=DB.servicios.find(x=>x.id===editando);if(s)Object.assign(s,data);
+    }else ponerEnCache('servicios',rowToSvc(await guardar(sb.from('servicios').insert(svcToRow(data)).select().single())));
     closeSheet();renderServicios();
-    toast(editingSvcId?'Servicio actualizado':'Servicio agregado');
-  }catch(e){toast('Error al guardar');console.error(e);}
+    toast(editando?'Servicio actualizado':'Servicio agregado');
+  }catch(e){avisarError(e);}
+  finally{listo();}
 }
 async function delSvc(){
   if(!editingSvcId||!confirm('¿Eliminar este servicio del menú?'))return;

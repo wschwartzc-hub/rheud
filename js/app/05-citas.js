@@ -99,7 +99,7 @@ function renderCitas(){
     const amtHtml=tieneDesc?`<span class="cr-amt"><span class="amt-strike">${fmtMoney(c.precio)}</span> ${fmtMoney(totalNeto)}</span>`:`<span class="cr-amt">${fmtMoney(c.precio)}</span>`;
     const compThumb=c.comprobante?`<div class="cr-comp"><span class="comp-link" data-on-click="event.stopPropagation();viewComp('${c.id}')">📎 Ver comprobante</span></div>`:'';
     const acts=[];
-    if(isDeuda)acts.push(`<div class="cr-btn pay" data-on-click="event.stopPropagation();marcarPagada('${c.id}')">Marcar pagada</div>`);
+    if(isDeuda||isParcial)acts.push(`<div class="cr-btn pay" data-on-click="event.stopPropagation();marcarPagada('${c.id}')">Marcar pagada</div>`);
     if(c.estado==='agendada')acts.push(`<div class="cr-btn pay" data-on-click="event.stopPropagation();marcarAtendida('${c.id}')">Atendida</div>`);
     if(c.estado!=='cancelada')acts.push(`<div class="cr-btn re" data-on-click="event.stopPropagation();reagendar('${c.id}')">Reagendar</div>`);
     if(c.estado!=='cancelada')acts.push(`<div class="cr-btn cx" data-on-click="event.stopPropagation();cancelarCita('${c.id}')">Cancelar</div>`);
@@ -119,28 +119,62 @@ function renderCitas(){
   }).join('');
 }
 function refreshAfterCita(){renderCitas();if(currentView==='agenda')renderAgenda();}
-async function marcarAtendida(id){const c=DB.citas.find(x=>x.id===id);if(!c)return;const wasBefore=c.estado==='atendida';c.estado='atendida';if(!c.pago)c.pago='deuda';try{await sb.from('citas').update({estado:c.estado,pago:c.pago}).eq('id',id);}catch(e){console.error(e);}refreshAfterCita();toast('Marcada como atendida');maybeOfferRebook({estado:'atendida',clientaId:c.clientaId},wasBefore);}
-async function marcarPagada(id){
+async function marcarAtendida(id){
   const c=DB.citas.find(x=>x.id===id);if(!c)return;
-  const metodo=c.metodo||'efectivo';
-  c.pago='pagado';c.pagadoFecha=ymd(new Date());c.metodo=metodo;
-  c.pagos=[{monto:Number(c.precio||0),metodo}];
-  c.cobrado=null;c.abonado=null;
-  try{await sb.from('citas').update({pago:'pagado',pagado_fecha:c.pagadoFecha,metodo,pagos:c.pagos,abonado:null,cobrado:null}).eq('id',id);}catch(e){console.error(e);}
-  refreshAfterCita();toast('Pago registrado ✨');
+  const wasBefore=c.estado==='atendida';
+  // con anticipos queda parcial o pagada; sin pagos, en deuda
+  const cambios={estado:'atendida',pago:campoPagoDe({...c,estado:'atendida',pago:c.pago||'deuda'})};
+  try{await guardar(sb.from('citas').update(cambios).eq('id',id));}
+  catch(e){avisarError(e,'No se pudo marcar como atendida. Revisa tu conexión.');return;}
+  Object.assign(c,cambios);
+  refreshAfterCita();toast('Marcada como atendida');
+  await sincronizarCortesias([c.cortesiaId]);
+  maybeOfferRebook({estado:'atendida',clientaId:c.clientaId},wasBefore);
+}
+/* columna "pago" de una cita atendida a partir de sus pagos (anticipos incluidos) */
+function campoPagoDe(c){return window.RheudPagos.campoPago(c)}
+
+/* ---- Marcar pagada: agrega un pago por el saldo y pide el método ---- */
+let cobroCitaId=null,cobroMetodo='efectivo';
+function marcarPagada(id){
+  const c=DB.citas.find(x=>x.id===id);if(!c)return;
+  const r=resumenPago(c);
+  if(r.saldo<=0){toast('Esta cita ya está pagada');return;}
+  cobroCitaId=id;
+  setCobroMetodo(['efectivo','transferencia','tarjeta','otro'].includes(c.metodo)?c.metodo:'efectivo');
+  const cli=DB.clientas.find(x=>x.id===c.clientaId);
+  document.getElementById('cobroSub').textContent=`${cli?cli.nombre:'Clienta'} · saldo ${fmtMoney(r.saldo)}${r.cobrado>0?` (ya pagó ${fmtMoney(r.cobrado)})`:''}`;
+  document.getElementById('cobroMonto').textContent=fmtMoney(r.saldo);
+  showSheet('cobroSheet');
+}
+function setCobroMetodo(m){cobroMetodo=m;document.querySelectorAll('#cobroMetodos .chip').forEach(ch=>ch.classList.toggle('sel',ch.dataset.m===m));}
+async function confirmarCobro(){
+  const c=DB.citas.find(x=>x.id===cobroCitaId);if(!c){closeSheet();return;}
+  const listo=ocupar('cobro',document.getElementById('cobroBtn'),'Guardando…');if(!listo)return;
+  try{
+    const hoy=ymd(new Date());
+    const pagos=window.RheudPagos.pagosConSaldo(c,cobroMetodo,hoy);
+    const cambios={pagos,pago:campoPagoDe({...c,pagos}),pagadoFecha:hoy,metodo:pagos[0]?pagos[0].metodo:cobroMetodo,abonado:null,cobrado:null};
+    try{await guardar(sb.from('citas').update({pagos,pago:cambios.pago,pagado_fecha:hoy,metodo:cambios.metodo,abonado:null,cobrado:null}).eq('id',c.id));}
+    catch(e){avisarError(e,'No se pudo registrar el pago. Revisa tu conexión.');return;}
+    Object.assign(c,cambios);
+    closeSheet();refreshAfterCita();
+    if(currentView==='ventas')renderVentas();
+    toast('Pago registrado ✨');
+  }finally{listo();}
 }
 function reagendar(id){editAppt(id);}
 async function cancelarCita(id){
-  if(!confirm('¿Cancelar esta cita?'))return;
-  const c=DB.citas.find(x=>x.id===id);if(!c)return;c.estado='cancelada';c.pago='';
-  try{await sb.from('citas').update({estado:'cancelada',pago:''}).eq('id',id);}catch(e){console.error(e);}
+  const c=DB.citas.find(x=>x.id===id);if(!c)return;
+  const cob=resumenPago(c).cobrado;
+  if(!confirm(cob>0&&c.pagos.length?`Esta cita tiene pagos por ${fmtMoney(cob)}. Se conservan registrados. ¿Cancelar la cita?`:'¿Cancelar esta cita?'))return;
+  try{await guardar(sb.from('citas').update({estado:'cancelada',pago:''}).eq('id',id));}
+  catch(e){avisarError(e,'No se pudo cancelar la cita. Revisa tu conexión.');return;}
+  c.estado='cancelada';c.pago='';
   refreshAfterCita();toast('Cita cancelada');
+  await sincronizarCortesias([c.cortesiaId]);
 }
-async function viewComp(id){
+function viewComp(id){
   const c=DB.citas.find(x=>x.id===id);if(!c||!c.comprobante)return;
-  let url=c.comprobante;
-  if(!url.startsWith('http')&&!url.startsWith('data:')){
-    try{const {data}=await sb.storage.from('comprobantes').createSignedUrl(c.comprobante,3600);url=data.signedUrl;}catch(e){console.error(e);}
-  }
-  const w=window.open();if(w)w.document.write('<img src="'+url+'" style="max-width:100%">');
+  verComprobante(c.comprobante);
 }
