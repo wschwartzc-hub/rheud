@@ -234,7 +234,8 @@ async function addEgreso(){
 }
 async function deleteEgreso(id){
   if(!confirm('¿Eliminar este gasto?'))return;
-  try{await guardar(sb.from('egresos').delete().eq('id',id));}
+  // borrado suave: queda en la bitácora y se puede recuperar desde la base
+  try{await guardar(sb.from('egresos').update({deleted_at:new Date().toISOString()}).eq('id',id));}
   catch(e){avisarError(e,'No se pudo eliminar. Revisa tu conexión.');return;}
   DB.egresos=DB.egresos.filter(e=>e.id!==id);renderEgresos();toast('Eliminado');
 }

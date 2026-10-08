@@ -1,17 +1,20 @@
 -- ============================================================================
--- Rhēud · Borrado suave de citas, bitácora y reglas de datos    2026-10-08 · v7
--- · citas.deleted_at: "Eliminar cita" ya no borra la fila; la app ignora las
---   citas con deleted_at y el portal deja de mostrarlas.
--- · bitacora: cada alta, cambio o baja en citas, clientas y egresos queda
---   registrada (quién, cuándo, antes y después). Solo lectura para el equipo.
+-- Rhēud · Borrado suave, bitácora y reglas de datos              2026-10-08 · v7
+-- · citas.deleted_at y egresos.deleted_at: "Eliminar" ya no borra la fila; la
+--   app ignora las filas con deleted_at y el portal deja de mostrar la cita.
+-- · bitacora: cada alta y cada cambio (incluido el borrado suave) en citas,
+--   clientas y egresos queda registrado: quién, cuándo, antes y después. Solo
+--   lectura para el equipo. Como nada se borra de verdad, el trigger solo
+--   escucha altas y cambios.
 -- · checks: precio >= 0, descuento entre 0 y el precio, estado válido.
 --   Verificado con los datos de producción el 2026-10-08 (0 filas fuera de
 --   regla), por eso se validan de inmediato.
--- Requiere 20261008_01 (mis_negocios, portal_cita). Sin DROP: se puede volver a correr.
+-- Requiere 20261008_01 (mis_negocios, portal_cita). Se puede volver a correr.
 -- ============================================================================
 
 -- 12a) Borrado suave ---------------------------------------------------------
-alter table public.citas add column if not exists deleted_at timestamptz;
+alter table public.citas   add column if not exists deleted_at timestamptz;
+alter table public.egresos add column if not exists deleted_at timestamptz;
 create index if not exists citas_vivas_idx on public.citas (negocio_id, fecha) where deleted_at is null;
 
 -- 12b) Bitácora --------------------------------------------------------------
@@ -20,7 +23,7 @@ create table if not exists public.bitacora (
   negocio_id uuid,
   tabla      text not null,
   fila       uuid,
-  accion     text not null,            -- alta | cambio | borrado | baja | eliminada
+  accion     text not null,            -- alta | cambio | borrado | baja
   antes      jsonb,
   despues    jsonb,
   por        uuid default auth.uid(),
@@ -36,7 +39,7 @@ do $$ begin
       using (negocio_id in (select public.mis_negocios()));
   end if;
 end $$;
--- Solo lectura: escriben únicamente los triggers (security definer).
+-- Solo lectura: escriben únicamente el trigger y baja_clienta (security definer).
 revoke all on public.bitacora from anon, authenticated;
 grant select on public.bitacora to authenticated;
 revoke all on sequence public.bitacora_id_seq from anon, authenticated;
@@ -45,13 +48,10 @@ revoke all on sequence public.bitacora_id_seq from anon, authenticated;
 create or replace function public._bitacora() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_antes jsonb; v_despues jsonb; v_accion text; v_fila jsonb;
+  v_antes jsonb; v_despues jsonb; v_accion text;
 begin
-  v_fila := case when tg_op = 'DELETE' then to_jsonb(old) else to_jsonb(new) end;
   if tg_op = 'INSERT' then
     v_despues := to_jsonb(new); v_accion := 'alta';
-  elsif tg_op = 'DELETE' then
-    v_antes := to_jsonb(old); v_accion := 'eliminada';
   else
     select jsonb_object_agg(o.key, o.value) into v_antes
       from jsonb_each(to_jsonb(old)) o where to_jsonb(new) -> o.key is distinct from o.value;
@@ -63,17 +63,17 @@ begin
     v_accion := case when v_despues ? 'deleted_at' and v_despues ->> 'deleted_at' is not null then 'borrado' else 'cambio' end;
   end if;
   insert into public.bitacora (negocio_id, tabla, fila, accion, antes, despues)
-  values ((v_fila ->> 'negocio_id')::uuid, tg_table_name, (v_fila ->> 'id')::uuid,
+  values ((to_jsonb(new) ->> 'negocio_id')::uuid, tg_table_name, (to_jsonb(new) ->> 'id')::uuid,
           v_accion, v_antes, v_despues);
   return null;
 end $$;
 revoke execute on function public._bitacora() from public, anon, authenticated;
 
-create or replace trigger trg_bitacora after insert or update or delete on public.citas
+create or replace trigger trg_bitacora after insert or update on public.citas
   for each row execute function public._bitacora();
-create or replace trigger trg_bitacora after insert or update or delete on public.clientas
+create or replace trigger trg_bitacora after insert or update on public.clientas
   for each row execute function public._bitacora();
-create or replace trigger trg_bitacora after insert or update or delete on public.egresos
+create or replace trigger trg_bitacora after insert or update on public.egresos
   for each row execute function public._bitacora();
 
 -- 12c) Reglas de datos -------------------------------------------------------

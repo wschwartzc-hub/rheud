@@ -250,7 +250,10 @@ async function bajaClienta(){
     const lista=await guardar(sb.storage.from('expedientes').list(carpeta,{limit:1000}));
     (lista||[]).forEach(o=>{if(o&&o.name)rutas.add(carpeta+'/'+o.name);});
     if(rutas.size)await guardar(sb.storage.from('expedientes').remove([...rutas]));
-    // 2) datos en la base: anonimiza y borra expediente y fotos en una sola transacción
+    // 2) filas del expediente y de las fotos
+    await guardar(sb.from('fotos_piel').delete().eq('clienta_id',cl.id));
+    await guardar(sb.from('expedientes_piel').delete().eq('clienta_id',cl.id));
+    // 3) anonimiza la ficha, las notas de sus citas y las copias en la bitácora
     await guardar(sb.rpc('baja_clienta',{p_clienta:cl.id}));
   }catch(e){listo();avisarError(e,'No se pudieron eliminar los datos. Revisa tu conexión e intenta de nuevo.');return;}
   listo();

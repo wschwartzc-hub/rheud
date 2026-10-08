@@ -85,7 +85,7 @@ const TABLAS={
   premios:{k:'premios',map:r=>rowToPremio(r),orden:['created_at',true],opcional:true},
   cortesias_catalogo:{k:'cortesiasCat',map:r=>rowToCortesiaCat(r),orden:['created_at',true],opcional:true},
   cortesias:{k:'cortesias',map:r=>rowToCortesia(r),orden:['created_at',false],opcional:true,alInicio:true},
-  egresos:{k:'egresos',map:r=>rowToEgreso(r),orden:['fecha',false],opcional:true,alInicio:true},
+  egresos:{k:'egresos',map:r=>rowToEgreso(r),orden:['fecha',false],opcional:true,alInicio:true,viva:r=>!r.deleted_at},
   expedientes_piel:{k:'expedientes',map:r=>rowToExp(r),opcional:true},
   fotos_piel:{k:'fotos',map:r=>rowToFoto(r),orden:['fecha',false],opcional:true,alInicio:true}
 };
