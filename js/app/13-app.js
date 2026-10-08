@@ -114,6 +114,8 @@ async function startApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('loadingScreen').style.display='flex';
   try{
+    // si la usuaria activó la verificación en dos pasos, pide el código antes de cargar
+    if(window.RheudMFA)await RheudMFA.verificarAntesDeEntrar();
     await ensureNegocio();
     document.getElementById('loadTxt').textContent='Cargando tu estudio…';
     await loadAll();

@@ -27,3 +27,12 @@
 
 /assets/*
   Cache-Control: public, max-age=604800
+
+# Service worker de la app (notificaciones push y caché). Siempre se revalida
+# para que una versión nueva llegue en la siguiente visita.
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
