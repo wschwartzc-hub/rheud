@@ -386,6 +386,23 @@ create policy "push_subs propias" on public.push_subs as permissive for all to a
   using (((user_id = ( SELECT auth.uid() AS uid)) AND (negocio_id IN ( SELECT mis_negocios() AS mis_negocios))))
   with check (((user_id = ( SELECT auth.uid() AS uid)) AND (negocio_id IN ( SELECT mis_negocios() AS mis_negocios))));
 
+-- sellos_log (se escribe solo con sumar_sello)
+create table public.sellos_log (
+  cita_id uuid not null,
+  clienta_id uuid not null,
+  negocio_id uuid not null,
+  por uuid default auth.uid(),
+  at timestamp with time zone not null default now(),
+  constraint sellos_log_pkey PRIMARY KEY (cita_id),
+  constraint sellos_log_cita_id_fkey FOREIGN KEY (cita_id) REFERENCES citas(id) ON DELETE CASCADE,
+  constraint sellos_log_clienta_id_fkey FOREIGN KEY (clienta_id) REFERENCES clientas(id) ON DELETE CASCADE,
+  constraint sellos_log_negocio_id_fkey FOREIGN KEY (negocio_id) REFERENCES negocios(id) ON DELETE CASCADE
+);
+alter table public.sellos_log enable row level security;
+CREATE INDEX sellos_log_clienta_idx ON public.sellos_log USING btree (clienta_id);
+create policy "leer sellos" on public.sellos_log as permissive for select to authenticated
+  using ((negocio_id IN ( SELECT mis_negocios() AS mis_negocios)));
+
 -- servicios
 create table public.servicios (
   id uuid not null default gen_random_uuid(),
@@ -418,4 +435,3 @@ create policy "rw servicios" on public.servicios as permissive for all to authen
   using ((negocio_id IN ( SELECT mis_negocios() AS mis_negocios)))
   with check ((negocio_id IN ( SELECT mis_negocios() AS mis_negocios)));
 
--- SELLOS_LOG

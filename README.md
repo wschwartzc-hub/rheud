@@ -32,7 +32,7 @@ Los tokens viven en `:root` dentro de `css/app.css`; cambiar la paleta es editar
 
 ## 🔔 Notificaciones (iPhone y Android)
 
-La app avisa en el celular: **recordatorio 30 min antes** de cada cita, **resumen del día** a las 7:55, **citas de mañana sin confirmar** a las 17:55 y **cambios** (cita nueva, movida, cancelada o reactivada) hechos por otra persona del estudio. Cada tipo se puede apagar por dispositivo.
+La app avisa en el celular: **recordatorio 30 min antes** de cada cita, **resumen del día** hacia las 8:00, **citas de mañana sin confirmar** hacia las 18:00 y **cambios** (cita nueva, movida, cancelada o reactivada) hechos por otra persona del estudio. Cada tipo se puede apagar por dispositivo.
 
 En iPhone (iOS 16.4 o más reciente) las notificaciones solo funcionan con la app instalada:
 
