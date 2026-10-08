@@ -151,7 +151,7 @@ function rebookIn(weeks){
   // preselecciona la clienta
   apptSelectedCliId=cliId;
   const cl=DB.clientas.find(x=>x.id===cliId);
-  if(cl){document.getElementById('apptCliSearch').value=cl.nombre;document.getElementById('apptCliResults').innerHTML='';}
+  if(cl){document.getElementById('apptCli').value=cl.nombre;document.getElementById('apptCliResults').innerHTML='';}
   onApptDateChange();
   toast('Próxima cita de '+(cl?cl.nombre.split(' ')[0]:'')+' · elige hora');
 }
