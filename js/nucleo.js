@@ -104,6 +104,15 @@
     return out;
   }
 
+  /* Horario que aparta un evento personal: la mesa y la cabina a la vez (es la
+     misma persona). Sin hora = todo el día. Si no bloquea, no aparta nada. */
+  function bloquesEvento(ev) {
+    if (!ev || !ev.bloquea) return [];
+    const s0 = toMin(ev.hora);
+    const s = s0 == null ? 0 : s0, e = s0 == null ? 24 * 60 : s0 + (Number(ev.dur) > 0 ? Number(ev.dur) : 60);
+    return ['mesa', 'cabina'].map(r => ({ r, s, e, l: 0 }));
+  }
+
   /* ---------------- Precios variables ---------------- */
   /* "80 / 100 / 1,300" → [80, 100, 1300]. Separadores: / ; salto de línea o
      coma seguida de espacio ("1,200, 1,500" → [1200, 1500]). La coma pegada a
@@ -187,7 +196,7 @@
 
   const api = {
     ymd, parseYmd, diasEntre, sumarDias, daysSince, diasRestantes, fechaLocal,
-    toMin, hhmm, segmentos, segsClash, minutosOcupados, libresPorRecurso, huecos,
+    toMin, hhmm, segmentos, segsClash, minutosOcupados, libresPorRecurso, huecos, bloquesEvento,
     parsePrecios, rangoInsights, repartir, celdaCSV, csv, tipoComprobante, idNota
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

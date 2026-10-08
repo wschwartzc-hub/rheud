@@ -287,6 +287,10 @@
 <div class="sheet" id="apptSheet" role="dialog" aria-modal="true" aria-labelledby="apptSheetTitle">
   <div class="grab" aria-hidden="true"></div>
   <div class="sheet-head"><h2 id="apptSheetTitle">Nueva cita</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="seg seg-tipo" id="apptTipoSeg" role="group" aria-label="Qué vas a agendar">
+    <button type="button" class="on">Cita</button>
+    <button type="button" data-on-click="cambiarAEvento()">Evento personal</button>
+  </div>
   <div id="apptCodeBar" style="display:none">
     <div class="code-row">
       <div class="code-info"><span class="code-lbl">Código de cita</span><span class="code-val" id="apptCodeVal">—</span></div>
@@ -382,6 +386,31 @@
   <button type="button" class="btn btn-primary" data-on-click="saveAppt()">Guardar cita</button>
   <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
   <button type="button" class="btn btn-ghost" id="apptDelBtn" style="display:none" data-on-click="deleteAppt()">Eliminar cita</button>
+</div>
+
+<!-- HOJA: EVENTO PERSONAL (no es cita: no cuenta en totales, cobros ni estadísticas) -->
+<div class="sheet" id="eventoSheet" role="dialog" aria-modal="true" aria-labelledby="evSheetTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="evSheetTitle">Evento personal</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="seg seg-tipo" id="evTipoSeg" role="group" aria-label="Qué vas a agendar">
+    <button type="button" data-on-click="cambiarACita()">Cita</button>
+    <button type="button" class="on">Evento personal</button>
+  </div>
+  <p class="acc-sub">Para tus pendientes: se ve en la agenda pero <b>no cuenta como cita</b> ni entra en cobros o estadísticas.</p>
+  <div class="field"><label for="evTitulo">¿Qué es?</label><input id="evTitulo" maxlength="120" placeholder="Dentista, comida, recoger a…" autocomplete="off"></div>
+  <div class="field"><label for="evFecha">Fecha</label><input type="date" id="evFecha" data-on-change="renderEventoAviso()"></div>
+  <div class="acc-check"><input type="checkbox" id="evTodoDia" data-on-change="syncEventoForm()"><label for="evTodoDia">Todo el día</label></div>
+  <div class="field-row" id="evHorasWrap">
+    <div class="field"><label for="evHora">De</label><input type="time" id="evHora" data-on-change="onEvHoraIni()"></div>
+    <div class="field"><label for="evHoraFin">A</label><input type="time" id="evHoraFin" data-on-change="renderEventoAviso()"></div>
+  </div>
+  <div class="acc-check"><input type="checkbox" id="evBloquea" checked data-on-change="renderEventoAviso()"><label for="evBloquea">Apartar este horario: no se sugieren citas encima</label></div>
+  <div class="acc-check" id="evRecordarWrap"><input type="checkbox" id="evRecordar" checked><label for="evRecordar">Avisarme 30 min antes</label></div>
+  <div id="evAviso"></div>
+  <div class="field"><label for="evNotas">Notas (opcional)</label><textarea id="evNotas" maxlength="2000" placeholder="Dirección, qué llevar…"></textarea></div>
+  <button type="button" class="btn btn-primary" id="evSaveBtn" data-on-click="saveEvento()">Guardar evento</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-ghost" id="evDelBtn" hidden data-on-click="deleteEvento()">Eliminar evento</button>
 </div>
 
 <!-- HOJA: SERVICIO -->
@@ -759,6 +788,7 @@
 <script src="js/app/13-app.js"></script>
 <script src="js/app/14-mas.js"></script>
 <script src="js/app/15-accesibilidad.js"></script>
+<script src="js/app/16-eventos.js"></script>
 <script src="js/push.js"></script>
 <script src="js/seguridad.js"></script>
 </body>

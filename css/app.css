@@ -767,3 +767,19 @@ b,strong{font-weight:800}
 .rf-detail{font-size:13px;line-height:1.45;color:var(--muted)}
 .rf-debt{font-weight:800;color:var(--bad)}
 .rf-wa{width:100%}
+
+/* ===== Eventos personales: neutros (tinta y rayado), nunca del color de una rama.
+   La banda va debajo de las citas: si alguien agenda encima, la cita se sigue leyendo. ===== */
+.seg-tipo{margin:0 0 16px}
+.pers-cols{position:absolute;left:40px;right:0;top:0;bottom:12px;pointer-events:none}
+.pers{position:absolute;left:0;right:0;z-index:1;pointer-events:auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:5px 10px;border:1px solid var(--line2);border-left:4px solid var(--ink2);border-radius:10px;background:repeating-linear-gradient(135deg,var(--panel) 0 6px,var(--bg) 6px 12px);color:var(--ink);overflow:hidden;text-align:left}
+.pers .b-t{color:var(--muted)}
+.pers .ic,.chip-pers .ic{width:15px;height:15px;flex:none}
+.chip-pers{border-style:dashed;color:var(--ink2)}
+.ev.ev-pers{background:repeating-linear-gradient(135deg,var(--panel) 0 4px,var(--bg) 4px 8px);border-left-color:var(--ink2);color:var(--ink)}
+.mpers{width:6px;height:6px;border-radius:50%;background:var(--ink2)}
+.mcell.tdy .mpers{background:#fff}
+.tl-pers .bar{background:repeating-linear-gradient(180deg,var(--ink2) 0 5px,transparent 5px 8px)}
+.t-pers{background:var(--panel);color:var(--ink);border:1px dashed var(--line2)}
+.tl-busy.pers{background:repeating-linear-gradient(135deg,var(--line2) 0 4px,var(--panel) 4px 8px)}
+.empty-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}

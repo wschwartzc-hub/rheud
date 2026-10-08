@@ -15,7 +15,7 @@ const DEFAULT_SVCS=[
 
 /* DB es el caché en memoria; las funciones de UI lo siguen usando igual.
    Cada registro guarda su id real de Supabase en .id (uuid). */
-let DB={servicios:[],clientas:[],citas:[],premios:[],cortesiasCat:[],cortesias:[],egresos:[],expedientes:[],fotos:[]};
+let DB={servicios:[],clientas:[],citas:[],eventos:[],premios:[],cortesiasCat:[],cortesias:[],egresos:[],expedientes:[],fotos:[]};
 let NEGOCIO_ID=null;
 let PROMO_TEMPLATE='';
 let PROMO_BROADCAST='';
@@ -67,6 +67,9 @@ function rowToCli(r){return {id:r.id,num:r.num,nombre:r.nombre,telefono:r.telefo
 function cliToRow(c){return {negocio_id:NEGOCIO_ID,nombre:c.nombre,telefono:c.telefono||'',email:c.email||'',notas:c.notas||''}}
 function rowToCita(r){return {id:r.id,codigo:r.codigo||'',clientaId:r.clienta_id,items:r.items||[],servicioId:(r.items&&r.items[0]?r.items[0].id:''),svcName:(r.items||[]).map(i=>i.n).join(' · '),fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),color:r.color||'rosa',precio:Number(r.precio||0),cobrado:(r.cobrado==null?null:Number(r.cobrado)),descPct:(r.descuento_pct==null?null:Number(r.descuento_pct)),descMonto:Number(r.descuento_monto||0),abonado:(r.abonado==null?null:Number(r.abonado)),pagos:Array.isArray(r.pagos)?r.pagos:[],cortesiaId:r.cortesia_id||null,estado:r.estado||'agendada',pago:r.pago||'',metodo:r.metodo||'',pagadoFecha:r.pagado_fecha||'',comprobante:r.comprobante_url||'',notas:r.notas||'',portalToken:r.portal_token||'',confirmadaAt:r.confirmada_at||''}}
 function citaToRow(c){return {negocio_id:NEGOCIO_ID,clienta_id:c.clientaId,items:c.items||[],fecha:c.fecha,hora:c.hora||'',duracion_min:Number(c.dur||60),color:c.color||'rosa',precio:Number(c.precio||0),cobrado:(c.cobrado==null?null:Number(c.cobrado)),descuento_pct:(c.descPct==null?null:Number(c.descPct)),descuento_monto:Number(c.descMonto||0),abonado:(c.abonado==null?null:Number(c.abonado)),pagos:Array.isArray(c.pagos)?c.pagos:[],cortesia_id:c.cortesiaId||null,estado:c.estado||'agendada',pago:c.pago||'',metodo:c.metodo||'',pagado_fecha:c.pagadoFecha||null,comprobante_url:c.comprobante||'',notas:c.notas||''}}
+/* eventos personales: se ven en la agenda pero no son citas (no cuentan en nada) */
+function rowToEvento(r){return {id:r.id,titulo:r.titulo||'',fecha:r.fecha,hora:r.hora||'',dur:Number(r.duracion_min||60),bloquea:r.bloquea!==false,recordar:r.recordar!==false,notas:r.notas||'',creadoPor:r.creado_por||null}}
+function eventoToRow(e){return {negocio_id:NEGOCIO_ID,titulo:e.titulo,fecha:e.fecha,hora:e.hora||'',duracion_min:Number(e.dur||60),bloquea:!!e.bloquea,recordar:!!e.recordar,notas:e.notas||''}}
 function rowToPremio(r){return {id:r.id,nombre:r.nombre,nivel:r.nivel||'menor',desc:r.descripcion||''}}
 function premioToRow(p){return {negocio_id:NEGOCIO_ID,nombre:p.nombre,nivel:p.nivel||'menor',descripcion:p.desc||''}}
 function rowToCortesiaCat(r){return {id:r.id,nombre:r.nombre,desc:r.descripcion||'',vigencia:Number(r.vigencia_dias||30)}}
@@ -82,6 +85,7 @@ const TABLAS={
   servicios:{k:'servicios',map:r=>rowToSvc(r),orden:['created_at',true]},
   clientas:{k:'clientas',map:r=>rowToCli(r),orden:['created_at',true]},
   citas:{k:'citas',map:r=>rowToCita(r),orden:['fecha',true],viva:r=>!r.deleted_at},
+  eventos:{k:'eventos',map:r=>rowToEvento(r),orden:['fecha',true],opcional:true,viva:r=>!r.deleted_at},
   premios:{k:'premios',map:r=>rowToPremio(r),orden:['created_at',true],opcional:true},
   cortesias_catalogo:{k:'cortesiasCat',map:r=>rowToCortesiaCat(r),orden:['created_at',true],opcional:true},
   cortesias:{k:'cortesias',map:r=>rowToCortesia(r),orden:['created_at',false],opcional:true,alInicio:true},

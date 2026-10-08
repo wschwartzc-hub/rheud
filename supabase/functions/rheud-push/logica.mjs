@@ -128,6 +128,21 @@ export function msgRecordatorio(c, nombre) {
   };
 }
 
+/* Eventos personales: avisan solo a quien los creó. */
+export function refRecordatorioEvento(e) {
+  return `ev:${e.id}@${e.fecha}T${e.hora}`;
+}
+
+export function msgRecordatorioEvento(e) {
+  const t = String((e && e.titulo) || '').trim() || 'Evento personal';
+  return {
+    title: `En ${e.faltan != null ? e.faltan : 30} min: ${t.length > 60 ? t.slice(0, 59) + '…' : t}`,
+    body: `${fmtHora(e.hora)} · Evento personal`,
+    tag: `evento-${e.id}`,
+    url: URL_APP,
+  };
+}
+
 /* Total esperado de una cita = precio − descuento (como js/pagos.js). */
 export function esperadoCita(c) {
   const base = Math.max(0, num(c.precio));

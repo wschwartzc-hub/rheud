@@ -7,7 +7,7 @@
 //  · El service worker llama a {tarea:'renovar'} cuando el navegador cambia la
 //    suscripción; la prueba de propiedad es conocer el endpoint anterior.
 //
-// Tareas: recordatorios (cada 5 min), resumen (7:55), confirmar (17:55),
+// Tareas: recordatorios de citas y eventos personales (cada 5 min), resumen (7:55), confirmar (17:55),
 // cambio (trigger de citas), probar, renovar.
 //
 // Web Push (RFC 8291 aes128gcm + VAPID RFC 8292) está implementado con
@@ -142,7 +142,7 @@ async function enviarATodas(subs: Sub[], msg: Mensaje, vapid: Vapid, op: Opcione
 async function recordatorios(vapid: Vapid) {
   const ahora = L.ahoraLocal(new Date());
   const fechas = [ahora.fecha, L.fechaMas(ahora.fecha, 1)];
-  const out = { citas: 0, enviadas: 0 };
+  const out = { citas: 0, eventos: 0, enviadas: 0 };
   for (const negocio of await negociosConSubs()) {
     const subs = await subsDe(negocio, 'recordatorio');
     if (!subs.length) continue;
@@ -151,8 +151,7 @@ async function recordatorios(vapid: Vapid) {
       .eq('negocio_id', negocio).eq('estado', 'agendada').in('fecha', fechas).is('deleted_at', null);
     if (error) throw error;
     const proximas = L.citasEnVentana(data ?? [], ahora, 25, 35) as Cita[];
-    if (!proximas.length) continue;
-    const nombres = await nombresDe(proximas.map((c) => c.clienta_id));
+    const nombres = proximas.length ? await nombresDe(proximas.map((c) => c.clienta_id)) : new Map();
     for (const c of proximas) {
       const ref = L.refRecordatorio(c);
       if (!(await reclamar(negocio, 'recordatorio', ref))) continue;
@@ -162,6 +161,23 @@ async function recordatorios(vapid: Vapid) {
       // corrida (5 min después, aún dentro de la ventana) lo reintenta.
       if (!r.enviadas && r.fallidas) await soltar('recordatorio', ref);
       out.citas++;
+      out.enviadas += r.enviadas;
+    }
+
+    // Eventos personales con aviso: solo a los dispositivos de quien los creó.
+    const ev = await admin.from('eventos')
+      .select('id, creado_por, titulo, fecha, hora')
+      .eq('negocio_id', negocio).eq('recordar', true).neq('hora', '').in('fecha', fechas).is('deleted_at', null);
+    if (ev.error) throw ev.error;
+    const evProximos = L.citasEnVentana((ev.data ?? []).map((e: Record<string, unknown>) => ({ ...e, estado: 'agendada' })), ahora, 25, 35);
+    for (const e of evProximos as Array<{ id: string; creado_por: string | null; titulo: string; fecha: string; hora: string; faltan: number }>) {
+      const mias = subs.filter((s) => s.user_id === e.creado_por);
+      if (!mias.length) continue;
+      const ref = L.refRecordatorioEvento(e);
+      if (!(await reclamar(negocio, 'recordatorio', ref))) continue;
+      const r = await enviarATodas(mias, L.msgRecordatorioEvento(e), vapid, { ttl: 30 * 60, urgencia: 'high' });
+      if (!r.enviadas && r.fallidas) await soltar('recordatorio', ref);
+      out.eventos++;
       out.enviadas += r.enviadas;
     }
   }

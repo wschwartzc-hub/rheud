@@ -94,6 +94,21 @@ test('libresPorRecurso cuenta mesa y cabina por separado y une encimados', () =>
   assert.equal(l.cabina, 780 - 300);
 });
 
+test('bloquesEvento: aparta mesa y cabina; todo el día; si no bloquea, nada', () => {
+  assert.deepEqual(N.bloquesEvento({ hora: '13:00', dur: 90, bloquea: true }),
+    [{ r: 'mesa', s: 780, e: 870, l: 0 }, { r: 'cabina', s: 780, e: 870, l: 0 }]);
+  assert.deepEqual(N.bloquesEvento({ hora: '', dur: 60, bloquea: true }).map(b => [b.s, b.e]), [[0, 1440], [0, 1440]]);
+  assert.deepEqual(N.bloquesEvento({ hora: '13:00', dur: 60, bloquea: false }), []);
+  assert.deepEqual(N.bloquesEvento(null), []);
+  // una cita propuesta encima del evento choca; después, no
+  const busy = N.bloquesEvento({ hora: '13:00', dur: 60, bloquea: true });
+  assert.ok(N.segsClash([{ r: 'cabina', s: 750, e: 810, l: 0 }], busy));
+  assert.equal(N.segsClash([{ r: 'mesa', s: 840, e: 900, l: 0 }], busy), null);
+  // los huecos saltan el evento
+  const props = t => [{ r: 'mesa', s: t, e: t + 60, l: 0 }];
+  assert.deepEqual(N.huecos(busy, props, 720, 900, 60, null, 3), [720, 840]); // 12:00 termina justo cuando empieza
+});
+
 test('huecos: no sugiere horas que ya pasaron', () => {
   const props = t => N.segmentos(t, [gel], 60);
   assert.deepEqual(N.huecos([], props, 480, 1260, 60, null, 3), [480, 510, 540]);

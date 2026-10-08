@@ -14,6 +14,7 @@ App de gestión para nail estudio profesional privado. Agenda de citas, control 
 - **Clientas** — número de cliente automático, contacto (teléfono/email), historial completo, notas y clasificación dinámica por valor/frecuencia y comportamiento de pago.
 - **Insights** — resumen inteligente, KPIs, gráfica de ingresos y ranking de servicios más vendidos.
 - **Menú de servicios multiservicio** — ramas *Nails Studio* / *Skin Care* / otros, subfamilias, precio, costo real y margen, **duración**, **tiempo de limpieza** y **recurso que ocupa** (mesa de uñas o cabina facial), insumos/máquinas y requisitos para la clienta.
+- **Eventos personales** — dentista, comida, recoger a alguien, un día libre: se ven en la agenda (banda rayada en *Carriles*, punto en *Mes*, fila en *Lista*), pueden **apartar el horario** para que no se agenden citas encima y **avisan 30 min antes**, pero **no son citas**: no cuentan en el total de citas, cobros, finanzas ni estadísticas. Se crean desde «+» → *Evento personal*.
 - **Agenda por recursos** — al agendar, cada servicio bloquea su recurso durante su duración + limpieza; el asistente detecta traslapes por separado en mesa y cabina, sugiere huecos válidos y arma la secuencia (uñas → facial) con la duración total. Vista **Carriles** (Mesa · Cabina) en el día.
 - **Expediente de piel** — por clienta: tipo de piel, fototipo, sensibilidad, alergias, contraindicaciones, objetivo, rutina en casa, notas de evolución fechadas y **fotos antes / después / seguimiento** (bucket privado, URL firmada). Vive en sus propias tablas, sin acceso desde el portal público. Al agendar un facial, la cita muestra el resumen del expediente y los requisitos del servicio.
 - **Finanzas e Insights por rama** — cobrado, servicios y ticket promedio de uñas vs. skin care; **retención** (clientas del periodo anterior que volvieron), **recompra** (atendidas que ya habían venido) y sugerencia de venta cruzada (clientas frecuentes de uñas sin ningún facial).
@@ -59,7 +60,7 @@ Se activa en cada dispositivo por separado. Si se borra la app de la pantalla de
 ├── _headers                   # Cabeceras de Netlify (CSP, caché)
 ├── css/app.css, css/ajustes.css
 ├── js/
-│   ├── app/00-…15-*.js        # App por módulos, en orden de carga (eventos, datos, agenda, citas…)
+│   ├── app/00-…16-*.js        # App por módulos, en orden de carga (eventos, datos, agenda, citas…, eventos personales)
 │   ├── nucleo.js              # Funciones puras (fechas, huecos de agenda, insights) — con tests
 │   ├── pagos.js               # Cálculo de pagos, saldos y descuentos — con tests
 │   ├── push.js                # Suscripción Web Push (campana)
@@ -104,6 +105,7 @@ Proyecto `wrplznjgravcnxkzfarn`. Las migraciones de `supabase/migrations` se apl
 | `20261008_12_bitacora` | Borrado suave en citas y gastos, bitácora de cambios y reglas de precio/descuento/estado |
 | `20261008_20_push` | Suscripciones push, trigger de citas y trabajos de pg_cron |
 | `20261008_21_mfa` | Expedientes y fotos de piel piden verificación en dos pasos si la usuaria la activó |
+| `20261008_30_eventos` | Eventos personales (tabla `eventos` aparte de `citas`) y su recordatorio en el aviso de 30 min |
 
 **Notificaciones:** la Edge Function `rheud-push` se despliega con `verify_jwt = false` porque se autentica sola (secreto de Vault para pg_cron y el trigger; JWT de la usuaria para el aviso de prueba). Las claves VAPID y el secreto viven en Vault (`rheud_vapid_public`, `rheud_vapid_private`, `rheud_vapid_subject`, `rheud_push_cron_secret`); los pasos para crearlos están al inicio de `20261008_20_push.sql`. Si se cambia la clave pública, actualizar también `VAPID_PUBLICA` en `js/push.js`.
 
