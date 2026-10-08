@@ -6,7 +6,7 @@ function loyaltyCardHtml(cli){
   for(let i=1;i<=MAX_SELLOS;i++){
     const on=i<=sellos;
     const hito=(i===6||i===12);
-    dots+=`<div class="sello ${on?'on':''} ${hito?'hito':''}">${on?'✦':(hito?(i===6?'6':'12'):'')}</div>`;
+    dots+=`<div class="sello ${on?'on':''} ${hito?'hito':''}" aria-hidden="true">${on?icon('check'):(hito?(i===6?'6':'12'):'')}</div>`;
   }
   const pMenor=DB.premios.find(p=>p.id===cli.premioMenorId);
   const pMayor=DB.premios.find(p=>p.id===cli.premioMayorId);
@@ -14,32 +14,32 @@ function loyaltyCardHtml(cli){
   const lograMenor=sellos>=6, lograMayor=sellos>=12;
   function premioRow(nivel,premio,logra,canjeado){
     const meta=nivel==='menor'?'6 sellos':'12 sellos';
-    const ic=nivel==='menor'?'🎁':'🏆';
+    const ic=icon(nivel==='menor'?'gift':'trophy');
     let right;
-    if(canjeado)right=`<span class="lp-done">Canjeado ✓</span>`;
-    else if(logra&&premio)right=`<button class="lp-btn" data-on-click="canjearPremio('${nivel}')">Canjear</button>`;
+    if(canjeado)right=`<span class="lp-done">${icon('check')}Canjeado</span>`;
+    else if(logra&&premio)right=`<button type="button" class="btn-sm btn-wine" data-on-click="canjearPremio('${nivel}')">Canjear</button>`;
     else right='';
     return `<div class="loy-prem ${logra?'ready':''}">
       <div class="lp-ic">${ic}</div>
       <div class="lp-mid">
-        <div class="lp-name">${premio?premio.nombre:'<span class="lp-empty">Sin premio asignado</span>'}</div>
-        <div class="lp-meta">${meta}${logra&&!canjeado?' · ¡disponible!':''}</div>
+        <div class="lp-name">${premio?esc(premio.nombre):'<span class="lp-empty">Sin premio asignado</span>'}</div>
+        <div class="lp-meta">${meta}${logra&&!canjeado?' · disponible':''}</div>
       </div>
-      <button class="lp-edit" data-on-click="pickPremio('${nivel}')">${premio?'Cambiar':'Asignar'}</button>
+      <button type="button" class="btn-sm" aria-label="${premio?'Cambiar':'Asignar'} premio de ${meta}" data-on-click="pickPremio('${nivel}')">${premio?'Cambiar':'Asignar'}</button>
       ${right}
     </div>`;
   }
   return `<div class="loy-card">
     <div class="loy-head">
-      <span>Tarjeta de lealtad</span>
-      <span class="loy-count">${sellos}/12</span>
+      <h3>Tarjeta de lealtad</h3>
+      <span class="loy-count">${sellos} / 12</span>
     </div>
-    <div class="loy-grid">${dots}</div>
+    <div class="loy-grid" role="img" aria-label="${sellos} de 12 sellos">${dots}</div>
     <div class="loy-actions">
-      <button class="loy-minus" data-on-click="addSello(-1)">−</button>
-      <button class="loy-plus" data-on-click="addSello(1)">+ Marcar sello</button>
+      <button type="button" class="loy-minus" aria-label="Quitar un sello" data-on-click="addSello(-1)">${icon('minus')}</button>
+      <button type="button" class="loy-plus" data-on-click="addSello(1)">${icon('plus')}Marcar sello</button>
     </div>
-    <button class="loy-qr-btn" data-on-click="showCliQR()">📱 Ver QR de la clienta</button>
+    <button type="button" class="btn btn-line loy-qr-btn" data-on-click="showCliQR()">${icon('qr')}Ver QR de la clienta</button>
     <div class="loy-prems">
       ${premioRow('menor',pMenor,lograMenor,cli.menorCanjeado)}
       ${premioRow('mayor',pMayor,lograMayor,cli.mayorCanjeado)}
@@ -84,10 +84,10 @@ function pickPremio(nivel){
   const cont=document.getElementById('pickPremioList');
   document.getElementById('pickPremioTitle').textContent=nivel==='menor'?'Premio de 6 sellos':'Premio de 12 sellos';
   if(!lista.length){
-    cont.innerHTML='<div class="empty-mini">No tienes premios de este nivel. Créalos en Menú → Premios.</div>';
+    cont.innerHTML='<div class="empty-mini">No tienes premios de este nivel. Créalos en Más › Menú y premios › Premios.</div>';
   }else{
-    cont.innerHTML=lista.map(p=>`<button class="pick-item" data-on-click="assignPremio('${p.id}')"><b>${p.nombre}</b>${p.desc?`<small>${p.desc}</small>`:''}</button>`).join('')
-      +`<button class="pick-item clear" data-on-click="assignPremio('')">Quitar premio asignado</button>`;
+    cont.innerHTML=lista.map(p=>`<button type="button" class="pick-item" data-on-click="assignPremio('${p.id}')"><b>${esc(p.nombre)}</b>${p.desc?`<small>${esc(p.desc)}</small>`:''}</button>`).join('')
+      +`<button type="button" class="pick-item clear" data-on-click="assignPremio('')">Quitar premio asignado</button>`;
   }
   showSheet('pickPremioSheet');
 }
@@ -165,7 +165,7 @@ function startScan(){
       console.error(err);
     });
 }
-const BTN_OTRA='<button class="btn btn-primary" style="margin-top:12px" data-on-click="restartScan()">Escanear otra</button>';
+const BTN_OTRA='<button type="button" class="btn btn-primary" style="margin-top:12px" data-on-click="restartScan()">Escanear otra</button>';
 async function onScanSuccess(text){
   if(escaneando)return; // bandera síncrona: las lecturas repetidas del mismo QR se ignoran
   const out=document.getElementById('scanResult');
@@ -195,7 +195,7 @@ async function onScanSuccess(text){
     if(!cita){
       const agendada=DB.citas.some(c=>c.clientaId===id&&c.fecha===hoy&&c.estado==='agendada');
       out.innerHTML=`<div class="scan-err"><b>${esc(cli.nombre)}</b><br>${citas.length?'Su cita de hoy ya sumó su sello.':(agendada?'Su cita de hoy sigue como agendada: márcala como atendida para sumar el sello.':'No tiene una cita atendida hoy.')}</div>`
-        +`<button class="btn btn-line" style="margin-top:12px" data-on-click="selloManualScan('${cli.id}')">Sumar sello manual</button>`+BTN_OTRA;
+        +`<button type="button" class="btn btn-line" style="margin-top:12px" data-on-click="selloManualScan('${cli.id}')">Sumar sello manual</button>`+BTN_OTRA;
       return;
     }
     const s=Number(await guardar(sb.rpc('sumar_sello',{p_cita:cita.id})));
@@ -207,8 +207,8 @@ async function onScanSuccess(text){
   }
 }
 function mostrarSelloSumado(cli,s){
-  const extra=s===6?' · ¡llegó a 6 sellos! 🎁':(s===12?' · ¡tarjeta completa! 🏆':'');
-  document.getElementById('scanResult').innerHTML=`<div class="scan-ok"><b>${esc(cli.nombre)}</b><br>Sello sumado: ${s}/12${extra}</div>`+BTN_OTRA;
+  const extra=s===6?' · ¡llegó a 6 sellos!':(s===12?' · ¡tarjeta completa!':'');
+  document.getElementById('scanResult').innerHTML=`<div class="scan-ok">${icon('checkCircle')}<div><b>${esc(cli.nombre)}</b><br>Sello sumado: ${s}/12${extra}</div></div>`+BTN_OTRA;
 }
 /* ajuste manual desde el escáner (sin cita atendida hoy) */
 async function selloManualScan(cliId){
@@ -241,36 +241,41 @@ function renderServicios(){
   const cats=document.getElementById('menuCats');
   if(cats){
     const order=['all','nails','skin','otro'].filter(c=>c==='all'||counts[c]);
-    cats.innerHTML=order.map(c=>`<div class="chip ${menuCat===c?(c==='skin'?'sel-skin':'sel'):''}" data-on-click="setMenuCat('${c}')">${c==='all'?'Todo':catLabel(c)} <span class="n">${counts[c]||0}</span></div>`).join('');
+    cats.innerHTML=order.map(c=>`<button type="button" class="chip ${c==='nails'?'c-nails':c==='skin'?'c-skin':''} ${menuCat===c?'sel':''}" data-on-click="setMenuCat('${c}')">${c==='all'?'Todo':catLabel(c)} <span class="n">${counts[c]||0}</span></button>`).join('');
   }
   let list=DB.servicios.filter(x=>menuCat==='all'||(x.cat||'nails')===menuCat);
   const subs=document.getElementById('menuSubs');
   if(subs){
     const present=[...new Set(list.map(x=>x.sub).filter(Boolean))];
-    subs.innerHTML=(menuCat!=='all'&&present.length)?`<span class="${!menuSub?'on':''}" data-on-click="setMenuSub('')">Todas</span>`+present.map(x=>`<span class="${menuSub===x?'on':''}" data-sub="${esc(x)}" data-on-click="setMenuSub(this.dataset.sub)">${esc(x)}</span>`).join(''):'';
+    subs.innerHTML=(menuCat!=='all'&&present.length)?`<button type="button" class="${!menuSub?'on':''}" data-on-click="setMenuSub('')">Todas</button>`+present.map(x=>`<button type="button" class="${menuSub===x?'on':''}" data-sub="${esc(x)}" data-on-click="setMenuSub(this.dataset.sub)">${esc(x)}</button>`).join(''):'';
     subs.style.display=subs.innerHTML?'flex':'none';
     if(menuCat==='skin')subs.classList.add('skin');else subs.classList.remove('skin');
   }
   if(menuSub)list=list.filter(x=>x.sub===menuSub);
   document.getElementById('menuSub').textContent=menuCat==='all'?`${DB.servicios.length} servicios`:`${list.length} en ${catLabel(menuCat)}`;
   if(!list.length){cont.innerHTML=`<div class="empty"><p>Aún no hay servicios en esta rama. Agrega el primero con el botón de abajo.</p></div>`;return;}
-  cont.innerHTML=list.map(s=>{
+  cont.innerHTML=`<div class="card list-card">`+list.map(s=>{
     const cost=Number(s.costoReal||0),price=Number(s.p||0),margin=price-cost;
-    const cat=CATS[s.cat]||CATS.nails;
+    const catK=s.cat==='skin'?'skin':(s.cat==='otro'?'otro':'nails');
+    const cat=CATS[catK];
     const meta=[];
     meta.push(`<b>${fmtDur(s.dur||60)}</b>`);
-    if(s.recurso==='cabina')meta.push(`cabina${s.limpieza?` <b>+${s.limpieza}</b>`:''}`);
-    else if(s.recurso==='mesa'&&s.limpieza)meta.push(`mesa <b>+${s.limpieza}</b>`);
-    if(s.insumos&&s.insumos.length)meta.push(esc(s.insumos.join(', ')));
+    if(s.recurso==='cabina')meta.push(`cabina${s.limpieza?` <b>+${Number(s.limpieza)}</b>`:''}`);
+    else if(s.recurso==='mesa'&&s.limpieza)meta.push(`mesa <b>+${Number(s.limpieza)}</b>`);
     if(cost>0&&price>0)meta.push(`margen <b>${Math.round(margin/price*100)}%</b>`);
+    if(s.insumos&&s.insumos.length)meta.push(esc(s.insumos.join(', ')));
     if(s.incluye)meta.push(`Incluye: ${esc(s.incluye)}`);
-    const tags=`<span class="tag ${menuCat==='all'?cat.cls:'t-soft'}">${menuCat==='all'?cat.short:(s.sub||cat.short)}</span>${s.requisitos?`<span class="tag t-warn">Requisitos</span>`:''}`;
-    return `<div class="svc-card" data-on-click="editSvc('${s.id}')">
-      <div class="sc-top"><div class="sc-n">${esc(s.n)}</div><div class="sc-p">${(s.precios&&s.precios.length>1)?(fmtMoney(Math.min(...s.precios))+' – '+fmtMoney(Math.max(...s.precios))):fmtMoney(s.p)}</div></div>
-      ${s.desc?`<div class="sc-desc">${esc(s.desc)}</div>`:''}
-      <div class="sc-meta">${tags}${meta.map(m=>`<span>${m}</span>`).join('<span class="sc-dot">·</span>')}</div>
-    </div>`;
-  }).join('');
+    const sub=menuCat==='all'?cat.short:(s.sub||cat.short);
+    const tags=`<span class="tag ${menuCat==='all'?cat.cls:'t-soft'}">${esc(sub)}</span>${s.requisitos?`<span class="tag t-warn">Requisitos</span>`:''}`;
+    const precio=(s.precios&&s.precios.length>1)?(fmtMoney(Math.min(...s.precios))+'–'+fmtMoney(Math.max(...s.precios))):fmtMoney(s.p);
+    return `<button type="button" class="svc-card" data-on-click="editSvc('${s.id}')">
+      <span class="sc-ic ${catK}">${ramaIcon(catK)}</span>
+      <span class="sc-b"><span class="sc-n">${esc(s.n)}</span>
+      ${s.desc?`<span class="sc-desc">${esc(s.desc)}</span>`:''}
+      <span class="sc-meta">${tags}</span><span class="sc-info">${meta.join(' · ')}</span></span>
+      <span class="sc-p">${precio}</span>
+    </button>`;
+  }).join('')+`</div>`;
 }
 let editingSvcId=null;
 function openSvcSheet(){
@@ -314,7 +319,7 @@ let svcCat='nails',svcRec='mesa';
 function setSvcCat(c,autoRec){
   svcCat=c;
   document.querySelectorAll('#svcCatChips .chip').forEach(ch=>ch.classList.toggle('sel',ch.dataset.c===c));
-  document.getElementById('svcSubList').innerHTML=(SUBFAMILIAS[c]||[]).map(x=>`<option value="${x}">`).join('');
+  document.getElementById('svcSubList').innerHTML=(SUBFAMILIAS[c]||[]).map(x=>`<option value="${esc(x)}">`).join('');
   if(autoRec!==false)setSvcRec(c==='skin'?'cabina':(c==='nails'?'mesa':'ninguno'));
 }
 function setSvcRec(r){svcRec=r;document.querySelectorAll('#svcRecChips .chip').forEach(ch=>ch.classList.toggle('sel',ch.dataset.r===r));}

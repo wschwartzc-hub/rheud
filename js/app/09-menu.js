@@ -14,10 +14,11 @@ function menuTab(t){
 function renderCortesiasCat(){
   const el=document.getElementById('cortesiasCatList');if(!el)return;
   if(!DB.cortesiasCat.length){el.innerHTML='<div class="empty-mini">Sin cortesías en el catálogo aún.</div>';return;}
-  el.innerHTML=DB.cortesiasCat.map(c=>`<div class="premio-card" data-on-click="editCortesiaCat('${c.id}')">
-    <div class="pr-top"><div class="pr-n">${esc(c.nombre)}</div><span class="pr-badge menor">${c.vigencia} días</span></div>
-    ${c.desc?`<div class="pr-desc">${esc(c.desc)}</div>`:''}
-  </div>`).join('');
+  el.innerHTML=DB.cortesiasCat.map(c=>`<button type="button" class="premio-card" data-on-click="editCortesiaCat('${c.id}')">
+    <span class="pr-ic">${icon('gift')}</span>
+    <span class="pr-b"><span class="pr-n">${esc(c.nombre)}</span>${c.desc?`<span class="pr-desc">${esc(c.desc)}</span>`:''}</span>
+    <span class="pr-badge menor">${Number(c.vigencia)||0} días</span>
+  </button>`).join('');
 }
 let editingCCId=null;
 function openCortesiaCatSheet(){
@@ -76,15 +77,15 @@ function renderCliCortesias(cliId){
     const dr=diasRestantes(c);
     const badge=tipo==='vigente'
       ?`<span class="cc-badge cc-ok">${dr===0?'Vence hoy':(dr!==null?`${dr}d`:' Sin venc.')}</span>`
-      :(tipo==='expirada'?`<span class="cc-badge cc-exp">Expirada</span>`:`<span class="cc-badge cc-used">Usada${c.fechaUso?' · '+c.fechaUso:''}</span>`);
+      :(tipo==='expirada'?`<span class="cc-badge cc-exp">Expirada</span>`:`<span class="cc-badge cc-used">Usada${c.fechaUso?' · '+esc(c.fechaUso):''}</span>`);
     return `<div class="cc-card ${tipo}">
       <div class="cc-row"><div class="cc-desc">${esc(c.desc)}</div>${badge}</div>
       ${c.notas?`<div class="cc-notas">${esc(c.notas)}</div>`:''}
-      ${tipo==='vigente'?`<button class="cc-usar" data-on-click="usarCortesia('${c.id}')">Marcar como usada</button>`:''}
+      ${tipo==='vigente'?`<button type="button" class="cc-usar" data-on-click="usarCortesia('${c.id}')">${icon('check')}Marcar como usada</button>`:''}
     </div>`;
   }
   el.innerHTML=`<div class="cc-section">
-    <div class="cc-header"><div class="cc-title">🎁 Cortesías</div><button class="cc-add-btn" data-on-click="openCortesiaCliSheet()">+ Agregar</button></div>
+    <div class="cc-header"><h3 class="cc-title">${icon('gift')}Cortesías</h3><button type="button" class="btn-sm" data-on-click="openCortesiaCliSheet()">${icon('plus')}Agregar</button></div>
     ${vigentes.length?vigentes.map(c=>card(c,'vigente')).join(''):'<div class="empty-mini" style="margin:6px 0">Sin cortesías vigentes.</div>'}
     ${expiradas.map(c=>card(c,'expirada')).join('')}
     ${usadas.length?`<details class="cc-used-details"><summary>${usadas.length} usada${usadas.length!==1?'s':''}</summary>${usadas.map(c=>card(c,'usada')).join('')}</details>`:''}
@@ -92,8 +93,8 @@ function renderCliCortesias(cliId){
 }
 function openCortesiaCliSheet(){
   const p=document.getElementById('ccCatPicker');
-  if(DB.cortesiasCat.length)p.innerHTML=DB.cortesiasCat.map(c=>`<div class="cc-pick-item" data-cc="${c.id}" data-desc="${esc(c.nombre)}" data-vig="${c.vigencia}" data-on-click="pickCortesiaCat(this)">${esc(c.nombre)} · ${c.vigencia}d</div>`).join('')+'<div class="cc-pick-item" data-cc="" data-on-click="pickCortesiaCat(this)">✏️ Personalizada</div>';
-  else p.innerHTML='<div class="empty-mini">Sin catálogo aún. Créalo en Menú → Cortesías.</div>';
+  if(DB.cortesiasCat.length)p.innerHTML=DB.cortesiasCat.map(c=>`<button type="button" class="cc-pick-item" data-cc="${esc(c.id)}" data-desc="${esc(c.nombre)}" data-vig="${Number(c.vigencia)||30}" data-on-click="pickCortesiaCat(this)">${esc(c.nombre)} · ${Number(c.vigencia)||30} d</button>`).join('')+`<button type="button" class="cc-pick-item" data-cc="" data-on-click="pickCortesiaCat(this)">${icon('edit')}Personalizada</button>`;
+  else p.innerHTML='<div class="empty-mini">Sin catálogo aún. Créalo en Más › Menú y premios › Cortesías.</div>';
   document.getElementById('ccCliDesc').value='';
   document.getElementById('ccCliVigencia').value='30';
   document.getElementById('ccCliNotas').value='';
@@ -152,7 +153,7 @@ function renderApptCortesias(){
     const cor=DB.cortesias.find(x=>x.id===apptCortesiaId);
     wrap.style.display='block';
     document.getElementById('apptCortesiaList').innerHTML=
-      `<div class="cc-applied">🎁 <b>${cor?esc(cor.desc):'Cortesía'}</b> aplicada${cor&&cor.usada?' · usada ✓':''}<button data-on-click="selectApptCortesia(null,null);renderApptCortesias()" class="cc-quitar">Quitar</button></div>`;
+      `<div class="cc-applied">${icon('gift')}<span><b>${cor?esc(cor.desc):'Cortesía'}</b> aplicada${cor&&cor.usada?' · usada':''}</span><button type="button" data-on-click="selectApptCortesia(null,null);renderApptCortesias()" class="btn-sm">Quitar</button></div>`;
     return;
   }
   // vigentes y sin apartar en otra cita (se consumen hasta que la cita queda atendida)
@@ -160,8 +161,8 @@ function renderApptCortesias(){
   if(!vigentes.length){wrap.style.display='none';return;}
   wrap.style.display='block';
   const list=document.getElementById('apptCortesiaList');
-  list.innerHTML=`<div class="cc-pick-item sel" data-on-click="selectApptCortesia(null,this)">Sin cortesía</div>`
-    +vigentes.map(c=>`<div class="cc-pick-item" data-on-click="selectApptCortesia('${c.id}',this)">${esc(c.desc)}</div>`).join('');
+  list.innerHTML=`<button type="button" class="cc-pick-item sel" data-on-click="selectApptCortesia(null,this)">Sin cortesía</button>`
+    +vigentes.map(c=>`<button type="button" class="cc-pick-item" data-on-click="selectApptCortesia('${c.id}',this)">${esc(c.desc)}</button>`).join('');
 }
 function selectApptCortesia(id,el){
   apptCortesiaId=id;
@@ -176,9 +177,7 @@ function ventasMode(m){
   document.getElementById('ventasIngresosPane').style.display=(m==='ingresos')?'block':'none';
   document.getElementById('ventasEgresosPane').style.display=(m==='egresos')?'block':'none';
   document.getElementById('ventasInsightsPane').style.display=(m==='insights')?'block':'none';
-  document.getElementById('ventasSubtitle').textContent=({ingresos:'Ingresos',egresos:'Gastos',insights:'Insights'})[m];
-  if(m==='egresos')renderEgresos();
-  if(m==='insights')renderInteligencia();
+  renderFinanzas();
 }
 let egresosPeriod='mes';
 function egresosSetPeriod(p){
@@ -193,6 +192,7 @@ function egresosRange(){
   if(egresosPeriod==='sem'){const ws=startOfWeek(hoy);const we=new Date(ws);we.setDate(ws.getDate()+6);return [ymd(ws),ymd(we)];}
   if(egresosPeriod==='mes')return [ymd(new Date(hoy.getFullYear(),hoy.getMonth(),1)),ymd(new Date(hoy.getFullYear(),hoy.getMonth()+1,0))];
   if(egresosPeriod==='ano')return [ymd(new Date(hoy.getFullYear(),0,1)),ymd(new Date(hoy.getFullYear(),11,31))];
+  if(egresosPeriod==='rango'){let a=document.getElementById('vDesde').value||ymdH,b=document.getElementById('vHasta').value||ymdH;if(b<a){const t=a;a=b;b=t;}return [a,b];}
   return [null,null]; // todo
 }
 function renderEgresos(){
@@ -201,22 +201,22 @@ function renderEgresos(){
   const filtered=rStart?DB.egresos.filter(e=>e.fecha>=rStart&&e.fecha<=rEnd):DB.egresos;
   const totalEg=filtered.reduce((s,e)=>s+e.monto,0);
   // Cobrado del mismo periodo
-  const ventas=DB.citas.filter(c=>c.estado==='atendida'&&(!rStart||c.fecha>=rStart)&&(!rEnd||c.fecha<=hoy));
+  const ventas=DB.citas.filter(c=>c.estado==='atendida'&&(!rStart||c.fecha>=rStart)&&(!rEnd||c.fecha<=(rEnd<hoy?rEnd:hoy)));
   const cobradoPeriodo=ventas.reduce((s,c)=>s+montoCita(c),0);
   const ganancia=cobradoPeriodo-totalEg;
-  const periodoLabel={dia:'hoy',sem:'esta semana',mes:'este mes',ano:'este año',todo:'total'}[egresosPeriod]||'';
+  const periodoLabel={dia:'hoy',sem:'esta semana',mes:'este mes',ano:'este año',rango:'del rango',todo:'total'}[egresosPeriod]||'';
   document.getElementById('egresoResumen').innerHTML=`<div class="stats">
-    <div class="stat"><div class="lbl">Gastos ${periodoLabel}</div><div class="val" style="color:var(--red)">${fmtMoney(totalEg)}</div></div>
-    <div class="stat"><div class="lbl">Cobrado ${periodoLabel}</div><div class="val" style="color:var(--green)">${fmtMoney(cobradoPeriodo)}</div></div>
-    <div class="stat wide stat-hero"><div class="lbl">Ganancia neta</div><div class="val">${fmtMoney(ganancia)}</div><div class="sub">${fmtMoney(cobradoPeriodo)} cobrado − ${fmtMoney(totalEg)} gastos</div></div>
+    <div class="stat stat-hero"><div class="lbl">Ganancia neta ${periodoLabel}</div><div class="val">${fmtMoney(ganancia)}</div><div class="sub">${fmtMoney(cobradoPeriodo)} cobrado − ${fmtMoney(totalEg)} gastos</div></div>
+    <div class="stat"><div class="lbl">Gastos</div><div class="val v-bad">${fmtMoney(totalEg)}</div></div>
+    <div class="stat"><div class="lbl">Cobrado</div><div class="val v-ok">${fmtMoney(cobradoPeriodo)}</div></div>
   </div>`;
   const fe=document.getElementById('egresoFecha');if(fe&&!fe.value)fe.value=hoy;
   const list=document.getElementById('egresosList');
-  if(!filtered.length){list.innerHTML='<div class="empty-mini">Sin egresos en este periodo.</div>';return;}
-  list.innerHTML=filtered.map(e=>`<div class="egreso-item">
-    <div class="ei-info"><div class="ei-concepto">${esc(e.concepto)}</div><div class="ei-fecha">${e.fecha}</div></div>
-    <div class="ei-right"><div class="ei-monto">${fmtMoney(e.monto)}</div><button class="ei-del" data-on-click="deleteEgreso('${e.id}')">✕</button></div>
-  </div>`).join('');
+  if(!filtered.length){list.innerHTML='<div class="empty-mini">Sin gastos en este periodo.</div>';return;}
+  list.innerHTML=`<div class="card list-card">`+filtered.map(e=>`<div class="egreso-item">
+    <div class="ei-info"><div class="ei-concepto">${esc(e.concepto)}</div><div class="ei-fecha">${e.fecha?esc(fechaCorta(e.fecha)):''}</div></div>
+    <div class="ei-monto">${fmtMoney(e.monto)}</div><button type="button" class="icon-btn ei-del" aria-label="Eliminar gasto ${esc(e.concepto)}" data-on-click="deleteEgreso('${e.id}')">${icon('trash')}</button>
+  </div>`).join('')+`</div>`;
 }
 async function addEgreso(){
   const concepto=document.getElementById('egresoConcepto').value.trim();
@@ -245,14 +245,16 @@ function renderPremios(){
   const menores=DB.premios.filter(p=>p.nivel==='menor');
   const mayores=DB.premios.filter(p=>p.nivel==='mayor');
   function card(p){
-    return `<div class="premio-card" data-on-click="editPremio('${p.id}')">
-      <div class="pr-top"><div class="pr-n">${p.nombre}</div><span class="pr-badge ${p.nivel}">${p.nivel==='menor'?'6 sellos':'12 sellos'}</span></div>
-      ${p.desc?`<div class="pr-desc">${p.desc}</div>`:''}
-    </div>`;
+    const nv=p.nivel==='mayor'?'mayor':'menor';
+    return `<button type="button" class="premio-card" data-on-click="editPremio('${p.id}')">
+      <span class="pr-ic">${icon(nv==='menor'?'gift':'trophy')}</span>
+      <span class="pr-b"><span class="pr-n">${esc(p.nombre)}</span>${p.desc?`<span class="pr-desc">${esc(p.desc)}</span>`:''}</span>
+      <span class="pr-badge ${nv}">${nv==='menor'?'6 sellos':'12 sellos'}</span>
+    </button>`;
   }
   let html='';
-  html+=`<div class="premio-group"><div class="pg-title">🎁 Premio menor · 6 sellos</div>${menores.length?menores.map(card).join(''):'<div class="empty-mini">Sin premios de 6 sellos.</div>'}</div>`;
-  html+=`<div class="premio-group"><div class="pg-title">🏆 Premio mayor · 12 sellos</div>${mayores.length?mayores.map(card).join(''):'<div class="empty-mini">Sin premios de 12 sellos.</div>'}</div>`;
+  html+=`<section class="premio-group"><h2 class="pg-title">${icon('gift')}Premio menor · 6 sellos</h2>${menores.length?menores.map(card).join(''):'<div class="empty-mini">Sin premios de 6 sellos.</div>'}</section>`;
+  html+=`<section class="premio-group"><h2 class="pg-title">${icon('trophy')}Premio mayor · 12 sellos</h2>${mayores.length?mayores.map(card).join(''):'<div class="empty-mini">Sin premios de 12 sellos.</div>'}</section>`;
   cont.innerHTML=html;
 }
 let editingPremioId=null;

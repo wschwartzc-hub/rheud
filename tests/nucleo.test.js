@@ -133,6 +133,11 @@ test('rangoInsights semana: lunes a hoy contra los mismos días de la semana pas
   assert.deepEqual(N.rangoInsights('sem', '2026-10-11'), { desde: '2026-10-05', hasta: '2026-10-11', prevDesde: '2026-09-28', prevHasta: '2026-10-04' });
 });
 
+test('rangoInsights día: hoy contra ayer (también al cambiar de mes)', () => {
+  assert.deepEqual(N.rangoInsights('dia', '2026-10-08'), { desde: '2026-10-08', hasta: '2026-10-08', prevDesde: '2026-10-07', prevHasta: '2026-10-07' });
+  assert.deepEqual(N.rangoInsights('dia', '2026-11-01'), { desde: '2026-11-01', hasta: '2026-11-01', prevDesde: '2026-10-31', prevHasta: '2026-10-31' });
+});
+
 test('rangoInsights año y rango libre', () => {
   assert.deepEqual(N.rangoInsights('ano', '2028-02-29'), { desde: '2028-01-01', hasta: '2028-02-29', prevDesde: '2027-01-01', prevHasta: '2027-02-28' });
   assert.deepEqual(N.rangoInsights('rango', '2026-10-08', '2026-10-10', '2026-10-01'), { desde: '2026-10-01', hasta: '2026-10-10', prevDesde: '2026-09-21', prevHasta: '2026-09-30' });

@@ -124,7 +124,10 @@
   function rangoInsights(periodo, hoy, a, b) {
     const h = parseYmd(hoy);
     let desde, hasta, prevDesde, prevHasta;
-    if (periodo === 'sem') {
+    if (periodo === 'dia') {
+      desde = hasta = hoy;
+      prevDesde = prevHasta = sumarDias(hoy, -1);
+    } else if (periodo === 'sem') {
       const dow = h.getDay(), diff = dow === 0 ? 6 : dow - 1;
       desde = sumarDias(hoy, -diff); hasta = hoy;
       prevDesde = sumarDias(desde, -7); prevHasta = sumarDias(hoy, -7);

@@ -58,45 +58,70 @@ function msgConfirmacion(c,cli){
   return msg;
 }
 function openConfirmaciones(){
+  renderConfirmList();
+  showSheet('confirmSheet');
+}
+function renderConfirmList(){
   const t=new Date();t.setDate(t.getDate()+1);
   const manana=ymd(t);
   const citas=DB.citas.filter(c=>c.fecha===manana&&c.estado!=='cancelada').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
   const cont=document.getElementById('confirmList');
   const sub=document.getElementById('confirmSub');
-  const fechaTxt=`${DOW[t.getDay()]} ${t.getDate()} ${MON[t.getMonth()]}`;
+  const fechaTxt=fechaCorta(manana);
   if(!citas.length){
     sub.textContent=`No hay citas para mañana (${fechaTxt}).`;
     cont.innerHTML='<div class="empty-mini">Nada que confirmar por ahora.</div>';
-  }else{
-    sub.textContent=`${citas.length} cita${citas.length!==1?'s':''} para mañana, ${fechaTxt}. Toca para enviar la confirmación.`;
-    cont.innerHTML=citas.map(c=>{
-      const cli=DB.clientas.find(x=>x.id===c.clientaId);
-      const t12=fmt12(c.hora);
-      const hora=t12?`${t12.h} ${t12.ap}`:'—';
-      const svc=citaItems(c).map(i=>i.n).join(' · ')||c.svcName||'Servicio';
-      return `<div class="cf-item">
-        <div class="cf-info">
-          <div class="cf-when">${hora}</div>
-          <div class="cf-cli">${esc(cli?cli.nombre:'Sin clienta')}</div>
-          <div class="cf-svc">${svc}</div>
-        </div>
-        <button class="cf-wa" data-on-click="confirmarCita('${c.id}')">Confirmar</button>
-      </div>`;
-    }).join('');
+    return;
   }
-  showSheet('confirmSheet');
+  const nConf=citas.filter(c=>c.confirmadaAt).length;
+  sub.textContent=`${citas.length} cita${citas.length!==1?'s':''} para mañana, ${fechaTxt}${nConf?` · ${nConf} confirmada${nConf!==1?'s':''}`:''}. Envía el recordatorio y, cuando responda, marca «Confirmó».`;
+  cont.innerHTML=citas.map(c=>{
+    const cli=DB.clientas.find(x=>x.id===c.clientaId);
+    const nombre=cli?cli.nombre:'Sin clienta';
+    const hora=c.hora?hm(toMin(c.hora)):'—';
+    const svc=citaItems(c).map(i=>i.n).join(' · ')||c.svcName||'Servicio';
+    const ok=!!c.confirmadaAt;
+    return `<div class="cf-item${ok?' ok':''}">
+      <div class="cf-info">
+        <div class="cf-when">${hora}</div>
+        <div class="cf-cli">${esc(nombre)}</div>
+        <div class="cf-svc">${esc(svc)}</div>
+      </div>
+      <div class="cf-act">
+        <button type="button" class="btn-sm btn-wa-line" aria-label="Enviar confirmación por WhatsApp a ${esc(nombre)}" data-on-click="confirmarCita('${c.id}')">${icon('wa')}Confirmar</button>
+        ${ok?`<span class="cf-ok">${icon('check')}Confirmada</span>`
+          :`<button type="button" class="btn-sm btn-wine" aria-label="${esc(nombre)} confirmó su cita" data-on-click="marcarConfirmada('${c.id}')">Confirmó</button>`}
+      </div>
+    </div>`;
+  }).join('');
 }
 function confirmarCita(citaId){
   const c=DB.citas.find(x=>x.id===citaId);if(!c)return;
   const cli=DB.clientas.find(x=>x.id===c.clientaId);
   waOpen(cli, msgConfirmacion(c,cli));
 }
+/* «Confirmó»: guarda la hora de confirmación; el portal de la clienta muestra el paso «Confirmada» */
+async function marcarConfirmada(citaId){
+  const c=DB.citas.find(x=>x.id===citaId);if(!c)return;
+  const ts=new Date().toISOString();
+  try{
+    const {error}=await sb.from('citas').update({confirmada_at:ts}).eq('id',citaId);
+    if(error)throw error;
+  }catch(e){console.error(e);toast('No se pudo guardar la confirmación');return;}
+  c.confirmadaAt=ts;
+  renderConfirmList();
+  const ok=document.querySelector(`#confirmList .cf-item.ok [data-on-click="confirmarCita('${citaId}')"]`);if(ok)ok.focus();
+  if(currentView==='citas')renderCitas();else if(currentView==='agenda')renderAgenda();
+  toast('Cita confirmada');
+}
 function updateConfirmBadge(){
   const t=new Date();t.setDate(t.getDate()+1);
   const manana=ymd(t);
-  const n=DB.citas.filter(c=>c.fecha===manana&&c.estado!=='cancelada').length;
+  const citas=DB.citas.filter(c=>c.fecha===manana&&c.estado!=='cancelada');
+  const n=citas.length,pend=citas.filter(c=>!c.confirmadaAt).length;
   const b=document.getElementById('confirmBadge');
-  if(b){if(n>0){b.textContent=n;b.style.display='inline-block';}else b.style.display='none';}
+  if(b){if(pend>0){b.textContent=pend;b.style.display='inline-flex';}else b.style.display='none';}
+  const bar=document.getElementById('confirmBar');if(bar){bar.hidden=n===0;const tx=bar.querySelector('.cb-tx');if(tx)tx.textContent=pend?'Confirmar citas de mañana':'Citas de mañana confirmadas';}
 }
 function msgInfoCita(c,cli){
   const servicios=citaItems(c).map(i=>i.n).join(', ')||c.svcName||'tu servicio';
@@ -143,6 +168,18 @@ function openAcciones(cliId, citaId){
   // mostrar botones según haya cita y según adeudo
   const hayCita=!!accCitaId;
   document.getElementById('accCitaBtn').style.display = hayCita?'flex':'none';
+  // Acciones sobre la cita (desde el botón «⋯» de Citas)
+  const cita=hayCita?DB.citas.find(x=>x.id===accCitaId):null;
+  const activa=!!cita&&cita.estado!=='cancelada';
+  document.getElementById('accCitaList').style.display=cita?'flex':'none';
+  document.getElementById('accReagBtn').style.display=activa?'flex':'none';
+  document.getElementById('accCancelBtn').style.display=activa?'flex':'none';
+  document.getElementById('accCompBtn').style.display=cita&&cita.comprobante?'flex':'none';
+  if(cita){
+    const t=cita.hora?' · '+hm(toMin(cita.hora)):'';
+    document.getElementById('accTitle').textContent=cli?`Cita de ${cli.nombre.split(' ')[0]}`:'Cita';
+    document.getElementById('accSub').textContent=`${fechaCorta(cita.fecha)}${t} · ${svcFull(cita)}`;
+  }else document.getElementById('accTitle').textContent='Acciones';
   let muestraCobro=false;
   if(hayCita){const c=DB.citas.find(x=>x.id===accCitaId); if(c && c.estado==='atendida' && (c.pago==='deuda'||c.pago==='parcial')) muestraCobro=true;}
   else if(accCliId){const st=clientStats(accCliId); if(st.debt>0) muestraCobro=true;}
@@ -150,6 +187,11 @@ function openAcciones(cliId, citaId){
   showSheet('accionesSheet');
 }
 function accCli(){return DB.clientas.find(x=>x.id===accCliId);}
+/* Acciones de la cita desde la hoja: cierran la hoja y llaman a las funciones de siempre */
+function accAbrirCita(){const id=accCitaId;if(!id)return;closeSheet();setTimeout(()=>editAppt(id),260);}
+function accReagendar(){const id=accCitaId;if(!id)return;closeSheet();setTimeout(()=>reagendar(id),260);}
+function accCancelar(){const id=accCitaId;if(!id)return;closeSheet();setTimeout(()=>cancelarCita(id),260);}
+function accVerComprobante(){if(accCitaId)viewComp(accCitaId);}
 function accContactar(){
   const cli=accCli();
   if(!cli||!cli.telefono){toast('Esta clienta no tiene teléfono guardado');}

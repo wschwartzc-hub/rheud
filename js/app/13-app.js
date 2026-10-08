@@ -1,6 +1,12 @@
-/* ---------------- SHEET CONTROL ---------------- */
+/* ---------------- SHEET CONTROL ----------------
+   Las hojas son diálogos modales: al abrir se recuerda el botón que la abrió
+   (sheetOpener) y al cerrar el foco vuelve ahí. El foco inicial, el foco
+   atrapado y Escape viven en 15-accesibilidad.js. */
 let curSheet=null;
+let sheetOpener=null;
 function showSheet(id){
+  // Solo la primera hoja de una cadena recuerda quién la abrió
+  if(!document.querySelector('.sheet.show')&&!curSheet)sheetOpener=recordarOrigen(document.activeElement);
   curSheet=id;document.getElementById('scrim').classList.add('show');
   requestAnimationFrame(()=>document.getElementById(id).classList.add('show'));
 }
@@ -18,12 +24,29 @@ function closeSheet(){
   document.getElementById('scrim').classList.remove('show');
   if(openCliId){renderClientas();openCliId=null;}
   curSheet=null;
+  if(typeof apptRecursoPref!=='undefined')apptRecursoPref=null;
+  const o=sheetOpener;sheetOpener=null;
+  if(o)setTimeout(()=>devolverFoco(o),30);
 }
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200)}
+/* Guarda el elemento que abrió la hoja y cómo volver a encontrarlo si la lista se repinta */
+function recordarOrigen(el){
+  if(!el||el===document.body||!el.closest)return null;
+  return {el,id:el.id||'',accion:el.getAttribute('data-on-click')||'',vista:currentView};
+}
+function devolverFoco(o){
+  if(document.querySelector('.sheet.show'))return;
+  let el=o.el&&o.el.isConnected&&o.el.offsetParent!==null?o.el:null;
+  if(!el&&o.id)el=document.getElementById(o.id);
+  if(!el&&o.accion)el=[...document.querySelectorAll('#app [data-on-click]')].find(x=>x.getAttribute('data-on-click')===o.accion&&x.offsetParent!==null)||null;
+  if(!el||el.offsetParent===null)el=document.querySelector('.view.active h1');
+  if(el)el.focus({preventScroll:true});
+}
+/* Los avisos son interfaz: sin emojis (los emojis quedan solo en los mensajes de WhatsApp) */
+function toast(m){const t=document.getElementById('toast');t.textContent=String(m).replace(/\p{Extended_Pictographic}️?/gu,'').replace(/\s{2,}/g,' ').trim();t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600)}
 
 /* ================= AUTH + INIT ================= */
-const APP_VERSION='6.4';
-const APP_BUILD='5 jul';
+const APP_VERSION='7.0';
+const APP_BUILD='8 oct';
 async function doLogin(){
   const emailEl=document.getElementById('loginEmail');
   const passEl=document.getElementById('loginPass');
@@ -257,17 +280,17 @@ function renderApptWeather(){
   const w=wxForDate(date);
   if(!w){el.style.display='none';return;}
   el.style.display='flex';
-  el.innerHTML=`<span class="aw-ic">${WX_ICON[w.code]||'🌡️'}</span><span class="aw-tx">Clima ese día: <b>${wxText(w.code)}</b> · ${w.mx}° / ${w.mn}°</span>`;
+  el.innerHTML=`<span class="aw-ic">${wxIcon(w.code)}</span><span class="aw-tx">Clima ese día: <b>${wxText(w.code)}</b> · ${w.mx}° / ${w.mn}°</span>`;
 }
 function renderAgendaWeather(){
   const el=document.getElementById('agendaWeather');if(!el)return;
   if(!WX_CACHE||!WX_CACHE.daily){el.textContent='';return;}
-  if(agMode!=='dia'){el.textContent='';return;}
+  if(agMode!=='dia'&&agMode!=='lista'){el.textContent='';return;}
   const key=ymd(agAnchor);
   const idx=WX_CACHE.daily.time.indexOf(key);
   if(idx<0){el.textContent='';return;}
   const code=WX_CACHE.daily.weather_code[idx],mx=Math.round(WX_CACHE.daily.temperature_2m_max[idx]),mn=Math.round(WX_CACHE.daily.temperature_2m_min[idx]);
-  el.innerHTML=`${WX_ICON[code]||''} <span class="wx">${wxText(code)} · ${mx}° / ${mn}°</span>`;
+  el.innerHTML=`${wxIcon(code)}<span class="wx">${wxText(code)} · ${mx}° / ${mn}°</span>`;
 }
 
 /* ---- arranque: sesión existente entra directo ---- */

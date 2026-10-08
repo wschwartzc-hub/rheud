@@ -1,16 +1,42 @@
 /* ---------------- VENTAS ---------------- */
-let ventasPeriod='dia';
+let ventasPeriod='mes';
 function rangeStart(p){
   const d=new Date();d.setHours(0,0,0,0);
   if(p==='dia')return ymd(d);
   if(p==='sem'){const day=d.getDay();const diff=(day===0?6:day-1);d.setDate(d.getDate()-diff);return ymd(d);}
   if(p==='mes'){d.setDate(1);return ymd(d);}
+  if(p==='ano')return ymd(new Date(d.getFullYear(),0,1));
 }
 function ensureRangeDefaults(desdeId,hastaId){
   const today=ymd(new Date());
   const d=document.getElementById(desdeId),h=document.getElementById(hastaId);
   if(!d.value){const f=new Date();f.setDate(1);d.value=ymd(f);}
   if(!h.value)h.value=today;
+}
+/* Un solo selector de periodo para Ingresos, Gastos e Insights */
+const PERIODO_TXT={dia:'hoy',sem:'esta semana',mes:'este mes',ano:'este año',rango:'del rango'};
+function finPeriodo(p){
+  ventasPeriod=p;egresosPeriod=p;intelPeriod=p;
+  document.querySelectorAll('#finPeriodSeg button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  if(p==='rango')ensureRangeDefaults('vDesde','vHasta');
+  document.getElementById('ventasRange').style.display=p==='rango'?'flex':'none';
+  renderFinanzas();
+}
+function finRangoTexto(){
+  const now=new Date();
+  if(ventasPeriod==='dia')return 'Hoy · '+fechaCorta(ymd(now));
+  if(ventasPeriod==='sem'){const ws=startOfWeek(now),we=addDays(ws,6);return `${ws.getDate()} ${MON[ws.getMonth()].toLowerCase()} – ${we.getDate()} ${MON[we.getMonth()].toLowerCase()}`;}
+  if(ventasPeriod==='mes')return `${MONF[now.getMonth()]} ${now.getFullYear()}`;
+  if(ventasPeriod==='ano')return String(now.getFullYear());
+  let a=document.getElementById('vDesde').value,b=document.getElementById('vHasta').value;
+  if(a&&b&&b<a){const t=a;a=b;b=t;}
+  return a&&b?`${fechaCorta(a)} – ${fechaCorta(b)}`:'Rango';
+}
+function renderFinanzas(){
+  const lbl=document.getElementById('finRangeLbl');if(lbl)lbl.textContent=finRangoTexto();
+  if(ventasModeActive==='egresos')renderEgresos();
+  else if(ventasModeActive==='insights')renderInteligencia();
+  else renderVentas();
 }
 function renderVentas(){
   let startKey,endKey;const today=ymd(new Date());
@@ -23,11 +49,13 @@ function renderVentas(){
     endKey=today;
     // Para las agendadas futuras usamos el fin real del periodo (no hoy)
   }
-  // fin natural del periodo (para incluir citas agendadas del resto del mes/semana)
+  // fin natural del periodo (para incluir citas agendadas del resto del mes/semana/año)
   let endKeyFull=endKey;
   if(ventasPeriod==='mes'){const d=new Date();endKeyFull=ymd(new Date(d.getFullYear(),d.getMonth()+1,0));}
   else if(ventasPeriod==='sem'){const d=new Date(startKey+'T00:00:00');d.setDate(d.getDate()+6);endKeyFull=ymd(d);}
+  else if(ventasPeriod==='ano'){endKeyFull=ymd(new Date(new Date().getFullYear(),11,31));}
   const sales=DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=startKey&&c.fecha<=endKey);
+
   const agendadas=DB.citas.filter(c=>c.estado==='agendada'&&c.fecha>=startKey&&c.fecha<=endKeyFull);
   // por atender: los anticipos ya están cobrados; lo pendiente es el saldo neto (precio − descuento − anticipos)
   const anticipos=agendadas.reduce((s,c)=>s+resumenPago(c).cobrado,0);
@@ -36,51 +64,37 @@ function renderVentas(){
   const esperadoAgendadas=agendadas.reduce((s,c)=>s+resumenPago(c).saldo,0);
   const totalEsperado=cobrado+deuda+esperadoAgendadas;
   const nTodo=sales.length+agendadas.length;
+  const pct=totalEsperado>0?Math.round(cobrado/totalEsperado*100):0;
+  const pend=deuda+esperadoAgendadas;
+  const per=PERIODO_TXT[ventasPeriod]||'';
   document.getElementById('ventasStats').innerHTML=`
-    <div class="stat wide stat-hero">
-      <div class="lbl">Total esperado del periodo</div>
+    <div class="stat stat-hero">
+      <div class="lbl">Esperado ${per}</div>
       <div class="val">${fmtMoney(totalEsperado)}</div>
+      <div class="prog" role="img" aria-label="${pct}% cobrado"><span style="width:${pct}%"></span></div>
       <div class="sub">${nTodo} cita${nTodo!==1?'s':''} · ${sales.length} atendida${sales.length!==1?'s':''}${agendadas.length?` · ${agendadas.length} por atender`:''}</div>
     </div>
-    <div class="stat"><div class="lbl">Cobrado ✓</div><div class="val" style="color:var(--green)">${fmtMoney(cobrado)}</div></div>
-    <div class="stat"><div class="lbl">Pendiente</div><div class="val" style="color:${(deuda+esperadoAgendadas)?'var(--red)':'var(--muted)'}">${fmtMoney(deuda+esperadoAgendadas)}</div></div>`;
+    <div class="stat"><div class="lbl">Cobrado</div><div class="val v-ok">${fmtMoney(cobrado)}</div><div class="sub">${pct}% del esperado</div></div>
+    <div class="stat"><div class="lbl">Pendiente</div><div class="val ${pend?'v-bad':''}">${fmtMoney(pend)}</div><div class="sub">${deuda?`${fmtMoney(deuda)} adeudo`:'Sin adeudos'}${esperadoAgendadas?` · ${fmtMoney(esperadoAgendadas)} por atender`:''}</div></div>`;
   // Ingresos por rama (uñas vs skin care) del periodo
   renderVentasRama(sales);
-  // Frase alentadora dinámica
-  const pctCobrado=totalEsperado>0?Math.round(cobrado/totalEsperado*100):0;
-  let frase='',emoji='';
-  if(totalEsperado===0){
-    frase='Cada cita que agendas es un paso hacia tus metas. ¡Tú puedes!';emoji='🌸';
-  }else if(pctCobrado===100&&cobrado>0){
-    frase='¡Todo cobrado! Eso es trabajo bien hecho y clientes felices. Eres increíble. ✨';emoji='🏆';
-  }else if(pctCobrado>=80){
-    frase=`Llevas el ${pctCobrado}% cobrado. ¡Casi completas — qué mes tan poderoso! 💪`;emoji='🌟';
-  }else if(pctCobrado>=50){
-    frase=`Ya tienes más de la mitad asegurada. Cada servicio que das es una inversión en ti y en Rhēud. `;emoji='💅';
-  }else if(agendadas.length>0&&cobrado>0){
-    frase=`${agendadas.length} cita${agendadas.length!==1?'s':''} más esperando — ${fmtMoney(esperadoAgendadas)} adicionales por llegar. ¡Lo tuyo sigue creciendo!`;emoji='🚀';
-  }else if(cobrado>0){
-    frase=`Cada peso cobrado es el resultado de tu talento y dedicación. Rhēud Beauty brilla porque tú brillas.`;emoji='✨';
-  }else{
-    frase='El mes está empezando y las citas están por llegar. ¡Tus manos hacen magia! 💖';emoji='🌸';
-  }
-  document.getElementById('fraseMot').innerHTML=`<div class="frase-mot"><span class="frase-emoji">${emoji}</span><p>${frase}</p></div>`;
+  const fm=document.getElementById('fraseMot');if(fm)fm.innerHTML='';
   const cont=document.getElementById('ventasList');
   const ordered=[...sales].sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
-  if(!ordered.length){cont.innerHTML=`<div class="empty"><div class="ic">📋</div><p>Sin movimientos en este periodo.</p></div>`;renderCobranza();return;}
+  if(!ordered.length){cont.innerHTML=`<div class="empty">${icon('list')}<p>Sin movimientos en este periodo.</p></div>`;renderCobranza();return;}
   cont.innerHTML=ordered.map(c=>{
     const cli=DB.clientas.find(x=>x.id===c.clientaId);
     const d=new Date(c.fecha+'T00:00:00');
-    let pill,amt;
-    if(c.pago==='deuda'){pill='<span class="pill deuda">Debe</span>';amt=fmtMoney(deudaCita(c));}
-    else if(c.pago==='parcial'){pill='<span class="pill parcial">Abonó · debe '+fmtMoney(deudaCita(c))+'</span>';amt=fmtMoney(montoCita(c));}
-    else {pill='<span class="pill pagado">Pagado</span>';amt=fmtMoney(montoCita(c));}
-    return `<div class="row" data-on-click="editAppt('${c.id}')">
-      <div class="avatar">${cli?cli.nombre[0].toUpperCase():'·'}</div>
-      <div class="info"><div class="name">${esc(cli?cli.nombre:'Clienta')}</div>
-      <div class="det">${svcDisplay(c)} · ${d.getDate()} ${MON[d.getMonth()]}</div></div>
-      <div class="right"><div class="amt">${amt}</div>${pill}</div>
-    </div>`;
+    let tag,amt;
+    if(c.pago==='deuda'){tag='<span class="tag t-bad">Debe</span>';amt=fmtMoney(deudaCita(c));}
+    else if(c.pago==='parcial'){tag='<span class="tag t-warn">Debe '+fmtMoney(deudaCita(c))+'</span>';amt=fmtMoney(montoCita(c));}
+    else {tag='<span class="tag t-ok">Pagado</span>';amt=fmtMoney(montoCita(c));}
+    return `<button type="button" class="row" data-on-click="editAppt('${c.id}')">
+      <span class="avatar" aria-hidden="true">${esc(cli?cli.nombre[0].toUpperCase():'·')}</span>
+      <span class="info"><span class="name">${esc(cli?cli.nombre:'Clienta')}</span>
+      <span class="det">${esc(svcDisplay(c))} · ${d.getDate()} ${MON[d.getMonth()].toLowerCase()}</span></span>
+      <span class="right"><span class="amt">${amt}</span>${tag}</span>
+    </button>`;
   }).join('');
   renderCobranza();
 }
@@ -96,9 +110,12 @@ function renderVentasRama(sales){
   const total=Object.values(acc).reduce((t,x)=>t+x.v,0);
   const hasSkin=DB.servicios.some(s=>s.cat==='skin')||acc.skin.n>0;
   if(!total||!hasSkin){el.innerHTML='';return;}
-  const row=(cat,color)=>{const x=acc[cat]||{v:0,n:0};const pct=total?Math.round(x.v/total*100):0;const tk=x.n?Math.round(x.v/x.n):0;
-    return `<div class="rama-row"><div class="rama-top"><span class="rama-dot" style="background:${color}"></span><span class="rama-n">${catLabel(cat)}</span><span class="rama-meta">${x.n} servicio${x.n!==1?'s':''}${tk?` · ticket ${fmtMoney(tk)}`:''}</span><span class="rama-v num">${fmtMoney(Math.round(x.v))}</span></div><div class="rama-bar"><div style="width:${pct}%;background:${color}"></div></div></div>`;};
-  el.innerHTML=`<div class="card rama-card"><div class="eyebrow">Cobrado por rama</div>${row('nails','#A03F66')}${row('skin','#6A57B8')}${acc.otro.n?row('otro','#9C8E92'):''}</div>`;
+  el.innerHTML=`<div class="card rama-card"><div class="eyebrow">Cobrado por rama</div>${ramaRow('nails',acc.nails,total)}${ramaRow('skin',acc.skin,total)}${acc.otro.n?ramaRow('otro',acc.otro,total):''}</div>`;
+}
+/* Fila de rama (uñas / piel / otros) con barra proporcional */
+function ramaRow(cat,x,total){
+  x=x||{v:0,n:0};const pct=total?Math.round(x.v/total*100):0;const tk=x.n?Math.round(x.v/x.n):0;
+  return `<div class="rama-row ${cat}"><div class="rama-top"><span class="rama-ic">${ramaIcon(cat)}</span><span class="rama-n">${catLabel(cat)}</span><span class="rama-meta">${x.n} servicio${x.n!==1?'s':''}${tk?` · ticket ${fmtMoney(tk)}`:''}</span><span class="rama-v num">${fmtMoney(Math.round(x.v))}</span></div><div class="rama-bar" role="img" aria-label="${pct}%"><div style="width:${pct}%"></div></div></div>`;
 }
 function metodoLabel(m){return ({efectivo:'Efectivo',transferencia:'Transfer.',tarjeta:'Tarjeta',cupon:'Cupón',otro:'Otro'})[m]||'Pagado'}
 function renderCobranza(){
@@ -113,33 +130,25 @@ function renderCobranza(){
   const overdue=debts.filter(c=>daysSince(c.fecha)>=14);
   const overdueAmt=overdue.reduce((s,c)=>s+deudaCita(c),0);
   const overdueClis=new Set(overdue.map(c=>c.clientaId)).size;
-  alertEl.innerHTML=overdueAmt>0?`<div class="alert-cob"><div class="ai">⚠️</div><div class="at">Tienes <b>${fmtMoney(overdueAmt)}</b> en cobranza vencida (+14 días) de <b>${overdueClis} client${overdueClis!==1?'as':'a'}</b>. Conviene dar seguimiento.</div></div>`:'';
+  alertEl.innerHTML=overdueAmt>0?`<div class="alert-cob" role="note">${icon('alert')}<div class="at">Tienes <b>${fmtMoney(overdueAmt)}</b> en cobranza vencida (+14 días) de <b>${overdueClis} client${overdueClis!==1?'as':'a'}</b>. Conviene dar seguimiento.</div></div>`:'';
   // debtors grouped by client
   const byCli={};
   debts.forEach(c=>{if(!byCli[c.clientaId])byCli[c.clientaId]={debt:0,oldest:0,count:0};byCli[c.clientaId].debt+=deudaCita(c);byCli[c.clientaId].count++;byCli[c.clientaId].oldest=Math.max(byCli[c.clientaId].oldest,daysSince(c.fecha));});
   const debtors=Object.entries(byCli).map(([id,d])=>({id,...d})).sort((a,b)=>b.debt-a.debt);
   const maxB=Math.max(...buckets.map(b=>b.v),1);
-  const barsHtml=buckets.map(b=>{const h=Math.round((b.v/maxB)*100);const danger=b.min>=15;return `<div class="bar-col"><div class="bar-val">${b.v?('$'+(b.v>=1000?(b.v/1000).toFixed(1)+'k':b.v)):''}</div><div class="bar-track"><div class="bar-fill ${b.v?'':'zero'}" style="height:${b.v?Math.max(h,4):4}%;${danger&&b.v?'background:linear-gradient(to top,var(--red),#D98A82)':''}"></div></div><div class="bar-lbl">${b.l.replace(' días','d')}</div></div>`}).join('');
+  const barsHtml=buckets.map(b=>{const h=Math.round((b.v/maxB)*100);const danger=b.min>=15;return `<div class="bar-col"><div class="bar-val">${b.v?('$'+(b.v>=1000?(b.v/1000).toFixed(1)+'k':b.v)):''}</div><div class="bar-track"><div class="bar-fill ${b.v?'':'zero'} ${danger&&b.v?'bad':''}" style="height:${b.v?Math.max(h,4):4}%"></div></div><div class="bar-lbl">${b.l.replace(' días','d')}</div></div>`}).join('');
   const debtorRows=debtors.map(d=>{
     const cl=DB.clientas.find(x=>x.id===d.id);if(!cl)return '';
     const big=d.debt>=500;const old=d.oldest>=14;
-    return `<div class="row debtor" data-on-click="openCli('${d.id}')">
-      <div class="avatar" style="background:${old?'linear-gradient(150deg,#B5564E,#8C3A2E)':'linear-gradient(150deg,var(--mauve),var(--wine))'}">${cl.nombre[0].toUpperCase()}</div>
-      <div class="info"><div class="name">${esc(cl.nombre)}</div>
-      <div class="det"><span class="${old?'age-bad':''}">hace ${d.oldest}d</span> · ${d.count} cargo${d.count!==1?'s':''} · ${big?'adeudo alto':'adeudo bajo'}</div></div>
-      <div class="right"><div class="amt" style="color:var(--red)">${fmtMoney(d.debt)}</div></div>
-    </div>`;
+    return `<button type="button" class="row debtor" data-on-click="openCli('${d.id}')">
+      <span class="avatar ${old?'av-bad':''}" aria-hidden="true">${esc(cl.nombre[0].toUpperCase())}</span>
+      <span class="info"><span class="name">${esc(cl.nombre)}</span>
+      <span class="det"><span class="${old?'age-bad':''}">hace ${d.oldest} d</span> · ${d.count} cargo${d.count!==1?'s':''} · ${big?'adeudo alto':'adeudo bajo'}</span></span>
+      <span class="right"><span class="amt v-bad">${fmtMoney(d.debt)}</span></span>
+    </button>`;
   }).join('');
   block.innerHTML=`
-    <div class="divider">Cobranza · ${fmtMoney(totalDebt)} pendiente</div>
-    <div class="chartcard"><div class="ct">Antigüedad del adeudo</div><div class="bars">${barsHtml}</div></div>
+    <div class="divider"><span>Cobranza · ${fmtMoney(totalDebt)} pendiente</span></div>
+    <div class="chartcard"><div class="ct">Antigüedad del adeudo</div><div class="bars" role="img" aria-label="${buckets.map(b=>b.l+': '+fmtMoney(b.v)).join(', ')}">${barsHtml}</div></div>
     ${debtorRows}`;
 }
-document.getElementById('ventasSeg').addEventListener('click',e=>{
-  if(e.target.tagName!=='BUTTON')return;
-  ventasPeriod=e.target.dataset.p;
-  document.querySelectorAll('#ventasSeg button').forEach(b=>b.classList.toggle('on',b===e.target));
-  if(ventasPeriod==='rango')ensureRangeDefaults('vDesde','vHasta');
-  document.getElementById('ventasRange').style.display=ventasPeriod==='rango'?'flex':'none';
-  renderVentas();
-});

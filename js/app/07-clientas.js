@@ -66,15 +66,15 @@ function renderCliAlerts(){
   const cumples=proximosCumples(7);
   let html='';
   if(cumples.length){
-    html+=`<div class="alert-card cumple-card"><div class="al-title">🎂 Cumpleaños próximos</div>`;
-    html+=cumples.map(x=>`<div class="al-row"><div class="al-info"><b>${esc(x.cl.nombre)}</b><small>${x.diff===0?'¡Hoy!':(x.diff===1?'Mañana':'En '+x.diff+' días')} · ${x.fecha.getDate()} ${MON[x.fecha.getMonth()]}</small></div><button class="al-wa" data-on-click="event.stopPropagation();waCumple('${x.cl.id}')">Felicitar</button></div>`).join('');
-    html+=`</div>`;
+    html+=`<section class="alert-card cumple-card" aria-labelledby="alCumple"><h2 class="al-title" id="alCumple">${icon('cake')}Cumpleaños próximos</h2>`;
+    html+=cumples.map(x=>`<div class="al-row"><button type="button" class="al-info" data-on-click="openCli('${x.cl.id}')"><b>${esc(x.cl.nombre)}</b><small>${x.diff===0?'Hoy':(x.diff===1?'Mañana':'En '+x.diff+' días')} · ${x.fecha.getDate()} ${MON[x.fecha.getMonth()].toLowerCase()}</small></button><button type="button" class="btn-sm btn-wa-line" aria-label="Felicitar a ${esc(x.cl.nombre)} por WhatsApp" data-on-click="waCumple('${x.cl.id}')">${icon('wa')}Felicitar</button></div>`).join('');
+    html+=`</section>`;
   }
   if(riesgo.length){
-    html+=`<div class="alert-card riesgo-card"><div class="al-title">💔 No han vuelto (${riesgo.length})</div>`;
-    html+=riesgo.slice(0,5).map(x=>`<div class="al-row" data-on-click="openCli('${x.cl.id}')"><div class="al-info"><b>${esc(x.cl.nombre)}</b><small>Última visita hace ${x.days} días</small></div><button class="al-wa" data-on-click="event.stopPropagation();waTeExtranamos('${x.cl.id}')">WhatsApp</button></div>`).join('');
-    html+=`<button class="al-ver-todas" data-on-click="openRiesgoSheet()">Ver detalle completo →</button>`;
-    html+=`</div>`;
+    html+=`<section class="alert-card riesgo-card" aria-labelledby="alRiesgo"><h2 class="al-title" id="alRiesgo">${icon('clockBack')}No han vuelto <span class="n">${riesgo.length}</span></h2>`;
+    html+=riesgo.slice(0,3).map(x=>`<div class="al-row"><button type="button" class="al-info" data-on-click="openCli('${x.cl.id}')"><b>${esc(x.cl.nombre)}</b><small>Última visita hace ${x.days} días</small></button><button type="button" class="btn-sm btn-wa-line" aria-label="Escribir a ${esc(x.cl.nombre)} por WhatsApp" data-on-click="waTeExtranamos('${x.cl.id}')">${icon('wa')}Escribir</button></div>`).join('');
+    html+=`<button type="button" class="link-btn al-ver-todas" data-on-click="openRiesgoSheet()">Ver las ${riesgo.length} ${icon('chevR')}</button>`;
+    html+=`</section>`;
   }
   el.innerHTML=html;
 }
@@ -108,16 +108,15 @@ function renderRiesgoList(){
   let list=cliEnRiesgo().map(x=>({...x,st:clientStats(x.cl.id)}));
   list=riesgoSort(list,riesgoOrden);
   document.getElementById('riesgoCount').textContent=list.length;
-  if(!list.length){el.innerHTML='<div class="empty-mini">Ninguna clienta en riesgo por ahora 🎉</div>';return;}
+  if(!list.length){el.innerHTML='<div class="empty-mini">Ninguna clienta en riesgo por ahora.</div>';return;}
   el.innerHTML=list.map(x=>{
     const seg=clientSegment(x.st);
-    return `<div class="riesgo-full-card" data-on-click="cerrarYAbrirClienta('${x.cl.id}')">
-      <div class="rf-top">
-        <div class="rf-name">${esc(x.cl.nombre)} <span class="badge ${seg.cls}">${seg.label}</span></div>
-        <div class="rf-days">${x.days}d</div>
-      </div>
-      <div class="rf-detail">Última visita: ${fechaLarga(x.st.last)} · ${x.st.visits} visita${x.st.visits!==1?'s':''} · ${fmtMoney(x.st.spent)} gastado${x.st.debt?` · <span class="rf-debt">debe ${fmtMoney(x.st.debt)}</span>`:''}</div>
-      <button class="al-wa" style="margin-top:9px;width:100%" data-on-click="event.stopPropagation();waTeExtranamos('${x.cl.id}')">WhatsApp "te extrañamos"</button>
+    return `<div class="riesgo-full-card">
+      <button type="button" class="rf-main" data-on-click="cerrarYAbrirClienta('${x.cl.id}')">
+        <span class="rf-top"><span class="rf-name">${esc(x.cl.nombre)} <span class="badge ${seg.cls}">${seg.label}</span></span><span class="rf-days">${x.days} d</span></span>
+        <span class="rf-detail">Última visita: ${fechaLarga(x.st.last)} · ${x.st.visits} visita${x.st.visits!==1?'s':''} · ${fmtMoney(x.st.spent)} gastado${x.st.debt?` · <span class="rf-debt">debe ${fmtMoney(x.st.debt)}</span>`:''}</span>
+      </button>
+      <button type="button" class="btn-sm btn-wa-line rf-wa" data-on-click="waTeExtranamos('${x.cl.id}')">${icon('wa')}Mandar «te extrañamos»</button>
     </div>`;
   }).join('');
 }
@@ -153,7 +152,7 @@ function rebookIn(weeks){
   // preselecciona la clienta
   apptSelectedCliId=cliId;
   const cl=DB.clientas.find(x=>x.id===cliId);
-  if(cl){document.getElementById('apptCliSearch').value=cl.nombre;document.getElementById('apptCliResults').innerHTML='';}
+  if(cl){document.getElementById('apptCli').value=cl.nombre;document.getElementById('apptCliResults').innerHTML='';}
   onApptDateChange();
   toast('Próxima cita de '+(cl?cl.nombre.split(' ')[0]:'')+' · elige hora');
 }
@@ -180,20 +179,22 @@ function renderClientas(){
   const cont=document.getElementById('cliList');
   const q=(document.getElementById('cliSearch')||{}).value||'';
   document.getElementById('cliSearchClr').style.display=q?'block':'none';
-  if(!DB.clientas.length){document.getElementById('cliCount').textContent='';cont.innerHTML=`<div class="empty"><div class="ic">👩</div><p>Aún no hay clientas.<br>Toca + o se agregan al crear una cita.</p></div>`;return;}
+  if(!DB.clientas.length){document.getElementById('cliCount').textContent='';cont.innerHTML=`<div class="empty">${icon('user')}<p>Aún no hay clientas.<br>Agrégalas aquí o al crear una cita.</p><button type="button" class="btn-sm" data-on-click="openCliCreateSheet()">${icon('userPlus')}Nueva clienta</button></div>`;return;}
   let list=DB.clientas.filter(c=>matchCli(c,q));
   document.getElementById('cliCount').textContent=q?`${list.length} de ${DB.clientas.length}`:`${DB.clientas.length} registradas`;
   list=list.sort((a,b)=>{const sa=clientStats(a.id).last||'',sb=clientStats(b.id).last||'';return sb.localeCompare(sa)});
-  if(!list.length){cont.innerHTML=`<div class="empty"><div class="ic">🔍</div><p>Ninguna clienta coincide con "${q}".</p></div>`;return;}
-  cont.innerHTML=list.map(cl=>{
-    const st=clientStats(cl.id),seg=clientSegment(st),pay=payBehavior(st);
-    return `<div class="row" data-on-click="openCli('${cl.id}')">
-      <div class="avatar">${cl.nombre[0].toUpperCase()}</div>
-      <div class="info"><div class="cli-num">${cliNumLabel(cl.num)}</div><div class="name">${esc(cl.nombre)}</div>
-      <div class="det">${st.visits} visita${st.visits!==1?'s':''} · ${fmtMoney(st.spent)} · ticket ${fmtMoney(st.avgTicket)}</div>
-      <div class="badges"><span class="badge ${seg.cls}">${seg.label}</span><span class="badge ${pay.cls}">${pay.label}</span>${st.debt?`<span class="badge pay-bad">debe ${fmtMoney(st.debt)}</span>`:''}</div></div>
-    </div>`;
-  }).join('');
+  if(!list.length){cont.innerHTML=`<div class="empty">${icon('search')}<p>Ninguna clienta coincide con «${esc(q)}».</p></div>`;return;}
+  // Una sola etiqueta de segmento y, si aplica, el adeudo
+  cont.innerHTML=`<div class="card list-card">`+list.map(cl=>{
+    const st=clientStats(cl.id),seg=clientSegment(st);
+    const urgente=st.debt>0&&st.oldestDebtDays>=14;
+    return `<button type="button" class="row" data-on-click="openCli('${cl.id}')">
+      <span class="avatar" aria-hidden="true">${esc(cl.nombre[0].toUpperCase())}</span>
+      <span class="info"><span class="name">${esc(cl.nombre)}</span>
+      <span class="det">${cliNumLabel(cl.num)?cliNumLabel(cl.num).replace('Cliente ','')+' · ':''}${st.visits} visita${st.visits!==1?'s':''}${st.spent?` · ${fmtMoney(st.spent)}`:''}</span></span>
+      <span class="right"><span class="badge ${seg.cls}">${seg.label}</span>${st.debt?`<span class="debt${urgente?' urg':''}">Debe ${fmtMoney(st.debt)}</span>`:''}</span>
+    </button>`;
+  }).join('')+`</div>`;
 }
 function clearCliSearch(){const s=document.getElementById('cliSearch');s.value='';renderClientas();}
 let openCliId=null;
@@ -224,10 +225,11 @@ function openCli(id){
   const hist=DB.citas.filter(c=>c.clientaId===id).sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
   document.getElementById('cliHist').innerHTML=hist.length?hist.map(c=>{
     const pg=c.estado==='atendida'?(c.pago==='deuda'?' · debe':(c.metodo?' · '+metodoLabel(c.metodo):' · pagado')):'';
-    return `<div class="histitem"><div><div class="hs">${svcFull(c)}</div>
-    <div class="hd">${fmtFechaCompleta(c.fecha,c.hora)} · ${c.estado}${pg}</div></div>
+    const cat=citaCats(c)[0];
+    return `<div class="histitem"><span class="hi-ic ${cat==='skin'?'skin':cat==='otro'?'otro':'nails'}">${ramaIcon(cat)}</span><div class="hi-b"><div class="hs">${esc(svcFull(c))}</div>
+    <div class="hd">${fechaCorta(c.fecha)}${c.hora?' · '+hm(toMin(c.hora)):''} · ${(ESTADO_TXT[c.estado]||'Agendada').toLowerCase()}${pg}</div></div>
     <div class="hp">${fmtMoney(montoCita(c)||totalNeto(c))}${deudaCita(c)>0?`<small class="hp-debe">debe ${fmtMoney(deudaCita(c))}</small>`:''}</div></div>`;
-  }).join(''):'<p style="color:var(--muted);font-size:13px;font-weight:300">Sin historial.</p>';
+  }).join(''):'<p class="empty-mini">Sin historial.</p>';
   document.getElementById('cliLoyalty').innerHTML=loyaltyCardHtml(cl);
   showSheet('cliSheet');
 }
