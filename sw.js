@@ -8,7 +8,7 @@
    Si cambia algo dentro de assets/ (logo, iconos), sube VERSION: esos
    archivos se sirven de la caché y solo se renuevan con una versión nueva. */
 
-const VERSION = 'v7.1.0';
+const VERSION = 'v7.2.0';
 const CACHE = `rheud-${VERSION}`;
 const VAPID_PUBLICA = 'BAd_ntg7CVK5fkBBpbAD8rLlznVl27BJku_aKsYERCY4Z2_pwu9GSsCgytUXsEvgED7jOqzfr64xnNocAjgJpaw';
 const FUNCION_PUSH = 'https://wrplznjgravcnxkzfarn.supabase.co/functions/v1/rheud-push';
@@ -37,6 +37,7 @@ const SHELL = [
   'js/app/13-app.js',
   'js/app/14-mas.js',
   'js/app/15-accesibilidad.js',
+  'js/app/16-eventos.js',
   'js/push.js',
   'js/seguridad.js',
   'vendor/supabase-js-2.117.1/supabase.js',

@@ -238,6 +238,22 @@ test('recordatorio: "10:30 AM · Daniela C. · Extensiones soft gel"', () => {
   assert.equal(L.refRecordatorio({ id: 'c1', fecha: '2026-10-08', hora: '10:30' }), 'c1@2026-10-08T10:30');
 });
 
+test('recordatorio de evento personal: título, hora y referencia propia', () => {
+  const e = { id: 'e1', fecha: '2026-10-08', hora: '13:00', faltan: 30, titulo: 'Dentista' };
+  const m = L.msgRecordatorioEvento(e);
+  assert.equal(m.title, 'En 30 min: Dentista');
+  assert.equal(m.body, '1:00 PM · Evento personal');
+  assert.equal(m.tag, 'evento-e1');
+  // no choca con la referencia de una cita con el mismo id
+  assert.equal(L.refRecordatorioEvento(e), 'ev:e1@2026-10-08T13:00');
+  assert.notEqual(L.refRecordatorioEvento(e), L.refRecordatorio(e));
+  // títulos largos se recortan; vacío → genérico
+  const largo = L.msgRecordatorioEvento({ ...e, titulo: 'x'.repeat(100) }).title;
+  assert.equal(largo.length, 'En 30 min: '.length + 60);
+  assert.ok(largo.endsWith('…'));
+  assert.equal(L.msgRecordatorioEvento({ ...e, titulo: '  ' }).title, 'En 30 min: Evento personal');
+});
+
 test('resumen: citas, total esperado con descuento y primera hora', () => {
   const citas = [
     { hora: '12:00', estado: 'agendada', precio: 730 },

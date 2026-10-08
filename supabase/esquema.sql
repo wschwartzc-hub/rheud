@@ -228,6 +228,38 @@ create policy "rw egresos" on public.egresos as permissive for all to authentica
   with check ((negocio_id IN ( SELECT mis_negocios() AS mis_negocios)));
 CREATE TRIGGER trg_bitacora AFTER INSERT OR UPDATE ON public.egresos FOR EACH ROW EXECUTE FUNCTION _bitacora();
 
+-- eventos (personales: se ven en la agenda pero no son citas; no cuentan en totales, cobros ni estadísticas)
+create table public.eventos (
+  id uuid not null default gen_random_uuid(),
+  negocio_id uuid not null,
+  creado_por uuid default auth.uid(),
+  titulo text not null,
+  fecha date not null,
+  hora text not null default ''::text,
+  duracion_min integer not null default 60,
+  bloquea boolean not null default true,
+  recordar boolean not null default true,
+  notas text not null default ''::text,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  deleted_at timestamp with time zone,
+  constraint eventos_pkey PRIMARY KEY (id),
+  constraint eventos_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES auth.users(id) ON DELETE SET NULL,
+  constraint eventos_negocio_id_fkey FOREIGN KEY (negocio_id) REFERENCES negocios(id) ON DELETE CASCADE,
+  constraint eventos_duracion_min_check CHECK (((duracion_min >= 5) AND (duracion_min <= 1440))),
+  constraint eventos_hora_check CHECK (((hora = ''::text) OR (hora ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text))),
+  constraint eventos_notas_check CHECK ((length(notas) <= 2000)),
+  constraint eventos_titulo_check CHECK (((length(btrim(titulo)) >= 1) AND (length(btrim(titulo)) <= 120)))
+);
+alter table public.eventos enable row level security;
+CREATE INDEX eventos_creado_por_idx ON public.eventos USING btree (creado_por);
+CREATE INDEX eventos_negocio_fecha_idx ON public.eventos USING btree (negocio_id, fecha) WHERE (deleted_at IS NULL);
+create policy "rw eventos" on public.eventos as permissive for all to authenticated
+  using ((negocio_id IN ( SELECT mis_negocios() AS mis_negocios)))
+  with check ((negocio_id IN ( SELECT mis_negocios() AS mis_negocios)));
+CREATE TRIGGER trg_bitacora AFTER INSERT OR UPDATE ON public.eventos FOR EACH ROW EXECUTE FUNCTION _bitacora();
+CREATE TRIGGER trg_eventos_touch BEFORE UPDATE ON public.eventos FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
+
 -- expedientes_piel
 create table public.expedientes_piel (
   id uuid not null default gen_random_uuid(),

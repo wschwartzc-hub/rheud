@@ -137,13 +137,23 @@ function pickApptCli(id){
 
 /* schedule assistant */
 const AS_START=8,AS_END=21; // ventana del día
-/* intervalos ocupados del día, por recurso; e incluye la limpieza (bloqueo del recurso) */
+/* intervalos ocupados del día, por recurso; e incluye la limpieza (bloqueo del recurso).
+   Los eventos personales que apartan horario ocupan mesa y cabina (llevan .ev). */
 function busyIntervals(key,excludeId){
   const out=[];
   DB.citas.filter(c=>c.fecha===key&&c.estado!=='cancelada'&&c.hora&&c.id!==excludeId).forEach(c=>{
     citaSegments(c).forEach(sg=>out.push({s:sg.s,e:sg.e+(sg.l||0),svcEnd:sg.e,r:sg.r,cat:sg.cat,c}));
   });
+  (DB.eventos||[]).filter(ev=>ev.fecha===key).forEach(ev=>{
+    NUC.bloquesEvento(ev).forEach(b=>out.push({s:b.s,e:b.e,svcEnd:b.e,r:b.r,ev}));
+  });
   return out.sort((a,b)=>a.s-b.s);
+}
+/* «tu evento personal X» o el nombre de la clienta de la cita con la que choca */
+function quienOcupa(b){
+  if(b.ev)return `tu evento personal «${b.ev.titulo}»`;
+  const cli=b.c?DB.clientas.find(x=>x.id===b.c.clientaId):null;
+  return cli?cli.nombre:'otra cita';
 }
 /* segmentos que ocuparía la cita que se está capturando, empezando en t y
    durando dur (la duración elegida manda, igual que en citaSegments) */
@@ -182,7 +192,13 @@ function renderAssist(){
   const sug=date<hoyKey?[]:NUC.huecos(busy,t=>proposedSegments(t,dur),winS,winE,dur,date===hoyKey?nowM:null,4);
   // status
   let cls,ic,msg;
-  if(propS!=null&&conflict){
+  const todoDia=busy.find(b=>b.ev&&!b.ev.hora);
+  if(propS!=null&&conflict&&conflict.ev){
+    cls='as-conflict';ic='alert';
+    msg=conflict.ev.hora
+      ?`Se encima con tu evento personal <b>${esc(conflict.ev.titulo)}</b> (${hm(conflict.s)}–${hm(conflict.e)}). ${sug.length?'Mira los espacios libres abajo.':''}`
+      :`Ese día está apartado: <b>${esc(conflict.ev.titulo)}</b> (todo el día).`;
+  }else if(propS!=null&&conflict){
     cls='as-conflict';ic='alert';
     const cli=DB.clientas.find(x=>x.id===conflict.c.clientaId);
     const enLimpieza=clash&&clash.p.s>=conflict.svcEnd;
@@ -195,6 +211,8 @@ function renderAssist(){
     cls='as-free';ic='checkCircle';msg=`Hay espacio a las <b>${hm(propS)}</b>.`;
   }else if(date<hoyKey){
     cls='as-tight';ic='clock';msg='Ese día ya pasó. Escribe la hora en que fue la cita.';
+  }else if(todoDia){
+    cls='as-conflict';ic='alert';msg=`Ese día está apartado: <b>${esc(todoDia.ev.titulo)}</b> (todo el día).`;
   }else if(!sug.length){
     cls='as-conflict';ic='alert';msg=freeMin<dur?'Día lleno, no cabe este servicio.':'Ya no quedan horas libres para este servicio ese día.';
   }else if(busy.length===0){
@@ -206,7 +224,7 @@ function renderAssist(){
   }
   // timeline blocks
   const usedR=new Set(proposedSegments(winS,dur).map(x=>x.r));
-  const busyHtml=busy.filter(b=>usedR.has(b.r)||b.r==='ninguno').map(b=>{const l=Math.max(0,(b.s-winS)/winLen*100),w=Math.min(100,(Math.min(b.e,winE)-Math.max(b.s,winS))/winLen*100);return `<div class="tl-busy ${b.r==='cabina'?'cab':''}" style="left:${l}%;width:${w}%"></div>`}).join('');
+  const busyHtml=busy.filter(b=>(usedR.has(b.r)||b.r==='ninguno')&&b.e>winS&&b.s<winE).map(b=>{const l=Math.max(0,(b.s-winS)/winLen*100),w=Math.min(100-l,(Math.min(b.e,winE)-Math.max(b.s,winS))/winLen*100);return `<div class="tl-busy ${b.ev?'pers':(b.r==='cabina'?'cab':'')}" style="left:${l}%;width:${w}%"></div>`}).join('');
   let propHtml='';
   if(propS!=null){const l=Math.max(0,(propS-winS)/winLen*100),w=Math.min(100-l,(dur)/winLen*100);propHtml=`<div class="tl-prop ${conflict?'bad':''}" style="left:${l}%;width:${w}%"></div>`;}
   const ticks=[];for(let h=AS_START;h<=AS_END;h+=3)ticks.push(`${h}:00`);
@@ -362,6 +380,7 @@ document.getElementById('estadoChips').addEventListener('click',e=>{const b=e.ta
 function openApptSheet(){
   editingId=null;
   document.getElementById('apptSheetTitle').textContent='Nueva cita';
+  document.getElementById('apptTipoSeg').hidden=false;
   document.getElementById('apptDelBtn').style.display='none';
   document.getElementById('apptCodeBar').style.display='none';
   document.getElementById('apptCli').value='';
@@ -386,6 +405,7 @@ function editAppt(id){
   const c=DB.citas.find(x=>x.id===id);if(!c)return;
   editingId=id;
   document.getElementById('apptSheetTitle').textContent='Editar cita';
+  document.getElementById('apptTipoSeg').hidden=true;
   document.getElementById('apptDelBtn').style.display='block';
   const bar=document.getElementById('apptCodeBar');
   if(c.codigo){document.getElementById('apptCodeVal').textContent=c.codigo;bar.style.display='block';}

@@ -17,7 +17,7 @@ const DAY_START=8,DAY_END=20,HOUR_PX=60,HOUR_PX_WK=48;
 let RST=DAY_START,REN=DAY_END;
 function setRange(keys){
   let mn=DAY_START,mx=DAY_END;
-  keys.forEach(k=>dayEvents(k).forEach(c=>{
+  keys.forEach(k=>dayEvents(k).concat(dayPersonales(k)).forEach(c=>{
     if(!c.hora)return;
     const s=toMin(c.hora),e=s+(Number(c.dur)||60);
     mn=Math.min(mn,Math.floor(s/60));
@@ -37,6 +37,10 @@ function hm(min){min=Math.round(min);return Math.floor(min/60)+':'+String(min%60
 function hhmm(min){return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0')}
 function startOfWeek(d){const x=new Date(d);const day=x.getDay(),diff=(day===0?6:day-1);x.setDate(x.getDate()-diff);x.setHours(0,0,0,0);return x}
 function dayEvents(key){return DB.citas.filter(c=>c.fecha===key)}
+/* Eventos personales del día (js/app/16-eventos.js). No son citas: nunca entran
+   en los conteos, cobros ni estadísticas; solo se dibujan y apartan horario. */
+function dayPersonales(key){return (DB.eventos||[]).filter(e=>e.fecha===key).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''))}
+function evRango(e){const s=toMin(e.hora);return s==null?null:{s,e:s+(Number(e.dur)||60)}}
 function cliNombre(c){const cli=DB.clientas.find(x=>x.id===c.clientaId);return cli?cli.nombre:'Clienta'}
 function fechaCorta(key){const d=new Date(key+'T00:00:00');const y=d.getFullYear()!==new Date().getFullYear()?' '+d.getFullYear():'';return `${DOW[d.getDay()].toLowerCase()} ${d.getDate()} ${MON[d.getMonth()].toLowerCase()}${y}`}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
@@ -76,6 +80,7 @@ function placeEvents(evs){
 const ESTADO_TXT={agendada:'Agendada',atendida:'Atendida',cancelada:'Cancelada'};
 /* Bloque de la vista Semana (columnas estrechas) */
 function evBox(c,narrow){
+  if(c._pers)return persBox(c,narrow);
   const pal=PALETTE[c.color]||PALETTE.rosa;
   const hpx=narrow?HOUR_PX_WK:HOUR_PX;
   const top=Math.max(0,(c._s-RST*60)/60*hpx)+10; // +10: el relleno superior de la columna
@@ -94,12 +99,21 @@ function evBox(c,narrow){
   const lbl=`${hm(c._s)}, ${nombre}, ${svcDisplay(c)}, ${ESTADO_TXT[c.estado]||'Agendada'}`;
   return `<button type="button" class="${cls}" style="top:${top}px;height:${h}px;left:calc(${left}% + 1px);width:calc(${w}% - 2px);${st}" aria-label="${esc(lbl)}" data-on-click="event.stopPropagation();editAppt('${c.id}')">${inner}</button>`;
 }
+function persBox(o,narrow){
+  const ev=o._pers,hpx=narrow?HOUR_PX_WK:HOUR_PX;
+  const top=Math.max(0,(o._s-RST*60)/60*hpx)+10;
+  const h=Math.max(((o._e-o._s)/60)*hpx,narrow?16:40);
+  const w=100/(o._cols||1),left=(o._col||0)*w;
+  const inner=narrow?`<span class="ec">${esc(ev.titulo)}</span>`:`<span class="et">${hm(o._s)}</span><span class="ec">${esc(ev.titulo)}</span><span class="es">Personal</span>`;
+  return `<button type="button" class="ev ev-pers" style="top:${top}px;height:${h}px;left:calc(${left}% + 1px);width:calc(${w}% - 2px)" aria-label="${esc(`${hm(o._s)} a ${hm(o._e)}, ${ev.titulo}, evento personal`)}" data-on-click="event.stopPropagation();editEvento('${ev.id}')">${inner}</button>`;
+}
 function gutterHours(){let g='';for(let hh=RST;hh<REN;hh++){g+=`<div class="hr-cell"><span class="lbl">${hh}:00</span></div>`;}return g}
 function gridLines(){let l='';for(let hh=RST;hh<REN;hh++)l+='<div class="line"></div>';return l}
 function nowLine(){const now=new Date();const m=now.getHours()*60+now.getMinutes();if(m<RST*60||m>REN*60)return '';return `<div class="nowline" style="top:${(m-RST*60)/60*HOUR_PX}px" aria-hidden="true"></div>`}
 
 function prepDay(key,narrow){
   const timed=dayEvents(key).filter(c=>c.hora).map(c=>{c._s=toMin(c.hora);c._e=c._s+(Number(c.dur)||60);return c;});
+  dayPersonales(key).forEach(ev=>{const r=evRango(ev);if(r)timed.push({_pers:ev,_s:r.s,_e:r.e});});
   placeEvents(timed);return timed;
 }
 /* La vista Día siempre es por carriles (Mesa · Cabina). Se conserva el interruptor por compatibilidad. */
@@ -158,26 +172,39 @@ function renderDayLanes(key,isToday){
   const canvas=document.getElementById('agendaCanvas');
   const all=dayEvents(key);
   const segs=[];all.filter(c=>c.hora&&c.estado!=='cancelada').forEach(c=>citaSegments(c).forEach(sg=>segs.push(sg)));
+  // eventos personales: los que apartan horario van como banda sobre los dos
+  // carriles; los de todo el día y los que no apartan, arriba como chips
+  const pers=dayPersonales(key);
+  const persBloq=pers.filter(e=>e.bloquea&&e.hora).map(ev=>({ev,...evRango(ev)}));
+  const diaApartado=pers.some(e=>e.bloquea&&!e.hora);
   let mn=DAY_START*60,mx=DAY_END*60;
   segs.forEach(sg=>{mn=Math.min(mn,Math.floor(sg.s/60)*60);mx=Math.max(mx,Math.ceil((sg.e+(sg.l||0))/60)*60);});
+  persBloq.forEach(p=>{mn=Math.min(mn,Math.floor(p.s/60)*60);mx=Math.max(mx,Math.ceil(p.e/60)*60);});
   RST=mn/60;REN=mx/60;
   const now=new Date(),nowM=now.getHours()*60+now.getMinutes(),todayKey=ymd(now);
   // Huecos: no en días pasados; hoy, solo desde la hora actual
-  const desde=key<todayKey?null:(isToday?nowM:mn);
+  const desde=(key<todayKey||diaApartado)?null:(isToday?nowM:mn);
   let rows='';for(let h=RST;h<=REN;h++)rows+=`<div class="ln" style="top:${(h*60-mn)*PX_MIN}px"><span>${h}:00</span></div>`;
   const cols=LANES.map(L=>{
     const mine=segs.filter(sg=>sg.r===L.r||(L.r==='mesa'&&sg.r==='ninguno')).map(sg=>({sg,_s:sg.s,_e:sg.e+(sg.l||0)}));
     placeEvents(mine);
     const items=mine.map(o=>laneBlock(o,mn,isToday,nowM));
-    if(desde!=null)laneGaps(mine,key,L,mn,mx,desde).forEach(g=>items.push(g));
+    if(desde!=null)laneGaps(mine.concat(persBloq.map(p=>({_s:p.s,_e:p.e}))),key,L,mn,mx,desde).forEach(g=>items.push(g));
     items.sort((a,b)=>a.s-b.s);
     return `<div class="lane ${L.cls}" role="group" aria-label="${L.n}">${items.map(x=>x.html).join('')}</div>`;
   }).join('');
   const nowHtml=(isToday&&nowM>=mn&&nowM<=mx)?`<div class="now" style="top:${(nowM-mn)*PX_MIN}px" aria-hidden="true"></div>`:'';
   const noTime=all.filter(c=>!c.hora&&c.estado!=='cancelada');
   const sinhora=noTime.length?`<div class="sinhora"><span class="sh-l">Sin hora</span>${noTime.map(c=>`<button type="button" class="chip" data-on-click="editAppt('${c.id}')">${esc(cliNombre(c))}</button>`).join('')}</div>`:'';
-  canvas.innerHTML=`${sinhora}<div class="lanes-head" aria-hidden="true"><span class="lh nails"><i></i>Mesa de uñas</span><span class="lh skin"><i></i>Cabina facial</span></div>
-    <div class="lanes-scroll" id="lanesScroll"><div class="lanes" id="tgArea" style="height:${(mx-mn)*PX_MIN+12}px">${rows}<div class="lanes-cols">${cols}</div>${nowHtml}</div></div>`;
+  const persChips=pers.filter(e=>!e.hora||!e.bloquea);
+  const persTira=persChips.length?`<div class="sinhora"><span class="sh-l">Personal</span>${persChips.map(e=>`<button type="button" class="chip chip-pers" data-on-click="editEvento('${e.id}')">${icon('user')}${e.hora?hm(toMin(e.hora))+' · ':''}${esc(e.titulo)}${!e.hora?(e.bloquea?' · todo el día':' · sin hora'):''}</button>`).join('')}</div>`:'';
+  const bandas=persBloq.map(p=>{
+    const top=(p.s-mn)*PX_MIN,h=Math.max((p.e-p.s)*PX_MIN,30),t=`${hm(p.s)} – ${hm(p.e)}`;
+    const inner=`<span class="b-n">${icon('user')}${esc(p.ev.titulo)}</span>${h>=44?`<span class="b-t">${t} · Personal</span>`:''}`;
+    return `<button type="button" class="pers" style="top:${top}px;height:${h}px" aria-label="${esc(`${t}, ${p.ev.titulo}, evento personal`)}" data-on-click="editEvento('${p.ev.id}')">${inner}</button>`;
+  }).join('');
+  canvas.innerHTML=`${persTira}${sinhora}<div class="lanes-head" aria-hidden="true"><span class="lh nails"><i></i>Mesa de uñas</span><span class="lh skin"><i></i>Cabina facial</span></div>
+    <div class="lanes-scroll" id="lanesScroll"><div class="lanes" id="tgArea" style="height:${(mx-mn)*PX_MIN+12}px">${rows}<div class="lanes-cols">${cols}</div>${bandas?`<div class="pers-cols">${bandas}</div>`:''}${nowHtml}</div></div>`;
   if(agAutoScroll){
     agAutoScroll=false;
     let target=null;
@@ -244,7 +271,9 @@ function renderMonth(){
     const d=new Date(start);d.setDate(start.getDate()+i);
     const key=ymd(d),out=d.getMonth()!==m;
     const cnt=dayEvents(key).filter(c=>c.estado!=='cancelada').length;
-    cells+=`<button type="button" class="mcell ${out?'out':''} ${key===todayKey?'tdy':''}" aria-label="${DOWL[d.getDay()]} ${d.getDate()} de ${MONF[d.getMonth()].toLowerCase()}, ${cnt} cita${cnt!==1?'s':''}" data-on-click="goDay('${key}')"><span class="md">${d.getDate()}</span>${cnt?`<span class="mcount">${cnt}</span>`:''}</button>`;
+    const np=dayPersonales(key).length;
+    const lblP=np?`, ${np} evento${np!==1?'s':''} personal${np!==1?'es':''}`:'';
+    cells+=`<button type="button" class="mcell ${out?'out':''} ${key===todayKey?'tdy':''}" aria-label="${DOWL[d.getDay()]} ${d.getDate()} de ${MONF[d.getMonth()].toLowerCase()}, ${cnt} cita${cnt!==1?'s':''}${lblP}" data-on-click="goDay('${key}')"><span class="md">${d.getDate()}</span>${cnt?`<span class="mcount">${cnt}</span>`:''}${np?'<span class="mpers" aria-hidden="true"></span>':''}</button>`;
   }
   const strip=document.getElementById('agDayStrip');if(strip)strip.innerHTML=`<div class="mdow" aria-hidden="true">${dows.map(x=>`<span>${x}</span>`).join('')}</div>`;
   document.getElementById('agendaCanvas').innerHTML=`<div class="mgrid"><div class="mcells">${cells}</div></div>`;
@@ -334,10 +363,25 @@ function renderLista(){
   const key=ymd(agAnchor);selectedDate=key;setRange([key]);
   const strip=document.getElementById('agDayStrip');if(strip)strip.innerHTML='';
   const all=dayEvents(key).slice().sort((a,b)=>(a.hora||'99').localeCompare(b.hora||'99'));
+  const pers=dayPersonales(key);
   const canvas=document.getElementById('agendaCanvas');
-  if(!all.length){canvas.innerHTML=`<div class="empty">${icon('cal')}<p>Sin citas este día.</p><button type="button" class="btn-sm" data-on-click="openApptSheet()">${icon('plus')}Nueva cita</button></div>`;return;}
+  if(!all.length&&!pers.length){canvas.innerHTML=`<div class="empty">${icon('cal')}<p>Sin citas este día.</p><div class="empty-acts"><button type="button" class="btn-sm" data-on-click="openApptSheet()">${icon('plus')}Nueva cita</button><button type="button" class="btn-sm" data-on-click="openEventoSheet()">${icon('user')}Evento personal</button></div></div>`;return;}
   const nowM=new Date().getHours()*60+new Date().getMinutes(),isToday=key===ymd(new Date());
-  canvas.innerHTML=`<div class="card tl-card">`+all.map(c=>{
+  // los de todo el día van primero; las citas sin hora, al final
+  const filas=all.map(c=>({k:c.hora||'99',c})).concat(pers.map(e=>({k:e.hora||'',e}))).sort((a,b)=>a.k.localeCompare(b.k));
+  const filaPers=e=>{
+    const r=evRango(e);
+    const tags=['<span class="tag t-pers">Personal</span>'];
+    if(!e.bloquea)tags.push('<span class="tag t-soft">No aparta horario</span>');
+    if(e.recordar&&e.hora)tags.push('<span class="tag t-soft">Aviso 30 min antes</span>');
+    return `<button type="button" class="tl tl-pers" data-on-click="editEvento('${e.id}')">
+      <span class="tm">${r?hm(r.s):'Todo'}<small>${r?hm(r.e):'el día'}</small></span>
+      <span class="bar"></span>
+      <span class="bd"><span class="nm">${esc(e.titulo)}</span>${e.notas?`<span class="sv">${esc(e.notas)}</span>`:''}<span class="tags">${tags.join('')}</span></span>
+    </button>`;
+  };
+  canvas.innerHTML=`<div class="card tl-card">`+filas.map(f=>f.e?filaPers(f.e):f.c).map(c=>{
+    if(typeof c==='string')return c;
     const pal=PALETTE[c.color]||PALETTE.rosa;
     const s=toMin(c.hora),e=s!=null?s+(Number(c.dur)||60):null;
     let tags=[];

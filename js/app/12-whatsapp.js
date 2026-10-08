@@ -300,8 +300,11 @@ async function guardarCita(){
   if(curEstado!=='cancelada'){
     const clash=segsClash(proposedSegments(toMin(hora),dur),busyIntervals(date,editingId));
     if(clash){
-      const otra=DB.clientas.find(x=>x.id===clash.b.c.clientaId);
-      if(!confirm(`Se encima con ${otra?otra.nombre:'otra cita'} a las ${minLabel(clash.b.c&&clash.b.c.hora?toMin(clash.b.c.hora):clash.b.s)}. ¿Guardar de todas formas?`))return;
+      const b=clash.b;
+      const txt=b.ev&&!b.ev.hora
+        ?`Ese día está apartado por ${quienOcupa(b)} (todo el día). ¿Guardar de todas formas?`
+        :`Se encima con ${quienOcupa(b)} a las ${minLabel(b.c&&b.c.hora?toMin(b.c.hora):b.s)}. ¿Guardar de todas formas?`;
+      if(!confirm(txt))return;
     }
   }
   const hoy=ymd(new Date());
