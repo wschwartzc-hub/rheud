@@ -55,8 +55,8 @@ function renderFotos(cliId){
   const list=DB.fotos.filter(f=>f.clientaId===cliId).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   if(!list.length){el.innerHTML='<p class="empty-mini" style="grid-column:1/-1">Sin fotos. Toma una “antes” en la primera cita y un “después” al cerrar la serie.</p>';return;}
   const TL={antes:'Antes',despues:'Después',seguimiento:'Seguimiento'};
-  el.innerHTML=list.map(f=>{const d=new Date((f.fecha||ymd(new Date()))+'T00:00:00');return `<div class="foto"><img alt="" data-path="${esc(f.path)}"><span class="tag ${f.tipo==='despues'?'t-ok':(f.tipo==='antes'?'t-nails':'t-soft')}">${TL[f.tipo]||f.tipo} · ${d.getDate()} ${MON[d.getMonth()]}</span><span class="foto-x" data-on-click="delFoto('${f.id}')" title="Borrar">×</span></div>`;}).join('');
-  el.querySelectorAll('img[data-path]').forEach(async im=>{const u=await fotoUrl(im.dataset.path);if(u){im.src=u;im.onclick=()=>window.open(u,'_blank');}});
+  el.innerHTML=list.map(f=>{const d=new Date((f.fecha||ymd(new Date()))+'T00:00:00');const t=`${TL[f.tipo]||esc(f.tipo)} · ${d.getDate()} ${MON[d.getMonth()].toLowerCase()}`;return `<div class="foto"><a class="foto-a" target="_blank" rel="noopener" aria-label="Abrir foto ${t}"><img alt="" data-path="${esc(f.path)}"></a><span class="tag ${f.tipo==='despues'?'t-ok':(f.tipo==='antes'?'t-nails':'t-soft')}">${t}</span><button type="button" class="foto-x" aria-label="Borrar foto ${t}" data-on-click="delFoto('${f.id}')">${icon('x')}</button></div>`;}).join('');
+  el.querySelectorAll('img[data-path]').forEach(async im=>{const u=await fotoUrl(im.dataset.path);if(u){im.src=u;const a=im.closest('a');if(a)a.href=u;}});
 }
 async function delFoto(id){
   const f=DB.fotos.find(x=>x.id===id);if(!f)return;
@@ -70,7 +70,7 @@ async function delFoto(id){
 function renderEvolucion(e){
   const el=document.getElementById('pielEvolucion');if(!el)return;
   const list=[...(e.evolucion||[])].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-  el.innerHTML=list.length?list.map((n,i)=>{const d=new Date((n.fecha||ymd(new Date()))+'T00:00:00');return `<div class="evo"><div class="evo-d"><span class="num">${d.getDate()}</span><span>${MON[d.getMonth()]}</span></div><div class="evo-b">${n.servicio?`<div class="evo-s">${esc(n.servicio)}</div>`:''}<div class="evo-t">${esc(n.nota)}</div></div><span class="evo-x" data-on-click="delEvolucion(${list.length-1-i})" title="Borrar">×</span></div>`;}).join(''):'<p class="empty-mini">Sin notas todavía. Después de cada facial, anota qué viste y qué sigue.</p>';
+  el.innerHTML=list.length?list.map((n,i)=>{const d=new Date((n.fecha||ymd(new Date()))+'T00:00:00');return `<div class="evo"><div class="evo-d"><span class="num">${d.getDate()}</span><span>${MON[d.getMonth()]}</span></div><div class="evo-b">${n.servicio?`<div class="evo-s">${esc(n.servicio)}</div>`:''}<div class="evo-t">${esc(n.nota)}</div></div><button type="button" class="evo-x" aria-label="Borrar nota del ${d.getDate()} ${MON[d.getMonth()].toLowerCase()}" data-on-click="delEvolucion(${list.length-1-i})">${icon('x')}</button></div>`;}).join(''):'<p class="empty-mini">Sin notas todavía. Después de cada facial, anota qué viste y qué sigue.</p>';
 }
 document.getElementById('pielTipoChips').addEventListener('click',e=>{const ch=e.target.closest('.chip');if(!ch||!openCliId)return;const ex=getExp(openCliId);ex.tipo=(ex.tipo===ch.dataset.t)?'':ch.dataset.t;document.querySelectorAll('#pielTipoChips .chip').forEach(c=>c.classList.toggle('sel',c.dataset.t===ex.tipo));saveExpediente();});
 async function saveExpediente(){
@@ -159,7 +159,7 @@ function renderFreqSvcs(cliId){
   citas.forEach(c=>citaItems(c).forEach(i=>{const k=i.n;freq[k]=(freq[k]||0)+1;}));
   const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,3);
   if(!top.length){el.innerHTML='';return;}
-  el.innerHTML=`<div class="freq-svcs"><div class="fs-title">🔄 Suele pedir</div>${top.map(([n,v])=>`<span class="fs-chip">${n} <small>×${v}</small></span>`).join('')}</div>`;
+  el.innerHTML=`<div class="freq-svcs"><h4 class="fs-title">${icon('repeat')}Suele pedir</h4>${top.map(([n,v])=>`<span class="fs-chip">${esc(n)} <small>×${v}</small></span>`).join('')}</div>`;
 }
 
 function openCliCreateSheet(){

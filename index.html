@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#F9F4EE">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/app.css">
 <!-- Librerías alojadas en el sitio con versión fija (antes: CDN sin versión) -->
 <script src="vendor/supabase-js-2.117.1/supabase.js"></script>
@@ -22,290 +22,290 @@
 <body>
 <!-- LOGIN -->
 <div id="loginScreen">
-  <div class="login-card">
+  <main class="login-card" aria-labelledby="loginTitle">
     <img class="login-logo" src="assets/logo.png" alt="Rhēud Beauty">
-    <div class="login-sub">Estudio · Acceso</div>
-    <div class="field"><label>Correo</label><input type="email" id="loginEmail" placeholder="correo@ejemplo.com" autocomplete="username" inputmode="email"></div>
-    <div class="field"><label>Contraseña</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
-    <div class="login-err" id="loginErr"></div>
-    <button class="btn btn-primary" id="loginBtn" data-on-click="doLogin()">Entrar</button>
-  </div>
+    <h1 class="login-title" id="loginTitle">Acceso al estudio</h1>
+    <p class="login-sub">Entra con tu correo para ver la agenda de hoy.</p>
+    <form id="loginForm" novalidate>
+      <div class="field"><label for="loginEmail">Correo</label><input type="email" id="loginEmail" placeholder="correo@ejemplo.com" autocomplete="username" inputmode="email"></div>
+      <div class="field"><label for="loginPass">Contraseña</label><input type="password" id="loginPass" placeholder="Tu contraseña" autocomplete="current-password"></div>
+      <div class="login-err" id="loginErr" role="alert"></div>
+      <button type="submit" class="btn btn-primary" id="loginBtn" data-on-click="event.preventDefault();doLogin()">Entrar</button>
+    </form>
+  </main>
 </div>
-<!-- LOADING -->
-<div id="loadingScreen" style="display:none">
-  <div class="load-spinner"></div>
+<!-- CARGANDO -->
+<div id="loadingScreen" style="display:none" role="status" aria-live="polite">
+  <img class="load-logo" src="assets/logo.png" alt="">
+  <div class="load-spinner" aria-hidden="true"></div>
   <div class="load-txt" id="loadTxt">Cargando…</div>
 </div>
 
 <div id="app" style="display:none">
-  <div class="topbar">
-    <div class="brand"><img class="logo" src="assets/logo.png" alt="Rhēud Beauty"></div>
-    <div class="statusbar" id="statusbar">
-      <span class="sb-item" id="sbClock">—</span>
-      <span class="sb-dot">·</span>
-      <span class="sb-item" id="sbWeather">clima…</span>
-      <span class="sb-right">
-        <span class="sb-conn" id="sbConn"><span class="sb-conndot"></span><span id="sbConnTxt">—</span></span>
-        <span class="sb-ver" id="sbVer"></span>
-      </span>
+  <header class="topbar">
+    <img class="logo" src="assets/logo.png" alt="Rhēud Beauty">
+    <div class="tb-right">
+      <span class="sb-conn" id="sbConn" role="status"><span class="sb-conndot" aria-hidden="true"></span><span id="sbConnTxt">—</span></span>
+      <button type="button" id="btnNotif" class="icon-btn" aria-label="Notificaciones" data-on-click="abrirNotificaciones()"><span data-icon="bell"></span></button>
     </div>
-  </div>
+    <!-- reloj, clima y versión: los siguen escribiendo las funciones de arranque; no se muestran en la cabecera C -->
+    <span id="sbClock" hidden></span><span id="sbWeather" hidden></span><span id="sbVer" hidden></span>
+  </header>
 
-  <!-- AGENDA -->
-  <section class="view active" id="v-agenda">
-    <div class="hoy-head">
-      <h1 class="greet" id="greet">Bienvenida</h1>
-      <div class="hoy-sub" id="hoySub"></div>
+  <main id="main">
+  <!-- HOY -->
+  <section class="view active" id="v-agenda" aria-labelledby="hoyTitle">
+    <div class="vh">
+      <div class="vh-t">
+        <h1 id="hoyTitle" tabindex="-1">Hoy</h1>
+        <span class="vh-sub" id="agendaLabel"></span>
+      </div>
+      <div class="vh-act">
+        <button type="button" class="txt-btn" id="agTodayBtn" data-on-click="agToday()" hidden>Ir a hoy</button>
+        <button type="button" class="icon-btn" id="agPrev" aria-label="Día anterior" data-on-click="agShift(-1)"><span data-icon="chevL"></span></button>
+        <button type="button" class="icon-btn" id="agNext" aria-label="Día siguiente" data-on-click="agShift(1)"><span data-icon="chevR"></span></button>
+      </div>
     </div>
-    <div class="quick">
-      <button class="qa" data-on-click="openApptSheet()"><span class="qi"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Nueva cita</button>
-      <button class="qa" data-on-click="nav('ventas')"><span class="qi qi-green"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg></span>Cobrar</button>
-      <button class="qa" data-on-click="openScanner()"><span class="qi qi-gold"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v7h-7"/></svg></span>Sumar sello</button>
-    </div>
+    <div class="sum-chips" id="hoySub"></div>
     <div id="nextAppt"></div>
-    <div class="agenda-sticky">
-      <div class="agenda-head">
-        <button class="navarrow" data-on-click="agShift(-1)">‹</button>
-        <div class="agenda-label" id="agendaLabel"></div>
-        <button class="navarrow" data-on-click="agShift(1)">›</button>
-        <button class="today-btn" data-on-click="agToday()">Hoy</button>
-      </div>
-      <div class="agenda-weather" id="agendaWeather"></div>
-      <div class="seg agview-seg" id="agViewSeg">
-        <button data-m="lista" class="on">Lista</button>
-        <button data-m="dia">Día</button>
-        <button data-m="sem">Semana</button>
-        <button data-m="mes">Mes</button>
-      </div>
-      <div class="ag-row"><div class="ag-count" id="agCount"></div><button class="lanes-btn" id="agLanesBtn" data-on-click="toggleLanes()">Carriles</button></div>
-      <div id="agDayStrip"></div>
+    <div class="seg" id="agViewSeg" role="group" aria-label="Vista de la agenda">
+      <button type="button" data-m="dia" class="on">Carriles</button>
+      <button type="button" data-m="lista">Lista</button>
+      <button type="button" data-m="sem">Semana</button>
+      <button type="button" data-m="mes">Mes</button>
     </div>
+    <div class="agenda-weather" id="agendaWeather"></div>
+    <div id="agDayStrip"></div>
     <div id="agendaCanvas"></div>
   </section>
 
-  <!-- VENTAS -->
-  <section class="view" id="v-ventas">
-    <div class="section-title">Finanzas <small id="ventasSubtitle">Ingresos</small></div>
-    <div id="cobAlert"></div>
-    <!-- Tabs Ingresos / Egresos -->
-    <div class="seg" id="ventasModeSeg">
-      <button data-m="ingresos" class="on" data-on-click="ventasMode('ingresos')">Ingresos</button>
-      <button data-m="egresos" data-on-click="ventasMode('egresos')">Egresos</button>
-      <button data-m="insights" data-on-click="ventasMode('insights')">Insights</button>
-    </div>
-    <!-- INGRESOS -->
-    <div id="ventasIngresosPane">
-      <div class="seg" id="ventasSeg">
-        <button data-p="dia" class="on">Hoy</button>
-        <button data-p="sem">Semana</button>
-        <button data-p="mes">Mes</button>
-        <button data-p="rango">Rango</button>
+  <!-- CITAS -->
+  <section class="view" id="v-citas" aria-labelledby="citasTitle">
+    <div class="vh">
+      <div class="vh-t"><h1 id="citasTitle" tabindex="-1">Citas</h1><span class="vh-sub" id="citasCount"></span></div>
+      <div class="vh-act">
+        <button type="button" class="icon-btn" id="citasSearchBtn" aria-label="Buscar cita" aria-expanded="false" aria-controls="citasSearchBar" data-on-click="toggleCitasSearch()"><span data-icon="search"></span></button>
+        <button type="button" class="icon-btn" id="citasFiltBtn" aria-label="Filtros" aria-expanded="false" aria-controls="citasFiltros" data-on-click="toggleCitasFiltros()"><span data-icon="filter"></span><span class="ib-dot" id="citasFiltDot" hidden></span></button>
       </div>
-      <div class="rangepick" id="ventasRange" style="display:none">
-        <div class="field"><label>Desde</label><input type="date" id="vDesde" data-on-change="renderVentas()"></div>
-        <div class="field"><label>Hasta</label><input type="date" id="vHasta" data-on-change="renderVentas()"></div>
+    </div>
+    <div class="searchbar" id="citasSearchBar" hidden>
+      <label for="citasSearch" class="sr-only">Buscar cita por clienta o servicio</label>
+      <span class="si" data-icon="search"></span>
+      <input id="citasSearch" type="search" placeholder="Clienta o servicio" autocomplete="off" data-on-input="renderCitas()">
+      <button type="button" class="clr" id="citasSearchClr" aria-label="Borrar búsqueda" data-on-click="clearCitasSearch()" style="display:none"><span data-icon="x"></span></button>
+    </div>
+    <div class="filt-panel" id="citasFiltros" hidden>
+      <div class="fp-lbl" id="citasPerLbl">Periodo</div>
+      <div class="seg seg-sm" id="citasPeriodSeg" role="group" aria-labelledby="citasPerLbl">
+        <button type="button" data-p="dia" class="on">Día</button>
+        <button type="button" data-p="mes">Mes</button>
+        <button type="button" data-p="ano">Año</button>
+        <button type="button" data-p="rango">Rango</button>
+        <button type="button" data-p="todo">Todo</button>
       </div>
-      <div class="stats" id="ventasStats"></div>
-      <div id="ventasRama"></div>
-      <div id="fraseMot"></div>
-      <div class="divider">Movimientos <button class="export-btn" data-on-click="exportCSV()">⬇️ Exportar CSV</button></div>
-      <div id="ventasList"></div>
-      <div id="cobranzaBlock"></div>
-    </div>
-    <!-- EGRESOS -->
-    <div id="ventasEgresosPane" style="display:none">
-      <div class="seg" id="egresosSeg">
-        <button data-ep="dia" data-on-click="egresosSetPeriod('dia')">Hoy</button>
-        <button data-ep="sem" data-on-click="egresosSetPeriod('sem')">Semana</button>
-        <button data-ep="mes" class="on" data-on-click="egresosSetPeriod('mes')">Mes</button>
-        <button data-ep="ano" data-on-click="egresosSetPeriod('ano')">Año</button>
-        <button data-ep="todo" data-on-click="egresosSetPeriod('todo')">Todo</button>
+      <div class="dia-picker" id="citasDiaPicker">
+        <div class="field"><label for="citasDiaFecha">Día</label><input type="date" id="citasDiaFecha" data-on-change="renderCitas()"></div>
+        <button type="button" class="dia-hoy" data-on-click="citasDiaHoy()">Hoy</button>
       </div>
-      <div class="egreso-form">
-        <div class="ef-row">
-          <input type="date" id="egresoFecha" class="ef-date">
-          <input type="number" id="egresoMonto" placeholder="$0" inputmode="numeric" class="ef-monto">
-        </div>
-        <div class="ef-row2">
-          <input id="egresoConcepto" placeholder="Concepto (insumos, renta…)" class="ef-concepto">
-          <button class="ef-add" data-on-click="addEgreso()">+</button>
-        </div>
+      <div class="rangepick" id="citasRange" style="display:none">
+        <div class="field"><label for="cDesde">Desde</label><input type="date" id="cDesde" data-on-change="renderCitas()"></div>
+        <div class="field"><label for="cHasta">Hasta</label><input type="date" id="cHasta" data-on-change="renderCitas()"></div>
       </div>
-      <div class="egreso-resumen" id="egresoResumen"></div>
-      <div class="divider">Gastos registrados</div>
-      <div id="egresosList"></div>
+      <div class="fp-grid">
+        <div class="field"><label for="citasEstado">Estado</label>
+          <select id="citasEstado" data-on-change="renderCitas()">
+            <option value="">Todos</option>
+            <option value="agendada">Agendadas</option>
+            <option value="atendida">Atendidas</option>
+            <option value="cancelada">Canceladas</option>
+            <option value="deuda">Con adeudo</option>
+            <option value="pagada">Pagadas</option>
+          </select></div>
+        <div class="field"><label for="citasCli">Clienta</label><select id="citasCli" data-on-change="renderCitas()"><option value="">Todas</option></select></div>
+        <div class="field"><label for="citasSvc">Servicio</label><select id="citasSvc" data-on-change="renderCitas()"><option value="">Todos</option></select></div>
+        <div class="field"><label for="citasMetodo">Método de pago</label>
+          <select id="citasMetodo" data-on-change="renderCitas()">
+            <option value="">Todos</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="cupon">Cupón</option>
+            <option value="otro">Otro</option>
+          </select></div>
+        <div class="field fp-wide"><label for="citasOrden">Orden</label>
+          <select id="citasOrden" data-on-change="renderCitas()">
+            <option value="auto">Automático (por hora en el día)</option>
+            <option value="fecha_desc">Fecha: más reciente</option>
+            <option value="fecha_asc">Fecha: más antigua</option>
+            <option value="nombre_az">Clienta: A–Z</option>
+            <option value="nombre_za">Clienta: Z–A</option>
+            <option value="monto_desc">Monto: mayor</option>
+            <option value="monto_asc">Monto: menor</option>
+          </select></div>
+      </div>
+      <button type="button" class="btn btn-line btn-sm-full" data-on-click="limpiarFiltrosCitas()">Quitar filtros</button>
     </div>
-    <!-- INSIGHTS (antes Inteligencia) -->
-    <div id="ventasInsightsPane" style="display:none">
-      <div class="intel-range" id="intelRange"></div>
-<div class="seg" id="intelSeg">
-      <button data-p="sem" class="on">Semana</button>
-      <button data-p="mes">Mes</button>
-      <button data-p="ano">Año</button>
-      <button data-p="rango">Rango</button>
-    </div>
-    <div class="rangepick" id="intelRangePick" style="display:none">
-      <div class="field"><label>Desde</label><input type="date" id="iDesde" data-on-change="renderInteligencia()"></div>
-      <div class="field"><label>Hasta</label><input type="date" id="iHasta" data-on-change="renderInteligencia()"></div>
-    </div>
-    <div id="intelBody"></div>
-    </div>
+    <div class="wk-strip" id="citasWeek"></div>
+    <div class="chip-row" id="citasChips" role="group" aria-label="Filtrar por rama o cobro"></div>
+    <button type="button" class="confirm-bar" id="confirmBar" data-on-click="openConfirmaciones()" hidden><span data-icon="send"></span><span class="cb-tx">Confirmar citas de mañana</span><span id="confirmBadge" class="cf-badge" style="display:none"></span><span data-icon="chevR"></span></button>
+    <div class="citas-summary" id="citasSummary" aria-live="polite"></div>
+    <div id="citasList"></div>
   </section>
 
-
-
   <!-- CLIENTAS -->
-  <section class="view" id="v-clientas">
-    <div class="section-title">Clientas <small id="cliCount"></small></div>
-    <div class="searchbar"><span class="si">⌕</span><input id="cliSearch" placeholder="Buscar por nombre, teléfono o email…" autocomplete="off" data-on-input="renderClientas()"><span class="clr" id="cliSearchClr" data-on-click="clearCliSearch()" style="display:none">×</span></div>
-    <button class="btn-scan" data-on-click="openScanner()">Escanear QR para sumar sello</button>
+  <section class="view" id="v-clientas" aria-labelledby="cliTitle">
+    <div class="vh">
+      <div class="vh-t"><h1 id="cliTitle" tabindex="-1">Clientas</h1><span class="vh-sub" id="cliCount"></span></div>
+      <div class="vh-act">
+        <button type="button" class="btn-sm" data-on-click="openScanner()"><span data-icon="qr"></span>Escanear QR</button>
+        <button type="button" class="icon-btn icon-btn-line" aria-label="Nueva clienta" data-on-click="openCliCreateSheet()"><span data-icon="userPlus"></span></button>
+      </div>
+    </div>
+    <div class="searchbar">
+      <label for="cliSearch" class="sr-only">Buscar clienta</label>
+      <span class="si" data-icon="search"></span>
+      <input id="cliSearch" type="search" placeholder="Nombre, teléfono o email" autocomplete="off" data-on-input="renderClientas()">
+      <button type="button" class="clr" id="cliSearchClr" aria-label="Borrar búsqueda" data-on-click="clearCliSearch()" style="display:none"><span data-icon="x"></span></button>
+    </div>
     <div id="cliAlerts"></div>
     <div id="cliList"></div>
   </section>
 
-  <!-- SERVICIOS -->
-  <section class="view" id="v-servicios">
-    <div class="section-title">Menú <small id="menuSub">Servicios</small></div>
-    <div class="seg" id="menuSeg">
-      <button data-s="servicios" class="on" data-on-click="menuTab('servicios')">Servicios</button>
-      <button data-s="premios" data-on-click="menuTab('premios')">Premios</button>
-      <button data-s="cortesias" data-on-click="menuTab('cortesias')">Cortesías</button>
+  <!-- MÁS -->
+  <section class="view" id="v-mas" aria-labelledby="masTitle">
+    <div class="vh"><div class="vh-t"><h1 id="masTitle" tabindex="-1">Más</h1></div></div>
+    <div class="mas-list">
+      <button type="button" class="mas-row" data-on-click="nav('ventas')"><span class="mr-ic" data-icon="chart"></span><span class="mr-tx"><b>Finanzas</b><small>Ingresos, gastos e insights</small></span><span class="mr-go" data-icon="chevR"></span></button>
+      <button type="button" class="mas-row" data-on-click="nav('servicios')"><span class="mr-ic" data-icon="grid"></span><span class="mr-tx"><b>Menú y premios</b><small>Servicios, premios de lealtad y cortesías</small></span><span class="mr-go" data-icon="chevR"></span></button>
+      <button type="button" class="mas-row" data-on-click="openEstudioSheet()"><span class="mr-ic" data-icon="store"></span><span class="mr-tx"><b>Datos del estudio</b><small>Dirección, WhatsApp y mapa para el portal</small></span><span class="mr-go" data-icon="chevR"></span></button>
     </div>
-    <div id="menuServicios">
-      <div class="menu-cats" id="menuCats"></div>
-      <div class="menu-subs" id="menuSubs"></div>
+    <div id="masAjustes"></div>
+    <div class="mas-list">
+      <button type="button" class="mas-row mas-out" data-on-click="confirmSignOut()"><span class="mr-ic" data-icon="logout"></span><span class="mr-tx"><b>Cerrar sesión</b></span></button>
+    </div>
+    <p class="mas-ver" id="signoutVer"></p>
+  </section>
+
+  <!-- FINANZAS -->
+  <section class="view" id="v-ventas" aria-labelledby="finTitle">
+    <button type="button" class="back" data-on-click="nav('mas')"><span data-icon="chevL"></span>Más</button>
+    <div class="vh"><div class="vh-t"><h1 id="finTitle" tabindex="-1">Finanzas</h1><span class="vh-sub" id="finRangeLbl"></span></div></div>
+    <div class="tabs" id="ventasModeSeg" role="tablist" aria-label="Sección de finanzas">
+      <button type="button" role="tab" id="tabIngresos" aria-controls="ventasIngresosPane" data-m="ingresos" class="on" data-on-click="ventasMode('ingresos')">Ingresos</button>
+      <button type="button" role="tab" id="tabEgresos" aria-controls="ventasEgresosPane" data-m="egresos" data-on-click="ventasMode('egresos')">Gastos</button>
+      <button type="button" role="tab" id="tabInsights" aria-controls="ventasInsightsPane" data-m="insights" data-on-click="ventasMode('insights')">Insights</button>
+    </div>
+    <div class="seg seg-sm" id="finPeriodSeg" role="group" aria-label="Periodo">
+      <button type="button" data-p="dia" data-on-click="finPeriodo('dia')">Hoy</button>
+      <button type="button" data-p="sem" data-on-click="finPeriodo('sem')">Semana</button>
+      <button type="button" data-p="mes" class="on" data-on-click="finPeriodo('mes')">Mes</button>
+      <button type="button" data-p="ano" data-on-click="finPeriodo('ano')">Año</button>
+      <button type="button" data-p="rango" data-on-click="finPeriodo('rango')">Rango</button>
+    </div>
+    <div class="rangepick" id="ventasRange" style="display:none">
+      <div class="field"><label for="vDesde">Desde</label><input type="date" id="vDesde" data-on-change="renderFinanzas()"></div>
+      <div class="field"><label for="vHasta">Hasta</label><input type="date" id="vHasta" data-on-change="renderFinanzas()"></div>
+    </div>
+    <!-- INGRESOS -->
+    <div id="ventasIngresosPane" role="tabpanel" aria-labelledby="tabIngresos">
+      <div id="cobAlert"></div>
+      <div class="stats" id="ventasStats"></div>
+      <div id="ventasRama"></div>
+      <div class="divider"><span>Movimientos</span><button type="button" class="link-btn" data-on-click="exportCSV()"><span data-icon="download"></span>Exportar CSV</button></div>
+      <div id="ventasList"></div>
+      <div id="cobranzaBlock"></div>
+    </div>
+    <!-- GASTOS -->
+    <div id="ventasEgresosPane" role="tabpanel" aria-labelledby="tabEgresos" style="display:none">
+      <div class="egreso-form">
+        <div class="ef-row">
+          <div class="field"><label for="egresoFecha">Fecha</label><input type="date" id="egresoFecha"></div>
+          <div class="field ef-monto"><label for="egresoMonto">Monto</label><input type="number" id="egresoMonto" placeholder="$0" inputmode="numeric"></div>
+        </div>
+        <div class="ef-row">
+          <div class="field ef-concepto"><label for="egresoConcepto">Concepto</label><input id="egresoConcepto" placeholder="Insumos, renta…"></div>
+          <button type="button" class="ef-add" aria-label="Agregar gasto" data-on-click="addEgreso()"><span data-icon="plus"></span></button>
+        </div>
+      </div>
+      <div class="egreso-resumen" id="egresoResumen"></div>
+      <div class="divider"><span>Gastos registrados</span></div>
+      <div id="egresosList"></div>
+    </div>
+    <!-- INSIGHTS -->
+    <div id="ventasInsightsPane" role="tabpanel" aria-labelledby="tabInsights" style="display:none">
+      <div class="intel-range" id="intelRange" hidden></div>
+      <div id="intelBody"></div>
+    </div>
+  </section>
+
+  <!-- MENÚ -->
+  <section class="view" id="v-servicios" aria-labelledby="menuTitle">
+    <button type="button" class="back" data-on-click="nav('mas')"><span data-icon="chevL"></span>Más</button>
+    <div class="vh"><div class="vh-t"><h1 id="menuTitle" tabindex="-1">Menú</h1><span class="vh-sub" id="menuSub">Servicios</span></div></div>
+    <div class="tabs" id="menuSeg" role="tablist" aria-label="Sección del menú">
+      <button type="button" role="tab" id="tabSvc" aria-controls="menuServicios" data-s="servicios" class="on" data-on-click="menuTab('servicios')">Servicios</button>
+      <button type="button" role="tab" id="tabPremios" aria-controls="menuPremios" data-s="premios" data-on-click="menuTab('premios')">Premios</button>
+      <button type="button" role="tab" id="tabCortesias" aria-controls="menuCortesias" data-s="cortesias" data-on-click="menuTab('cortesias')">Cortesías</button>
+    </div>
+    <div id="menuServicios" role="tabpanel" aria-labelledby="tabSvc">
+      <div class="chip-row" id="menuCats" role="group" aria-label="Rama"></div>
+      <div class="menu-subs" id="menuSubs" role="group" aria-label="Subfamilia"></div>
       <div id="svcList"></div>
-      <button class="btn btn-line" style="margin-top:8px" data-on-click="openSvcSheet()">+ Agregar servicio</button>
-      <div class="divider">Difusión</div>
-      <button class="btn-promo" data-on-click="enviarPromo()">Enviar promociones por WhatsApp</button>
-      <button class="btn btn-line" style="margin-top:8px" data-on-click="openEditPromoSheet()">Editar plantilla del mensaje</button>
+      <button type="button" class="btn btn-line" data-on-click="openSvcSheet()"><span data-icon="plus"></span>Agregar servicio</button>
+      <div class="divider"><span>Difusión</span></div>
+      <button type="button" class="btn btn-wa" data-on-click="enviarPromo()"><span data-icon="wa"></span>Enviar promociones por WhatsApp</button>
+      <button type="button" class="btn btn-line" data-on-click="openEditPromoSheet()"><span data-icon="edit"></span>Editar plantilla del mensaje</button>
     </div>
-    <div id="menuPremios" style="display:none">
+    <div id="menuPremios" role="tabpanel" aria-labelledby="tabPremios" style="display:none">
       <p class="premios-hint">Crea los premios de tu tarjeta de lealtad. Luego los asignas a cada clienta a los 6 y 12 sellos.</p>
       <div id="premiosList"></div>
-      <button class="btn btn-line" style="margin-top:8px" data-on-click="openPremioSheet()">+ Agregar premio</button>
+      <button type="button" class="btn btn-line" data-on-click="openPremioSheet()"><span data-icon="plus"></span>Agregar premio</button>
     </div>
-    <div id="menuCortesias" style="display:none">
+    <div id="menuCortesias" role="tabpanel" aria-labelledby="tabCortesias" style="display:none">
       <p class="premios-hint">Crea plantillas de cortesías para reutilizarlas fácilmente con cualquier clienta.</p>
       <div id="cortesiasCatList"></div>
-      <button class="btn btn-line" style="margin-top:8px" data-on-click="openCortesiaCatSheet()">+ Agregar cortesía al catálogo</button>
-    </div>
-    <!-- Cerrar sesión -->
-    <div class="signout-wrap">
-      <button class="btn-signout" data-on-click="confirmSignOut()">Cerrar sesión</button>
-      <div class="signout-ver" id="signoutVer"></div>
+      <button type="button" class="btn btn-line" data-on-click="openCortesiaCatSheet()"><span data-icon="plus"></span>Agregar cortesía al catálogo</button>
     </div>
   </section>
+  </main>
 
-  <button class="fab" id="fab" data-on-click="fabAction()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="fabLabel">Nueva cita</span></button>
-
-  <!-- CITAS (seguimiento) -->
-  <section class="view" id="v-citas">
-    <div class="section-title">Citas <small id="citasCount"></small></div>
-    <button class="btn-confirm" data-on-click="openConfirmaciones()">Confirmar citas de mañana <span id="confirmBadge" class="cf-badge" style="display:none"></span></button>
-    <div class="searchbar"><span class="si">⌕</span><input id="citasSearch" placeholder="Buscar clienta, servicio…" autocomplete="off" data-on-input="renderCitas()"><span class="clr" id="citasSearchClr" data-on-click="clearCitasSearch()" style="display:none">×</span></div>
-    <div class="seg" id="citasPeriodSeg">
-      <button data-p="todo" class="on">Todo</button>
-      <button data-p="dia">Día</button>
-      <button data-p="mes">Mes</button>
-      <button data-p="ano">Año</button>
-      <button data-p="rango">Rango</button>
-    </div>
-    <div class="dia-picker" id="citasDiaPicker" style="display:none">
-      <input type="date" id="citasDiaFecha" data-on-change="renderCitas()">
-      <button class="dia-hoy" data-on-click="citasDiaHoy()">Hoy</button>
-    </div>
-    <div class="rangepick" id="citasRange" style="display:none">
-      <div class="field"><label>Desde</label><input type="date" id="cDesde" data-on-change="renderCitas()"></div>
-      <div class="field"><label>Hasta</label><input type="date" id="cHasta" data-on-change="renderCitas()"></div>
-    </div>
-    <div class="cfilters">
-      <select id="citasEstado" data-on-change="renderCitas()">
-        <option value="">Todos los estados</option>
-        <option value="agendada">Agendadas</option>
-        <option value="atendida">Atendidas</option>
-        <option value="cancelada">Canceladas</option>
-        <option value="deuda">Con adeudo</option>
-        <option value="pagada">Pagadas</option>
-      </select>
-      <select id="citasCli" data-on-change="renderCitas()"><option value="">Todas las clientas</option></select>
-      <select id="citasSvc" data-on-change="renderCitas()"><option value="">Todos los servicios</option></select>
-      <select id="citasMetodo" data-on-change="renderCitas()">
-        <option value="">Todos los métodos</option>
-        <option value="efectivo">Efectivo</option>
-        <option value="transferencia">Transferencia</option>
-        <option value="tarjeta">Tarjeta</option>
-        <option value="cupon">Cupón</option>
-        <option value="otro">Otro</option>
-      </select>
-      <select id="citasOrden" data-on-change="renderCitas()">
-        <option value="fecha_desc">Fecha: más reciente</option>
-        <option value="fecha_asc">Fecha: más antigua</option>
-        <option value="nombre_az">Clienta: A–Z</option>
-        <option value="nombre_za">Clienta: Z–A</option>
-        <option value="monto_desc">Monto: mayor</option>
-        <option value="monto_asc">Monto: menor</option>
-      </select>
-    </div>
-    <div class="citas-summary" id="citasSummary"></div>
-    <div id="citasList"></div>
-  </section>
-
-  <nav class="nav">
-    <button class="on" data-v="agenda" data-on-click="nav('agenda')">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/><circle cx="12" cy="15" r="1.6"/></svg>
-      <span class="t">Hoy</span>
-    </button>
-    <button data-v="citas" data-on-click="nav('citas')">
-      <svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h9"/></svg>
-      <span class="t">Citas</span>
-    </button>
-    <button data-v="clientas" data-on-click="nav('clientas')">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-      <span class="t">Clientas</span>
-    </button>
-    <button data-v="ventas" data-on-click="nav('ventas')">
-      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
-      <span class="t">Finanzas</span>
-    </button>
-    <button data-v="servicios" data-on-click="nav('servicios')">
-      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="2"/><rect x="14" y="4" width="6" height="6" rx="2"/><rect x="4" y="14" width="6" height="6" rx="2"/><rect x="14" y="14" width="6" height="6" rx="2"/></svg>
-      <span class="t">Menú</span>
-    </button>
+  <nav class="nav" aria-label="Secciones">
+    <button type="button" data-v="agenda" class="on" aria-current="page" data-on-click="nav('agenda')"><span data-icon="cal"></span><span class="t">Hoy</span></button>
+    <button type="button" data-v="citas" data-on-click="nav('citas')"><span data-icon="list"></span><span class="t">Citas</span></button>
+    <div class="nav-mid"><button type="button" class="nav-plus" aria-label="Nueva cita" data-on-click="openApptSheet()"><span data-icon="plus"></span></button></div>
+    <button type="button" data-v="clientas" data-on-click="nav('clientas')"><span data-icon="user"></span><span class="t">Clientas</span></button>
+    <button type="button" data-v="mas" data-on-click="nav('mas')"><span data-icon="dots"></span><span class="t">Más</span></button>
   </nav>
 </div>
 
 <div class="scrim" id="scrim" data-on-click="closeSheet()"></div>
 
-<!-- APPOINTMENT SHEET -->
-<div class="sheet" id="apptSheet">
-  <div class="grab"></div>
-  <h3 id="apptSheetTitle">Nueva cita</h3>
+<!-- HOJA: CITA -->
+<div class="sheet" id="apptSheet" role="dialog" aria-modal="true" aria-labelledby="apptSheetTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="apptSheetTitle">Nueva cita</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
   <div id="apptCodeBar" style="display:none">
     <div class="code-row">
       <div class="code-info"><span class="code-lbl">Código de cita</span><span class="code-val" id="apptCodeVal">—</span></div>
-      <button class="wa-btn" data-on-click="openAccionesFromAppt()">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.587zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-        Acciones
-      </button>
+      <button type="button" class="btn-sm" data-on-click="openAccionesFromAppt()"><span data-icon="more"></span>Acciones</button>
     </div>
   </div>
   <input type="hidden" id="apptId">
   <div class="field">
-    <label>Clienta</label>
-    <input id="apptCli" placeholder="Buscar por nombre, tel o email…" autocomplete="off" data-on-input="onApptCliInput()">
+    <label for="apptCli">Clienta</label>
+    <input id="apptCli" placeholder="Buscar por nombre, teléfono o email" autocomplete="off" data-on-input="onApptCliInput()">
     <div class="cli-results" id="apptCliResults"></div>
   </div>
   <div class="field">
-    <label>Servicios <span id="svcCount" style="color:var(--mauve);font-weight:400"></span></label>
-    <div class="svc-picker" id="apptSvcPicker"></div>
+    <div class="lbl" id="svcLbl">Servicios <span id="svcCount" class="lbl-extra"></span></div>
+    <div class="svc-picker" id="apptSvcPicker" role="group" aria-labelledby="svcLbl"></div>
     <div class="appt-seq" id="apptSeq"></div>
     <div class="appt-skin" id="apptSkin"></div>
   </div>
-  <div class="field"><label>Fecha</label><input type="date" id="apptDate" data-on-change="onApptDateChange()"></div>
+  <div class="field"><label for="apptDate">Fecha</label><input type="date" id="apptDate" data-on-change="onApptDateChange()"></div>
   <div class="field-row">
-    <div class="field"><label>Hora</label><input type="time" id="apptTime" data-on-change="renderAssist()" data-on-input="renderApptSeq()"></div>
-    <div class="field"><label>Duración</label>
+    <div class="field"><label for="apptTime">Hora</label><input type="time" id="apptTime" data-on-change="renderAssist()" data-on-input="renderApptSeq()"></div>
+    <div class="field field-dur"><label for="apptDurH">Duración</label>
       <div class="dur-row">
         <select id="apptDurH" data-on-change="renderAssist()">
           <option value="0">0 h</option>
@@ -318,6 +318,7 @@
           <option value="7">7 h</option>
           <option value="8">8 h</option>
         </select>
+        <label for="apptDurM" class="sr-only">Minutos de duración</label>
         <select id="apptDurM" data-on-change="renderAssist()">
           <option value="0" selected>00 min</option>
           <option value="15">15 min</option>
@@ -330,349 +331,389 @@
   <div class="appt-wx" id="apptWeather" style="display:none"></div>
   <div class="assist" id="assist"></div>
   <div class="field">
-    <label>Total</label>
+    <label for="apptPrice">Total</label>
     <input type="number" id="apptPrice" placeholder="0" inputmode="numeric">
   </div>
   <div class="field">
-    <label>Color de la cita</label>
-    <div class="chips colorchips" id="colorChips"></div>
+    <div class="lbl" id="colorLbl">Color de la cita</div>
+    <div class="chips colorchips" id="colorChips" role="group" aria-labelledby="colorLbl"></div>
   </div>
   <div class="field">
-    <label>Estado</label>
-    <div class="chips" id="estadoChips">
-      <div class="chip sel" data-e="agendada">Agendada</div>
-      <div class="chip" data-e="atendida">Atendida</div>
-      <div class="chip" data-e="cancelada">Cancelada</div>
+    <div class="lbl" id="estadoLbl">Estado</div>
+    <div class="chips" id="estadoChips" role="group" aria-labelledby="estadoLbl">
+      <button type="button" class="chip sel" data-e="agendada">Agendada</button>
+      <button type="button" class="chip" data-e="atendida">Atendida</button>
+      <button type="button" class="chip" data-e="cancelada">Cancelada</button>
     </div>
   </div>
   <div class="field" id="pagosWrap" style="display:none">
-    <label>Descuento (opcional)</label>
+    <div class="lbl">Descuento (opcional)</div>
     <div class="desc-box">
       <div class="desc-row">
-        <div class="desc-mini"><span>Descuento $</span><input type="number" id="apptDescMonto" inputmode="numeric" placeholder="0" data-on-input="onDescMonto()"></div>
-        <div class="desc-mini"><span>o %</span><input type="number" id="apptDescPct" inputmode="numeric" placeholder="0" max="100" data-on-input="onDescPct()"></div>
+        <div class="desc-mini"><label for="apptDescMonto">Descuento $</label><input type="number" id="apptDescMonto" inputmode="numeric" placeholder="0" data-on-input="onDescMonto()"></div>
+        <div class="desc-mini"><label for="apptDescPct">o %</label><input type="number" id="apptDescPct" inputmode="numeric" placeholder="0" max="100" data-on-input="onDescPct()"></div>
       </div>
       <div class="desc-info" id="descInfo"></div>
     </div>
-    <label style="margin-top:14px">Pagos recibidos</label>
+    <div class="lbl" style="margin-top:14px">Pagos recibidos</div>
     <div class="pagos-box">
       <div id="pagosList"></div>
-      <button type="button" class="pago-add" data-on-click="addPago()">+ Agregar pago</button>
-      <div class="pagos-resumen" id="pagosResumen"></div>
+      <button type="button" class="pago-add" data-on-click="addPago()"><span data-icon="plus"></span>Agregar pago</button>
+      <div class="pagos-resumen" id="pagosResumen" aria-live="polite"></div>
     </div>
   </div>
   <div class="field" id="compWrap" style="display:none">
-    <label>Comprobante (opcional)</label>
+    <div class="lbl">Comprobante (opcional)</div>
     <div id="compPreview"></div>
-    <label class="comp-up" for="compFile">📎 Subir foto o nota</label>
-    <input type="file" id="compFile" accept="image/*" style="display:none" data-on-change="onCompFile(event)">
+    <input type="file" id="compFile" class="sr-only" accept="image/*" data-on-change="onCompFile(event)">
+    <label class="comp-up" for="compFile"><span data-icon="clip"></span>Subir foto o nota</label>
   </div>
   <div class="field" id="apptCortesiaWrap" style="display:none">
-    <label>Aplicar cortesía 🎁</label>
-    <div id="apptCortesiaList" class="cortesia-picker"></div>
+    <div class="lbl" id="apptCortLbl">Aplicar cortesía</div>
+    <div id="apptCortesiaList" class="cortesia-picker" role="group" aria-labelledby="apptCortLbl"></div>
   </div>
   <div class="field">
-    <label>Notas (opcional)</label>
+    <label for="apptNotes">Notas (opcional)</label>
     <textarea id="apptNotes" placeholder="Diseño, color, alergias…"></textarea>
   </div>
-  <button class="btn btn-primary" data-on-click="saveAppt()">Guardar cita</button>
-  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
-  <button class="btn btn-ghost" id="apptDelBtn" style="display:none" data-on-click="deleteAppt()">Eliminar cita</button>
+  <button type="button" class="btn btn-primary" data-on-click="saveAppt()">Guardar cita</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-ghost" id="apptDelBtn" style="display:none" data-on-click="deleteAppt()">Eliminar cita</button>
 </div>
 
-<!-- SERVICE SHEET -->
-<div class="sheet" id="svcSheet">
-  <div class="grab"></div>
-  <h3 id="svcSheetTitle">Nuevo servicio</h3>
-  <div class="field"><label>Nombre</label><input id="svcName" placeholder="Ej. Manicura rusa"></div>
-  <div class="field"><label>Rama</label>
-    <div class="chips" id="svcCatChips">
-      <div class="chip" data-c="nails">Nails Studio</div>
-      <div class="chip" data-c="skin">Skin Care</div>
-      <div class="chip" data-c="otro">Otro</div>
+<!-- HOJA: SERVICIO -->
+<div class="sheet" id="svcSheet" role="dialog" aria-modal="true" aria-labelledby="svcSheetTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="svcSheetTitle">Nuevo servicio</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="field"><label for="svcName">Nombre</label><input id="svcName" placeholder="Ej. Manicura rusa"></div>
+  <div class="field"><div class="lbl" id="svcCatLbl">Rama</div>
+    <div class="chips" id="svcCatChips" role="group" aria-labelledby="svcCatLbl">
+      <button type="button" class="chip" data-c="nails">Nails Studio</button>
+      <button type="button" class="chip" data-c="skin">Skin Care</button>
+      <button type="button" class="chip" data-c="otro">Otro</button>
     </div>
   </div>
-  <div class="field"><label>Subfamilia</label><input id="svcSub" list="svcSubList" placeholder="Ej. Gel Semipermanente, Hidrafacial…"><datalist id="svcSubList"></datalist></div>
+  <div class="field"><label for="svcSub">Subfamilia</label><input id="svcSub" list="svcSubList" placeholder="Ej. Gel semipermanente, Hidrafacial…"><datalist id="svcSubList"></datalist></div>
   <div class="field-row">
-    <div class="field"><label>Precio al cliente</label><input type="number" id="svcPrice" placeholder="0" inputmode="numeric"></div>
-    <div class="field"><label>Costo real (insumos)</label><input type="number" id="svcCost" placeholder="0" inputmode="numeric" data-on-input="svcMarginHint()"></div>
+    <div class="field"><label for="svcPrice">Precio al cliente</label><input type="number" id="svcPrice" placeholder="0" inputmode="numeric"></div>
+    <div class="field"><label for="svcCost">Costo real (insumos)</label><input type="number" id="svcCost" placeholder="0" inputmode="numeric" data-on-input="svcMarginHint()"></div>
   </div>
   <div class="field-hint-box" id="svcMargin"></div>
   <div class="field-row">
-    <div class="field"><label>Duración (min)</label><input type="number" id="svcDur" placeholder="60" inputmode="numeric" step="5"></div>
-    <div class="field"><label>Limpieza después (min)</label><input type="number" id="svcLimp" placeholder="0" inputmode="numeric" step="5"></div>
+    <div class="field"><label for="svcDur">Duración (min)</label><input type="number" id="svcDur" placeholder="60" inputmode="numeric" step="5"></div>
+    <div class="field"><label for="svcLimp">Limpieza después (min)</label><input type="number" id="svcLimp" placeholder="0" inputmode="numeric" step="5"></div>
   </div>
-  <div class="field"><label>Recurso que ocupa</label>
-    <div class="chips" id="svcRecChips">
-      <div class="chip" data-r="mesa">Mesa de uñas</div>
-      <div class="chip" data-r="cabina">Cabina facial</div>
-      <div class="chip" data-r="ninguno">Ninguno</div>
+  <div class="field"><div class="lbl" id="svcRecLbl">Recurso que ocupa</div>
+    <div class="chips" id="svcRecChips" role="group" aria-labelledby="svcRecLbl" aria-describedby="svcRecHint">
+      <button type="button" class="chip" data-r="mesa">Mesa de uñas</button>
+      <button type="button" class="chip" data-r="cabina">Cabina facial</button>
+      <button type="button" class="chip" data-r="ninguno">Ninguno</button>
     </div>
-    <small class="field-hint">La agenda bloquea este recurso durante la duración + limpieza para evitar traslapes entre uñas y cabina.</small>
+    <small class="field-hint" id="svcRecHint">La agenda bloquea este recurso durante la duración + limpieza para evitar traslapes entre uñas y cabina.</small>
   </div>
-  <div class="field"><label>Insumos y máquinas</label><input id="svcInsumos" placeholder="Ej. Máquina Hidrafacial, Suero HA, Panel LED"><small class="field-hint">Separados por coma.</small></div>
-  <div class="field"><label>Requisitos para la clienta</label><input id="svcReq" placeholder="Ej. Ficha de piel vigente · sin retinoides 7 días"></div>
-  <div class="field"><label>Precios variables (opcional)</label><input id="svcPrecios" placeholder="Ej. 80, 100, 130" inputmode="numeric"><small class="field-hint">Si este servicio tiene varios precios a elegir, escríbelos separados por coma. Al agendar podrás elegir cuál.</small></div>
-  <div class="field"><label>Descripción</label><textarea id="svcDesc" placeholder="Breve descripción del servicio…"></textarea></div>
-  <div class="field"><label>¿Qué incluye?</label><textarea id="svcIncl" placeholder="Ej. Limado, cutícula, esmaltado, decoración simple…"></textarea></div>
-  <button class="btn btn-primary" data-on-click="saveSvc()">Guardar</button>
-  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
-  <button class="btn btn-ghost" id="svcDelBtn" style="display:none" data-on-click="delSvc()">Eliminar servicio</button>
+  <div class="field"><label for="svcInsumos">Insumos y máquinas</label><input id="svcInsumos" placeholder="Ej. Máquina Hidrafacial, Suero HA, Panel LED" aria-describedby="svcInsHint"><small class="field-hint" id="svcInsHint">Separados por coma.</small></div>
+  <div class="field"><label for="svcReq">Requisitos para la clienta</label><input id="svcReq" placeholder="Ej. Ficha de piel vigente · sin retinoides 7 días"></div>
+  <div class="field"><label for="svcPrecios">Precios variables (opcional)</label><input id="svcPrecios" placeholder="Ej. 80, 100, 130" inputmode="numeric" aria-describedby="svcPrecHint"><small class="field-hint" id="svcPrecHint">Si este servicio tiene varios precios a elegir, escríbelos separados por coma. Al agendar podrás elegir cuál.</small></div>
+  <div class="field"><label for="svcDesc">Descripción</label><textarea id="svcDesc" placeholder="Breve descripción del servicio…"></textarea></div>
+  <div class="field"><label for="svcIncl">¿Qué incluye?</label><textarea id="svcIncl" placeholder="Ej. Limado, cutícula, esmaltado, decoración simple…"></textarea></div>
+  <button type="button" class="btn btn-primary" data-on-click="saveSvc()">Guardar</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-ghost" id="svcDelBtn" style="display:none" data-on-click="delSvc()">Eliminar servicio</button>
 </div>
 
-<!-- NEW CLIENT SHEET -->
-<div class="sheet" id="cliCreateSheet">
-  <div class="grab"></div>
-  <h3>Nueva clienta</h3>
-  <div class="field"><label>Nombre</label><input id="ncName" placeholder="Nombre completo" autocomplete="off"></div>
+<!-- HOJA: NUEVA CLIENTA -->
+<div class="sheet" id="cliCreateSheet" role="dialog" aria-modal="true" aria-labelledby="ncTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="ncTitle">Nueva clienta</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="field"><label for="ncName">Nombre</label><input id="ncName" placeholder="Nombre completo" autocomplete="off"></div>
   <div class="field-row">
-    <div class="field"><label>Teléfono / WhatsApp</label><input id="ncPhone" placeholder="81 0000 0000" inputmode="tel"></div>
-    <div class="field"><label>Email (opcional)</label><input id="ncEmail" placeholder="correo@…" inputmode="email" autocomplete="off"></div>
+    <div class="field"><label for="ncPhone">Teléfono / WhatsApp</label><input id="ncPhone" placeholder="81 0000 0000" inputmode="tel"></div>
+    <div class="field"><label for="ncEmail">Email (opcional)</label><input id="ncEmail" placeholder="correo@…" inputmode="email" autocomplete="off"></div>
   </div>
-  <div class="field"><label>Notas (opcional)</label><textarea id="ncNotes" placeholder="Tono favorito, alergias, observaciones…"></textarea></div>
-  <button class="btn btn-primary" data-on-click="saveNewCli()">Guardar clienta</button>
+  <div class="field"><label for="ncNotes">Notas (opcional)</label><textarea id="ncNotes" placeholder="Tono favorito, alergias, observaciones…"></textarea></div>
+  <button type="button" class="btn btn-primary" data-on-click="saveNewCli()">Guardar clienta</button>
 </div>
 
-<!-- CLIENT DETAIL SHEET -->
-<div class="sheet" id="cliSheet">
-  <div class="grab"></div>
+<!-- HOJA: FICHA DE CLIENTA -->
+<div class="sheet" id="cliSheet" role="dialog" aria-modal="true" aria-labelledby="cliName">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head sheet-head-x"><button type="button" class="sheet-x" aria-label="Cerrar ficha" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
   <div class="detail-hero">
-    <div class="avatar av" id="cliAv"></div>
-    <div class="nm" id="cliName"></div>
+    <div class="avatar av" id="cliAv" aria-hidden="true"></div>
+    <h2 class="nm" id="cliName"></h2>
     <div class="ph" id="cliNum"></div>
-    <div class="badges" id="cliBadges" style="justify-content:center;margin-top:10px"></div>
+    <div class="badges" id="cliBadges"></div>
   </div>
-  <div class="field-row" style="margin-top:4px">
-    <div class="field"><label>Teléfono</label><input id="cliPhone" inputmode="tel" placeholder="—" data-on-blur="saveCliContact()"></div>
-    <div class="field"><label>Email</label><input id="cliEmail" inputmode="email" placeholder="—" autocomplete="off" data-on-blur="saveCliContact()"></div>
-    <div class="field"><label>Cumpleaños 🎂</label><input id="cliCumple" type="date" data-on-blur="saveCliContact()"></div>
+  <div class="field-row">
+    <div class="field"><label for="cliPhone">Teléfono</label><input id="cliPhone" inputmode="tel" placeholder="—" data-on-blur="saveCliContact()"></div>
+    <div class="field"><label for="cliEmail">Email</label><input id="cliEmail" inputmode="email" placeholder="—" autocomplete="off" data-on-blur="saveCliContact()"></div>
   </div>
+  <div class="field"><label for="cliCumple">Cumpleaños</label><input id="cliCumple" type="date" data-on-blur="saveCliContact()"></div>
   <!-- PREFERENCIAS DE UÑAS -->
   <div class="pref-section">
-    <div class="pref-title">💅 Preferencias</div>
-    <div class="field"><label>Forma de uña favorita</label>
-      <div class="chips" id="formaChips">
-        <div class="chip" data-f="cuadrada">Cuadrada</div>
-        <div class="chip" data-f="ovalada">Ovalada</div>
-        <div class="chip" data-f="almendrada">Almendrada</div>
-        <div class="chip" data-f="stiletto">Stiletto</div>
-        <div class="chip" data-f="coffin">Coffin</div>
-        <div class="chip" data-f="squoval">Squoval</div>
+    <h3 class="pref-title"><span data-icon="nails"></span>Preferencias</h3>
+    <div class="field"><div class="lbl" id="formaLbl">Forma de uña favorita</div>
+      <div class="chips" id="formaChips" role="group" aria-labelledby="formaLbl">
+        <button type="button" class="chip" data-f="cuadrada">Cuadrada</button>
+        <button type="button" class="chip" data-f="ovalada">Ovalada</button>
+        <button type="button" class="chip" data-f="almendrada">Almendrada</button>
+        <button type="button" class="chip" data-f="stiletto">Stiletto</button>
+        <button type="button" class="chip" data-f="coffin">Coffin</button>
+        <button type="button" class="chip" data-f="squoval">Squoval</button>
       </div>
     </div>
-    <div class="field"><label>Colores favoritos</label>
+    <div class="field"><label for="cliColores">Colores favoritos</label>
       <input id="cliColores" placeholder="Ej: rosas, nude, neón, azul…" data-on-blur="saveCliPrefs()"></div>
-    <div class="field"><label>Alergias o sensibilidades ⚠️</label>
+    <div class="field"><label for="cliAlergias">Alergias o sensibilidades</label>
       <input id="cliAlergias" placeholder="Ej: acrílico, látex, perfume…" data-on-blur="saveCliPrefs()"></div>
-    <div class="field"><label>Otras preferencias</label>
+    <div class="field"><label for="cliNotasPrefs">Otras preferencias</label>
       <textarea id="cliNotasPrefs" placeholder="Música, tiempo de servicio, diseños que le gustan…" data-on-blur="saveCliPrefs()"></textarea></div>
-    <!-- IA: servicios frecuentes + sugerencias -->
     <div id="cliFreqSvcs"></div>
   </div>
-  <!-- EXPEDIENTE DE PIEL (Skin Care) -->
+  <!-- EXPEDIENTE DE PIEL -->
   <div class="pref-section piel-section">
-    <div class="pref-title">Expediente de piel <span class="pref-when" id="pielWhen"></span></div>
-    <div class="field"><label>Tipo de piel</label>
-      <div class="chips" id="pielTipoChips">
-        <div class="chip" data-t="Normal">Normal</div><div class="chip" data-t="Seca">Seca</div><div class="chip" data-t="Mixta">Mixta</div><div class="chip" data-t="Grasa">Grasa</div><div class="chip" data-t="Sensible">Sensible</div>
+    <h3 class="pref-title"><span data-icon="skin"></span>Expediente de piel <span class="pref-when" id="pielWhen"></span></h3>
+    <div class="field"><div class="lbl" id="pielTipoLbl">Tipo de piel</div>
+      <div class="chips" id="pielTipoChips" role="group" aria-labelledby="pielTipoLbl">
+        <button type="button" class="chip" data-t="Normal">Normal</button><button type="button" class="chip" data-t="Seca">Seca</button><button type="button" class="chip" data-t="Mixta">Mixta</button><button type="button" class="chip" data-t="Grasa">Grasa</button><button type="button" class="chip" data-t="Sensible">Sensible</button>
       </div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Fototipo</label>
+      <div class="field"><label for="pielFoto">Fototipo</label>
         <select id="pielFoto" data-on-change="saveExpediente()"><option value="">—</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option></select></div>
-      <div class="field"><label>Sensibilidad</label>
+      <div class="field"><label for="pielSens">Sensibilidad</label>
         <select id="pielSens" data-on-change="saveExpediente()"><option value="">—</option><option>Baja</option><option>Media</option><option>Alta</option></select></div>
     </div>
-    <div class="field"><label>Alergias (skin care)</label><input id="pielAlergias" placeholder="Ej. ácido salicílico, fragancia…" data-on-blur="saveExpediente()"></div>
-    <div class="field"><label>Contraindicaciones</label><input id="pielContra" placeholder="Ej. retinoide en uso, embarazo, isotretinoína…" data-on-blur="saveExpediente()"></div>
-    <div class="field"><label>Objetivo</label><input id="pielObjetivo" placeholder="Ej. manchas y luminosidad" data-on-blur="saveExpediente()"></div>
-    <div class="field"><label>Rutina en casa</label><input id="pielRutina" placeholder="Ej. limpiador suave · SPF 50 diario" data-on-blur="saveExpediente()"></div>
-    <div class="fs-title" style="margin-top:4px">Evolución</div>
+    <div class="field"><label for="pielAlergias">Alergias (skin care)</label><input id="pielAlergias" placeholder="Ej. ácido salicílico, fragancia…" data-on-blur="saveExpediente()"></div>
+    <div class="field"><label for="pielContra">Contraindicaciones</label><input id="pielContra" placeholder="Ej. retinoide en uso, embarazo, isotretinoína…" data-on-blur="saveExpediente()"></div>
+    <div class="field"><label for="pielObjetivo">Objetivo</label><input id="pielObjetivo" placeholder="Ej. manchas y luminosidad" data-on-blur="saveExpediente()"></div>
+    <div class="field"><label for="pielRutina">Rutina en casa</label><input id="pielRutina" placeholder="Ej. limpiador suave · SPF 50 diario" data-on-blur="saveExpediente()"></div>
+    <h4 class="fs-title">Evolución</h4>
     <div id="pielEvolucion"></div>
-    <div class="field" style="margin-top:8px"><textarea id="pielNota" placeholder="Nota de evolución de hoy: qué se observó, qué se hizo, qué sigue…"></textarea></div>
-    <button class="btn btn-line" style="margin-top:0" data-on-click="addEvolucion()">+ Guardar nota</button>
-    <div class="fs-title" style="margin-top:16px">Fotos de seguimiento</div>
+    <div class="field" style="margin-top:8px"><label for="pielNota" class="sr-only">Nota de evolución</label><textarea id="pielNota" placeholder="Nota de evolución de hoy: qué se observó, qué se hizo, qué sigue…"></textarea></div>
+    <button type="button" class="btn btn-line" style="margin-top:0" data-on-click="addEvolucion()"><span data-icon="plus"></span>Guardar nota</button>
+    <h4 class="fs-title" style="margin-top:16px">Fotos de seguimiento</h4>
     <div class="fotos-grid" id="pielFotos"></div>
     <div class="fotos-actions">
-      <button class="btn btn-line" data-on-click="pickFoto('antes')">+ Antes</button>
-      <button class="btn btn-line" data-on-click="pickFoto('despues')">+ Después</button>
-      <button class="btn btn-line" data-on-click="pickFoto('seguimiento')">+ Seguimiento</button>
+      <button type="button" class="btn btn-line" data-on-click="pickFoto('antes')"><span data-icon="camera"></span>Antes</button>
+      <button type="button" class="btn btn-line" data-on-click="pickFoto('despues')"><span data-icon="camera"></span>Después</button>
+      <button type="button" class="btn btn-line" data-on-click="pickFoto('seguimiento')"><span data-icon="camera"></span>Seguimiento</button>
     </div>
+    <label for="fotoInput" class="sr-only">Foto de seguimiento</label>
     <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display:none" data-on-change="onFotoPicked(event)">
   </div>
-  <div class="kv"><span class="k">Visitas</span><span class="v" id="cliVisits"></span></div>
-  <div class="kv"><span class="k">Total gastado</span><span class="v" id="cliSpent"></span></div>
-  <div class="kv"><span class="k">Ticket promedio</span><span class="v" id="cliTicket"></span></div>
-  <div class="kv" id="cliDebtKv" style="display:none"><span class="k">Saldo pendiente</span><span class="v" style="color:var(--red)" id="cliDebt"></span></div>
-  <div class="kv" id="cliPayKv" style="display:none"><span class="k">Suele pagar en</span><span class="v" id="cliPayDays"></span></div>
-  <div class="kv"><span class="k">Última visita</span><span class="v" id="cliLast"></span></div>
-  <div class="field" style="margin-top:16px"><label>Notas de la clienta</label><textarea id="cliNotes" placeholder="Tono favorito, alergias, observaciones…" data-on-blur="saveCliNotes()"></textarea></div>
+  <div class="kv-card">
+    <div class="kv"><span class="k">Visitas</span><span class="v" id="cliVisits"></span></div>
+    <div class="kv"><span class="k">Total gastado</span><span class="v" id="cliSpent"></span></div>
+    <div class="kv"><span class="k">Ticket promedio</span><span class="v" id="cliTicket"></span></div>
+    <div class="kv kv-bad" id="cliDebtKv" style="display:none"><span class="k">Saldo pendiente</span><span class="v" id="cliDebt"></span></div>
+    <div class="kv" id="cliPayKv" style="display:none"><span class="k">Suele pagar en</span><span class="v" id="cliPayDays"></span></div>
+    <div class="kv"><span class="k">Última visita</span><span class="v" id="cliLast"></span></div>
+  </div>
+  <div class="field" style="margin-top:16px"><label for="cliNotes">Notas de la clienta</label><textarea id="cliNotes" placeholder="Tono favorito, alergias, observaciones…" data-on-blur="saveCliNotes()"></textarea></div>
   <div id="cliLoyalty" style="margin-top:18px"></div>
   <div id="cliCortesias" style="margin-top:14px"></div>
-  <div class="divider">Historial</div>
+  <div class="divider"><span>Historial</span></div>
   <div id="cliHist"></div>
-  <button class="btn btn-primary" style="margin-top:18px" data-on-click="openAccionesClienta()">Acciones · Comunicarme</button>
-  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-primary" style="margin-top:18px" data-on-click="openAccionesClienta()"><span data-icon="wa"></span>Acciones · Comunicarme</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
 </div>
 
-<!-- HOJA DE ACCIONES (reutilizable) -->
-<div class="sheet" id="accionesSheet">
-  <div class="grab"></div>
-  <h3>Acciones</h3>
+<!-- HOJA: ACCIONES (reutilizable) -->
+<div class="sheet" id="accionesSheet" role="dialog" aria-modal="true" aria-labelledby="accTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="accTitle">Acciones</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
   <div class="acc-sub" id="accSub">Comunícate con la clienta por WhatsApp.</div>
+  <div class="acc-list" id="accCitaList" style="display:none">
+    <button type="button" class="acc-item" id="accAbrirBtn" data-on-click="accAbrirCita()">
+      <span class="acc-ic" data-icon="edit"></span>
+      <span class="acc-tx"><b>Abrir la cita</b><small>Ver y editar servicios, hora y pagos</small></span>
+    </button>
+    <button type="button" class="acc-item" id="accReagBtn" data-on-click="accReagendar()">
+      <span class="acc-ic" data-icon="cal"></span>
+      <span class="acc-tx"><b>Reagendar</b><small>Cambiar fecha u hora</small></span>
+    </button>
+    <button type="button" class="acc-item" id="accCompBtn" data-on-click="accVerComprobante()" style="display:none">
+      <span class="acc-ic" data-icon="clip"></span>
+      <span class="acc-tx"><b>Ver comprobante</b><small>Foto del pago</small></span>
+    </button>
+    <button type="button" class="acc-item acc-bad" id="accCancelBtn" data-on-click="accCancelar()">
+      <span class="acc-ic" data-icon="x"></span>
+      <span class="acc-tx"><b>Cancelar cita</b><small>Libera el horario</small></span>
+    </button>
+  </div>
+  <div class="acc-group" id="accWaLbl">WhatsApp</div>
   <div class="acc-list">
-    <button class="acc-item" data-on-click="accContactar()">
-      <span class="acc-ic">💬</span>
+    <button type="button" class="acc-item" data-on-click="accContactar()">
+      <span class="acc-ic acc-wa" data-icon="wa"></span>
       <span class="acc-tx"><b>Comunicarme con la clienta</b><small>Abre un chat de WhatsApp</small></span>
     </button>
-    <button class="acc-item" id="accCitaBtn" data-on-click="accInfoCita()" style="display:none">
-      <span class="acc-ic">📅</span>
+    <button type="button" class="acc-item" id="accCitaBtn" data-on-click="accInfoCita()" style="display:none">
+      <span class="acc-ic acc-wa" data-icon="cal"></span>
       <span class="acc-tx"><b>Enviar información de la cita</b><small>Fecha, servicio, total y código</small></span>
     </button>
-    <button class="acc-item" id="accCobroBtn" data-on-click="accRecordatorioPago()" style="display:none">
-      <span class="acc-ic">💵</span>
+    <button type="button" class="acc-item" id="accCobroBtn" data-on-click="accRecordatorioPago()" style="display:none">
+      <span class="acc-ic acc-wa" data-icon="money"></span>
       <span class="acc-tx"><b>Enviar recordatorio de pago</b><small>Incluye ID, info de la cita y lo que debe</small></span>
     </button>
-    <button class="acc-item" data-on-click="accCortesia()">
-      <span class="acc-ic">🎁</span>
+    <button type="button" class="acc-item" data-on-click="accCortesia()">
+      <span class="acc-ic acc-wa" data-icon="gift"></span>
       <span class="acc-tx"><b>Enviar cortesía / promoción</b><small>Mensaje especial editable</small></span>
     </button>
   </div>
-  <button class="btn btn-line" style="margin-top:6px" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-line" style="margin-top:6px" data-on-click="closeSheet()">Cerrar</button>
 </div>
 
-<!-- HOJA DE CORTESÍA -->
-<div class="sheet" id="cortesiaSheet">
-  <div class="grab"></div>
-  <h3>Cortesía / promoción</h3>
+<!-- HOJA: CORTESÍA POR WHATSAPP -->
+<div class="sheet" id="cortesiaSheet" role="dialog" aria-modal="true" aria-labelledby="cortTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="cortTitle">Cortesía / promoción</h2><button type="button" class="sheet-x" aria-label="Volver" data-sheet-close data-on-click="backToAcciones()"><span data-icon="x"></span></button></div>
   <div class="acc-sub">Escribe el mensaje. Se guarda como plantilla para reusarlo, y puedes editarlo antes de enviar.</div>
-  <div class="field"><label>Mensaje</label><textarea id="cortesiaText" rows="5" placeholder="Ej: ¡Hola! Esta semana tenemos 15% en extensiones 💅 ¿Te aparto un espacio?"></textarea></div>
-  <label class="acc-check"><input type="checkbox" id="cortesiaSave" checked> Guardar como plantilla</label>
-  <button class="btn btn-primary" data-on-click="accEnviarCortesia()">Enviar por WhatsApp</button>
-  <button class="btn btn-line" data-on-click="backToAcciones()">Volver</button>
+  <div class="field"><label for="cortesiaText">Mensaje</label><textarea id="cortesiaText" rows="5" placeholder="Ej: ¡Hola! Esta semana tenemos 15% en extensiones. ¿Te aparto un espacio?"></textarea></div>
+  <div class="acc-check"><input type="checkbox" id="cortesiaSave" checked><label for="cortesiaSave">Guardar como plantilla</label></div>
+  <button type="button" class="btn btn-wa" data-on-click="accEnviarCortesia()"><span data-icon="wa"></span>Enviar por WhatsApp</button>
+  <button type="button" class="btn btn-line" data-on-click="backToAcciones()">Volver</button>
 </div>
 
-<!-- HOJA QR DE LA CLIENTA -->
-<div class="sheet" id="rebookSheet">
-  <div class="grab"></div>
-  <h3>✨ ¿Agendar la próxima?</h3>
+<!-- HOJA: REAGENDAR LA PRÓXIMA -->
+<div class="sheet" id="rebookSheet" role="dialog" aria-modal="true" aria-labelledby="rebookTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="rebookTitle">¿Agendar la próxima?</h2><button type="button" class="sheet-x" aria-label="Ahora no" data-sheet-close data-on-click="descartarRebook()"><span data-icon="x"></span></button></div>
   <div class="acc-sub">El gel se retoca cada 3-4 semanas. Aparta de una vez el espacio de <b id="rebookName"></b> antes de que se vaya.</div>
-  <button class="btn btn-primary" data-on-click="rebookIn(3)">📅 En 3 semanas</button>
-  <button class="btn btn-primary" style="margin-top:8px" data-on-click="rebookIn(4)">📅 En 4 semanas</button>
-  <button class="btn btn-line" style="margin-top:8px" data-on-click="descartarRebook()">Ahora no</button>
+  <button type="button" class="btn btn-primary" data-on-click="rebookIn(3)"><span data-icon="cal"></span>En 3 semanas</button>
+  <button type="button" class="btn btn-primary" data-on-click="rebookIn(4)"><span data-icon="cal"></span>En 4 semanas</button>
+  <button type="button" class="btn btn-line" data-on-click="descartarRebook()">Ahora no</button>
 </div>
 
-<div class="sheet" id="cliQrSheet">
-  <div class="grab"></div>
-  <h3 id="cliQrTitle">QR de la clienta</h3>
+<!-- HOJA: QR DE LA CLIENTA -->
+<div class="sheet" id="cliQrSheet" role="dialog" aria-modal="true" aria-labelledby="cliQrTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="cliQrTitle">QR de la clienta</h2><button type="button" class="sheet-x" aria-label="Volver a la ficha" data-sheet-close data-on-click="backToCliFromQR()"><span data-icon="x"></span></button></div>
   <div class="acc-sub">La clienta puede mostrar este código para que le sumes un sello escaneándolo.</div>
   <div id="cliQrBox" class="cli-qr-box"></div>
-  <button class="btn btn-line" data-on-click="backToCliFromQR()">Volver</button>
+  <button type="button" class="btn btn-line" data-on-click="backToCliFromQR()">Volver</button>
 </div>
 
-<!-- HOJA EDITAR PLANTILLA DE PROMOCIÓN -->
-<div class="sheet" id="editPromoSheet">
-  <div class="grab"></div>
-  <h3>✏️ Plantilla de promoción</h3>
+<!-- HOJA: PLANTILLA DE PROMOCIÓN -->
+<div class="sheet" id="editPromoSheet" role="dialog" aria-modal="true" aria-labelledby="promoTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="promoTitle">Plantilla de promoción</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
   <div class="acc-sub">Edita el texto libremente. Donde escribas <b>{{SERVICIOS}}</b> se insertará automáticamente la lista de tus servicios y precios actuales del Menú — así nunca queda desactualizada.</div>
-  <div class="field"><textarea id="promoTplText" rows="14" style="font-family:var(--sans);font-size:13.5px;line-height:1.6"></textarea></div>
-  <button class="btn btn-line" data-on-click="previewPromo()">👁️ Ver vista previa</button>
+  <div class="field"><label for="promoTplText">Texto del mensaje</label><textarea id="promoTplText" rows="14" class="promo-ta"></textarea></div>
+  <button type="button" class="btn btn-line" data-on-click="previewPromo()"><span data-icon="eye"></span>Ver vista previa</button>
   <div id="promoPreviewWrap" style="display:none;margin-top:10px">
     <div class="promo-preview" id="promoPreview"></div>
   </div>
-  <button class="btn btn-primary" style="margin-top:14px" data-on-click="guardarPromoTpl()">Guardar plantilla</button>
-  <button class="btn btn-line" data-on-click="restaurarPromoDefault()">Restaurar plantilla original</button>
-  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-primary" data-on-click="guardarPromoTpl()">Guardar plantilla</button>
+  <button type="button" class="btn btn-line" data-on-click="restaurarPromoDefault()">Restaurar plantilla original</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
 </div>
 
-<!-- HOJA CLIENTAS EN RIESGO (lista completa) -->
-<div class="sheet" id="riesgoSheet">
-  <div class="grab"></div>
-  <h3>💔 No han vuelto <span id="riesgoCount" style="font-family:var(--sans);font-size:15px;color:var(--muted);font-weight:500"></span></h3>
-  <div class="seg" id="riesgoOrdenSeg">
-    <button data-o="dias" class="on" data-on-click="riesgoSetOrden('dias')">Más urgente</button>
-    <button data-o="gasto" data-on-click="riesgoSetOrden('gasto')">Más gastado</button>
-    <button data-o="nombre" data-on-click="riesgoSetOrden('nombre')">A–Z</button>
+<!-- HOJA: CLIENTAS QUE NO HAN VUELTO -->
+<div class="sheet" id="riesgoSheet" role="dialog" aria-modal="true" aria-labelledby="riesgoTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="riesgoTitle">No han vuelto <span id="riesgoCount" class="h-count"></span></h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="seg" id="riesgoOrdenSeg" role="group" aria-label="Ordenar">
+    <button type="button" data-o="dias" class="on" data-on-click="riesgoSetOrden('dias')">Más urgente</button>
+    <button type="button" data-o="gasto" data-on-click="riesgoSetOrden('gasto')">Más gastado</button>
+    <button type="button" data-o="nombre" data-on-click="riesgoSetOrden('nombre')">A–Z</button>
   </div>
   <div id="riesgoFullList" style="margin-top:6px"></div>
-  <button class="btn btn-line" style="margin-top:14px" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-line" style="margin-top:14px" data-on-click="closeSheet()">Cerrar</button>
 </div>
 
-<!-- HOJA CATÁLOGO CORTESÍA -->
-<div class="sheet" id="cortesiaCatSheet">
-  <div class="grab"></div>
-  <h3 id="cortesiaCatTitle">Nueva cortesía</h3>
-  <div class="field"><label>Nombre</label><input id="ccNombre" placeholder="Ej: Diseño de regalo, Retiro gratis…"></div>
-  <div class="field"><label>Descripción</label><textarea id="ccDesc" rows="2" placeholder="Detalles de la cortesía…"></textarea></div>
-  <div class="field"><label>Vigencia (días)</label><input type="number" id="ccVigencia" value="30" inputmode="numeric" min="1"></div>
-  <button class="btn btn-primary" data-on-click="saveCortesiaCat()">Guardar</button>
-  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
-  <button class="btn btn-ghost" id="ccDelBtn" style="display:none" data-on-click="deleteCortesiaCat()">Eliminar</button>
+<!-- HOJA: CATÁLOGO DE CORTESÍAS -->
+<div class="sheet" id="cortesiaCatSheet" role="dialog" aria-modal="true" aria-labelledby="cortesiaCatTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="cortesiaCatTitle">Nueva cortesía</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="field"><label for="ccNombre">Nombre</label><input id="ccNombre" placeholder="Ej: Diseño de regalo, Retiro gratis…"></div>
+  <div class="field"><label for="ccDesc">Descripción</label><textarea id="ccDesc" rows="2" placeholder="Detalles de la cortesía…"></textarea></div>
+  <div class="field"><label for="ccVigencia">Vigencia (días)</label><input type="number" id="ccVigencia" value="30" inputmode="numeric" min="1"></div>
+  <button type="button" class="btn btn-primary" data-on-click="saveCortesiaCat()">Guardar</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-ghost" id="ccDelBtn" style="display:none" data-on-click="deleteCortesiaCat()">Eliminar</button>
 </div>
 
-<!-- HOJA ASIGNAR CORTESÍA A CLIENTA -->
-<div class="sheet" id="cortesiaCliSheet">
-  <div class="grab"></div>
-  <h3>Agregar cortesía 🎁</h3>
+<!-- HOJA: ASIGNAR CORTESÍA A CLIENTA -->
+<div class="sheet" id="cortesiaCliSheet" role="dialog" aria-modal="true" aria-labelledby="ccCliTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="ccCliTitle">Agregar cortesía</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
   <div class="acc-sub">Elige del catálogo o escribe una personalizada.</div>
-  <div class="field"><label>Del catálogo (opcional)</label>
-    <div id="ccCatPicker" class="cc-cat-picker"></div>
+  <div class="field"><div class="lbl" id="ccCatLbl">Del catálogo (opcional)</div>
+    <div id="ccCatPicker" class="cc-cat-picker" role="group" aria-labelledby="ccCatLbl"></div>
   </div>
-  <div class="field"><label>Descripción</label><input id="ccCliDesc" placeholder="Ej: Diseño gratis por referido…"></div>
-  <div class="field"><label>Vigencia (días)</label><input type="number" id="ccCliVigencia" value="30" inputmode="numeric" min="1"></div>
-  <div class="field"><label>Notas (opcional)</label><input id="ccCliNotas" placeholder="Motivo, observaciones…"></div>
-  <button class="btn btn-primary" data-on-click="saveCortesiaCli()">Agregar cortesía</button>
-  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <div class="field"><label for="ccCliDesc">Descripción</label><input id="ccCliDesc" placeholder="Ej: Diseño gratis por referido…"></div>
+  <div class="field"><label for="ccCliVigencia">Vigencia (días)</label><input type="number" id="ccCliVigencia" value="30" inputmode="numeric" min="1"></div>
+  <div class="field"><label for="ccCliNotas">Notas (opcional)</label><input id="ccCliNotas" placeholder="Motivo, observaciones…"></div>
+  <button type="button" class="btn btn-primary" data-on-click="saveCortesiaCli()">Agregar cortesía</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
 </div>
 
-<!-- HOJA NUEVO/EDITAR PREMIO -->
-<div class="sheet" id="scanSheet">
-  <div class="grab"></div>
-  <h3>Escanear QR</h3>
+<!-- HOJA: ESCANEAR QR -->
+<div class="sheet" id="scanSheet" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="scanTitle">Escanear QR</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeScanner()"><span data-icon="x"></span></button></div>
   <div class="acc-sub">Apunta la cámara al QR de la clienta para sumarle un sello.</div>
   <div id="qrReader" class="qr-reader"></div>
-  <div id="scanResult" class="scan-result"></div>
-  <button class="btn btn-line" data-on-click="closeScanner()">Cerrar</button>
+  <div id="scanResult" class="scan-result" aria-live="polite"></div>
+  <button type="button" class="btn btn-line" data-on-click="closeScanner()">Cerrar</button>
 </div>
 
-<div class="sheet" id="confirmSheet">
-  <div class="grab"></div>
-  <h3>Confirmar citas de mañana</h3>
+<!-- HOJA: CONFIRMAR CITAS DE MAÑANA -->
+<div class="sheet" id="confirmSheet" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="confirmTitle">Confirmar citas de mañana</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
   <div class="acc-sub" id="confirmSub">Envía la confirmación a cada clienta con un toque.</div>
   <div id="confirmList" class="confirm-list"></div>
-  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
 </div>
 
-<div class="sheet" id="premioSheet">
-  <div class="grab"></div>
-  <h3 id="premioSheetTitle">Nuevo premio</h3>
-  <div class="field"><label>Nombre del premio</label><input id="premioNombre" placeholder="Ej: Diseño gratis, 15% descuento, Retiro sin costo…"></div>
+<!-- HOJA: PREMIO -->
+<div class="sheet" id="premioSheet" role="dialog" aria-modal="true" aria-labelledby="premioSheetTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="premioSheetTitle">Nuevo premio</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="field"><label for="premioNombre">Nombre del premio</label><input id="premioNombre" placeholder="Ej: Diseño gratis, 15% descuento, Retiro sin costo…"></div>
   <div class="field">
-    <label>Nivel</label>
-    <div class="chips" id="premioNivelChips">
-      <div class="chip sel" data-nv="menor" data-on-click="setPremioNivel('menor')">🎁 Menor (6 sellos)</div>
-      <div class="chip" data-nv="mayor" data-on-click="setPremioNivel('mayor')">🏆 Mayor (12 sellos)</div>
+    <div class="lbl" id="premioNivelLbl">Nivel</div>
+    <div class="chips" id="premioNivelChips" role="group" aria-labelledby="premioNivelLbl">
+      <button type="button" class="chip sel" data-nv="menor" data-on-click="setPremioNivel('menor')"><span data-icon="gift"></span>Menor (6 sellos)</button>
+      <button type="button" class="chip" data-nv="mayor" data-on-click="setPremioNivel('mayor')"><span data-icon="trophy"></span>Mayor (12 sellos)</button>
     </div>
   </div>
-  <div class="field"><label>Descripción (opcional)</label><textarea id="premioDesc" rows="2" placeholder="Detalles del premio…"></textarea></div>
-  <button class="btn btn-primary" data-on-click="savePremio()">Guardar premio</button>
-  <button class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
-  <button class="btn btn-ghost" id="premioDelBtn" style="display:none" data-on-click="deletePremio()">Eliminar premio</button>
+  <div class="field"><label for="premioDesc">Descripción (opcional)</label><textarea id="premioDesc" rows="2" placeholder="Detalles del premio…"></textarea></div>
+  <button type="button" class="btn btn-primary" data-on-click="savePremio()">Guardar premio</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+  <button type="button" class="btn btn-ghost" id="premioDelBtn" style="display:none" data-on-click="deletePremio()">Eliminar premio</button>
 </div>
 
-<div class="sheet" id="pickPremioSheet">
-  <div class="grab"></div>
-  <h3 id="pickPremioTitle">Elegir premio</h3>
+<!-- HOJA: ELEGIR PREMIO -->
+<div class="sheet" id="pickPremioSheet" role="dialog" aria-modal="true" aria-labelledby="pickPremioTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="pickPremioTitle">Elegir premio</h2><button type="button" class="sheet-x" aria-label="Volver a la ficha" data-sheet-close data-on-click="backToCliFromPick()"><span data-icon="x"></span></button></div>
   <div class="acc-sub">Escoge del catálogo el premio para esta clienta.</div>
   <div id="pickPremioList" class="pick-list"></div>
-  <button class="btn btn-line" data-on-click="backToCliFromPick()">Volver</button>
+  <button type="button" class="btn btn-line" data-on-click="backToCliFromPick()">Volver</button>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- HOJA: DATOS DEL ESTUDIO -->
+<div class="sheet" id="estudioSheet" role="dialog" aria-modal="true" aria-labelledby="estudioTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="estudioTitle">Datos del estudio</h2><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="acc-sub">Tus clientas ven estos datos en el portal de su cita (botones «Cómo llegar» y «Escribir»).</div>
+  <div class="field"><label for="estDireccion">Dirección</label><input id="estDireccion" autocomplete="street-address" placeholder="Calle, número, colonia, Monterrey"></div>
+  <div class="field"><label for="estTelefono">Teléfono de WhatsApp</label><input id="estTelefono" inputmode="tel" autocomplete="tel" placeholder="81 0000 0000"></div>
+  <div class="field"><label for="estMaps">Enlace de Google Maps</label><input id="estMaps" type="url" inputmode="url" autocomplete="off" placeholder="https://maps.app.goo.gl/…" aria-describedby="estMapsHint"><small class="field-hint" id="estMapsHint">Opcional. Si lo dejas vacío, el portal busca la dirección en el mapa.</small></div>
+  <div class="form-err" id="estudioErr" role="alert"></div>
+  <button type="button" class="btn btn-primary" id="estudioGuardar" data-on-click="guardarEstudio()">Guardar</button>
+  <button type="button" class="btn btn-line" data-on-click="closeSheet()">Cerrar</button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="js/pagos.js"></script>
 <script src="js/app/00-eventos.js"></script>
 <script src="js/app/01-datos.js"></script>
+<script src="js/app/02-iconos.js"></script>
 <script src="js/app/02-utilidades.js"></script>
 <script src="js/app/03-agenda.js"></script>
 <script src="js/app/04-finanzas.js"></script>
@@ -685,5 +726,7 @@
 <script src="js/app/11-cita-form.js"></script>
 <script src="js/app/12-whatsapp.js"></script>
 <script src="js/app/13-app.js"></script>
+<script src="js/app/14-mas.js"></script>
+<script src="js/app/15-accesibilidad.js"></script>
 </body>
 </html>

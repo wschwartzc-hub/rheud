@@ -1,15 +1,19 @@
 /* ---------------- APPOINTMENT SHEET ---------------- */
 let curEstado='agendada',curPago='pagado',editingId=null,curColor='rosa',curMetodo='efectivo';
 function renderColorChips(){
-  document.getElementById('colorChips').innerHTML=PAL_ORDER.map(k=>`<div class="swatch ${k===curColor?'sel':''}" data-c="${k}" style="background:${PALETTE[k].br}"></div>`).join('');
+  document.getElementById('colorChips').innerHTML=PAL_ORDER.map(k=>`<button type="button" class="swatch ${k===curColor?'sel':''}" data-c="${k}" aria-label="${PAL_NAME[k]}" aria-pressed="${k===curColor}" style="background:${PALETTE[k].br}"></button>`).join('');
 }
-function setColor(k){curColor=k;renderColorChips();}
-document.getElementById('colorChips').addEventListener('click',e=>{if(e.target.dataset.c)setColor(e.target.dataset.c)});
+function setColor(k){curColor=k;renderColorChips();const b=document.querySelector(`#colorChips [data-c="${k}"]`);if(b)b.focus();}
+document.getElementById('colorChips').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(b)setColor(b.dataset.c)});
 let selectedSvcIds=[];
 let svcChosenPrice={}; // id -> precio elegido (para servicios con precios variables)
 function renderSvcPicker(){
   const cont=document.getElementById('apptSvcPicker');
-  cont.innerHTML=DB.servicios.map(s=>{
+  // Agrupados por rama; si se abrió desde un hueco, primero la rama de ese recurso
+  const pref=typeof apptRecursoPref!=='undefined'?apptRecursoPref:null;
+  const ordenCat=pref==='cabina'?['skin','nails','otro']:['nails','skin','otro'];
+  const grupos=ordenCat.map(k=>({k,svcs:DB.servicios.filter(s=>(s.cat==='skin'?'skin':s.cat==='otro'?'otro':'nails')===k)})).filter(g=>g.svcs.length);
+  const opt=s=>{
     const sel=selectedSvcIds.includes(s.id);
     const hasVar=s.precios&&s.precios.length>1;
     const shownPrice=sel&&svcChosenPrice[s.id]!=null?svcChosenPrice[s.id]:s.p;
@@ -18,12 +22,12 @@ function renderSvcPicker(){
     // si está seleccionado y tiene precios variables, muestra chips para elegir
     let varChips='';
     if(sel&&hasVar){
-      varChips=`<div class="svc-var">${s.precios.map(pr=>`<span class="svc-var-chip ${svcChosenPrice[s.id]===pr?'on':''}" data-svc="${s.id}" data-pr="${pr}">${fmtMoney(pr)}</span>`).join('')}</div>`;
+      varChips=`<div class="svc-var" role="group" aria-label="Precio de ${esc(s.n)}">${s.precios.map(pr=>`<button type="button" class="svc-var-chip ${svcChosenPrice[s.id]===pr?'on':''}" aria-pressed="${svcChosenPrice[s.id]===pr}" data-svc="${esc(s.id)}" data-pr="${Number(pr)}">${fmtMoney(pr)}</button>`).join('')}</div>`;
     }
-    const cat=CATS[s.cat]||CATS.nails;
-    const meta=`${fmtDur(s.dur||60)} · ${RECURSOS[s.recurso||'mesa']}${s.limpieza?` +${s.limpieza} limpieza`:''}`;
-    return `<div class="svc-opt ${sel?'sel':''} ${s.cat==='skin'?'skin':''}" data-id="${s.id}"><div class="svc-opt-row"><div class="chk">${sel?'✓':''}</div><div class="on">${esc(s.n)}<div class="om">${meta}</div></div><div class="op">${priceLabel}</div></div>${varChips}</div>`;
-  }).join('');
+    const meta=`${fmtDur(s.dur||60)} · ${RECURSOS[s.recurso]||RECURSOS.mesa}${s.limpieza?` +${Number(s.limpieza)} limpieza`:''}`;
+    return `<div class="svc-opt ${sel?'sel':''} ${s.cat==='skin'?'skin':''}" data-id="${esc(s.id)}"><button type="button" class="svc-opt-row" aria-pressed="${sel}"><span class="chk" aria-hidden="true">${sel?icon('check'):''}</span><span class="so-b"><span class="so-n">${esc(s.n)}</span><span class="om">${meta}</span></span><span class="op">${priceLabel}</span></button>${varChips}</div>`;
+  };
+  cont.innerHTML=grupos.map(g=>(grupos.length>1?`<div class="svc-grp ${g.k}">${ramaIcon(g.k)}${catLabel(g.k)}</div>`:'')+g.svcs.map(opt).join('')).join('');
   const total=selectedSvcIds.reduce((t,id)=>{const s=DB.servicios.find(x=>x.id===id);if(!s)return t;const pr=(svcChosenPrice[id]!=null)?svcChosenPrice[id]:Number(s.p||0);return t+pr;},0);
   document.getElementById('svcCount').textContent=selectedSvcIds.length?`· ${selectedSvcIds.length} · ${fmtMoney(total)}`:'';
   renderApptSeq();
@@ -44,7 +48,7 @@ function renderApptSkinHint(){
   else if(!filled){body='<b>Sin expediente de piel.</b> Antes del primer facial, llena tipo de piel, alergias y contraindicaciones en su ficha.';warn=true;}
   else{
     const parts=[];
-    if(exp.tipo)parts.push(`Piel ${exp.tipo.toLowerCase()}${exp.fototipo?` · fototipo ${exp.fototipo}`:''}`);
+    if(exp.tipo)parts.push(`Piel ${esc(exp.tipo.toLowerCase())}${exp.fototipo?` · fototipo ${esc(exp.fototipo)}`:''}`);
     if(exp.alergias){parts.push(`<b>Alergias:</b> ${esc(exp.alergias)}`);warn=true;}
     if(exp.contra){parts.push(`<b>Contraindicaciones:</b> ${esc(exp.contra)}`);warn=true;}
     body=parts.join(' · ');
@@ -64,9 +68,9 @@ function renderApptSeq(){
   const time=document.getElementById('apptTime').value;const s0=time?toMin(time):null;
   let cur=s0;
   const segs=items.map(i=>{const seg={i,s:cur};if(cur!=null)cur+=i.d;return seg;});
-  const bar=items.map(i=>`<div class="seq-seg ${i.cat==='skin'?'skin':''}" style="flex:${i.d}">${s0!=null&&items.length>1?minLabel(segs.find(x=>x.i===i).s)+' · ':''}${esc(i.n.split(' ')[0])}${i.n.includes(' ')?'…':''}</div>${i.l&&i.r==='cabina'?`<div class="seq-clean" style="flex:${i.l}" title="limpieza de cabina"></div>`:''}`).join('');
-  const recs=[...new Set(items.map(i=>RECURSOS[i.r]||i.r))].join(' → ');
-  el.innerHTML=`<div class="seq-bar">${bar}</div><div class="seq-lbl">Duración sugerida <b>${fmtDur(total)}</b>${s0!=null?` · termina ${minLabel(s0+total)}`:''} · ${recs}</div>`;
+  const bar=items.map(i=>`<div class="seq-seg ${i.cat==='skin'?'skin':''}" style="flex:${Number(i.d)||1}">${s0!=null&&items.length>1?hm(segs.find(x=>x.i===i).s)+' · ':''}${esc(i.n.split(' ')[0])}${i.n.includes(' ')?'…':''}</div>${i.l&&i.r==='cabina'?`<div class="seq-clean" style="flex:${Number(i.l)||1}" title="limpieza de cabina"></div>`:''}`).join('');
+  const recs=[...new Set(items.map(i=>RECURSOS[i.r]||esc(i.r)))].join(' → ');
+  el.innerHTML=`<div class="seq-bar" aria-hidden="true">${bar}</div><div class="seq-lbl">Duración sugerida <b>${fmtDur(total)}</b>${s0!=null?` · termina ${hm(s0+total)}`:''} · ${recs}</div>`;
 }
 function syncApptDur(){const d=selectedDur();if(d>0)setApptDur(d);}
 function toggleSvc(id){
@@ -90,9 +94,12 @@ function chooseSvcPrice(id,pr){
 }
 document.getElementById('apptSvcPicker').addEventListener('click',e=>{
   const chip=e.target.closest('.svc-var-chip');
-  if(chip){e.stopPropagation();chooseSvcPrice(chip.dataset.svc,chip.dataset.pr);return;}
-  const o=e.target.closest('.svc-opt');if(o)toggleSvc(o.dataset.id);
+  if(chip){e.stopPropagation();chooseSvcPrice(chip.dataset.svc,chip.dataset.pr);refocusSvc(`.svc-var-chip[data-svc="${chip.dataset.svc}"][data-pr="${chip.dataset.pr}"]`);return;}
+  const b=e.target.closest('.svc-opt-row');const o=b&&b.closest('.svc-opt');
+  if(o){const id=o.dataset.id;toggleSvc(id);refocusSvc(`.svc-opt[data-id="${id}"] .svc-opt-row`);}
 });
+/* Tras volver a pintar la lista, el foco regresa al mismo botón */
+function refocusSvc(sel){try{const el=document.querySelector('#apptSvcPicker '+sel);if(el)el.focus({preventScroll:true});}catch(_){}}
 let apptSelectedCliId=null,cliCreateReturnToAppt=false;
 function onApptCliInput(){
   apptSelectedCliId=null;
@@ -100,8 +107,8 @@ function onApptCliInput(){
   const box=document.getElementById('apptCliResults');
   if(!q){box.innerHTML='';return;}
   const matches=DB.clientas.filter(c=>matchCli(c,q)).slice(0,6);
-  let html=matches.map(c=>`<div class="cli-res" data-on-click="pickApptCli('${c.id}')"><div class="ra">${c.nombre[0].toUpperCase()}</div><div class="rb"><div class="rn">${c.nombre}</div><div class="rd">${cliNumLabel(c.num)}${c.telefono?' · '+c.telefono:''}${c.email?' · '+c.email:''}</div></div></div>`).join('');
-  if(!matches.some(c=>normTxt(c.nombre)===normTxt(q)))html+=`<div class="cli-res-new" data-on-click="addCliFromAppt()">+ Agregar cliente nuevo: “${q}”</div>`;
+  let html=matches.map(c=>`<button type="button" class="cli-res" data-on-click="pickApptCli('${c.id}')"><span class="ra" aria-hidden="true">${esc(c.nombre[0].toUpperCase())}</span><span class="rb"><span class="rn">${esc(c.nombre)}</span><span class="rd">${cliNumLabel(c.num)}${c.telefono?' · '+esc(c.telefono):''}${c.email?' · '+esc(c.email):''}</span></span></button>`).join('');
+  if(!matches.some(c=>normTxt(c.nombre)===normTxt(q)))html+=`<button type="button" class="cli-res-new" data-on-click="addCliFromAppt()">${icon('userPlus')}Agregar clienta nueva: «${esc(q)}»</button>`;
   box.innerHTML=html;
 }
 function pickApptCli(id){
@@ -111,6 +118,8 @@ function pickApptCli(id){
   document.getElementById('apptCliResults').innerHTML='';
   renderApptCortesias();
   renderApptSkinHint();
+  // la sugerencia elegida desaparece: el foco pasa al siguiente paso (servicios)
+  const sig=document.querySelector('#apptSvcPicker .svc-opt-row');if(sig)sig.focus({preventScroll:true});
 }
 
 /* schedule assistant */
@@ -161,37 +170,38 @@ function renderAssist(){
     if(!segsClash(proposedSegments(t,dur),busy))sug.push(t);
   }
   // status
-  let cls,icon,msg;
+  let cls,ic,msg;
   if(propS!=null&&conflict){
-    cls='as-conflict';icon='⚠️';
+    cls='as-conflict';ic='alert';
     const cli=DB.clientas.find(x=>x.id===conflict.c.clientaId);
     const enLimpieza=clash&&clash.p.s>=conflict.svcEnd;
     const rec=RECURSOS[conflict.r]||'el espacio';
+    const quien=esc(cli?cli.nombre:'otra cita');
     msg=enLimpieza
-      ?`La <b>${rec.toLowerCase()}</b> está en limpieza hasta las <b>${minLabel(conflict.e)}</b> (después de ${cli?cli.nombre:'otra cita'}). ${sug.length?'Elige un hueco abajo.':''}`
-      :`La <b>${rec.toLowerCase()}</b> se encima con <b>${cli?cli.nombre:'otra cita'}</b> (${minLabel(conflict.s)}–${minLabel(conflict.e)}). ${sug.length?'Mira los espacios libres abajo.':'Ese día está lleno.'}`;
+      ?`La <b>${rec.toLowerCase()}</b> está en limpieza hasta las <b>${hm(conflict.e)}</b> (después de ${quien}). ${sug.length?'Elige un hueco abajo.':''}`
+      :`La <b>${rec.toLowerCase()}</b> se encima con <b>${quien}</b> (${hm(conflict.s)}–${hm(conflict.e)}). ${sug.length?'Mira los espacios libres abajo.':'Ese día está lleno.'}`;
   }else if(propS!=null){
-    cls='as-free';icon='✨';msg=`Perfecto, hay espacio a las <b>${minLabel(propS)}</b>.`;
+    cls='as-free';ic='checkCircle';msg=`Hay espacio a las <b>${hm(propS)}</b>.`;
   }else if(busy.length===0){
-    cls='as-free';icon='🌿';msg='Día libre — cualquier horario funciona.';
+    cls='as-free';ic='checkCircle';msg='Día libre: cualquier horario funciona.';
   }else if(freeMin<dur){
-    cls='as-conflict';icon='⛔';msg='Día lleno, no cabe este servicio.';
+    cls='as-conflict';ic='alert';msg='Día lleno, no cabe este servicio.';
   }else if(freeMin< (winLen*0.35)){
-    cls='as-tight';icon='⏳';msg=`Día apretado — quedan ~${Math.round(freeMin/60)} h libres. Elige un hueco:`;
+    cls='as-tight';ic='clock';msg=`Día apretado: quedan ~${Math.round(freeMin/60)} h libres. Elige un hueco:`;
   }else{
-    cls='as-free';icon='🌿';msg=`Hay buen espacio (~${Math.round(freeMin/60)} h libres). Elige un hueco:`;
+    cls='as-free';ic='clock';msg=`Hay buen espacio (~${Math.round(freeMin/60)} h libres). Elige un hueco:`;
   }
   // timeline blocks
   const usedR=new Set(proposedSegments(winS,dur).map(x=>x.r));
   const busyHtml=busy.filter(b=>usedR.has(b.r)||b.r==='ninguno').map(b=>{const l=Math.max(0,(b.s-winS)/winLen*100),w=Math.min(100,(Math.min(b.e,winE)-Math.max(b.s,winS))/winLen*100);return `<div class="tl-busy ${b.r==='cabina'?'cab':''}" style="left:${l}%;width:${w}%"></div>`}).join('');
   let propHtml='';
   if(propS!=null){const l=Math.max(0,(propS-winS)/winLen*100),w=Math.min(100-l,(dur)/winLen*100);propHtml=`<div class="tl-prop ${conflict?'bad':''}" style="left:${l}%;width:${w}%"></div>`;}
-  const ticks=[];for(let h=AS_START;h<=AS_END;h+=3){const ap=h>=12?'p':'a';ticks.push(`${(h%12||12)}${ap}`);}
-  const sugHtml=sug.length?`<div class="assist-sug">${sug.map(t=>`<div class="sug-chip" data-on-click="pickSlot(${t})">${minLabel(t)}</div>`).join('')}</div>`:'';
-  el.innerHTML=`<div class="assist-lbl">Asistente de agenda · ${(()=>{const d=new Date(date+'T00:00:00');return DOW[d.getDay()]+' '+d.getDate()+' '+MON[d.getMonth()]})()}</div>
-    <div class="assist-status ${cls}"><span class="si">${icon}</span><span>${msg}</span></div>
-    <div class="assist-timeline">${busyHtml}${propHtml}</div>
-    <div class="tl-ticks">${ticks.map(t=>`<span>${t}</span>`).join('')}</div>
+  const ticks=[];for(let h=AS_START;h<=AS_END;h+=3)ticks.push(`${h}:00`);
+  const sugHtml=sug.length?`<div class="assist-sug" role="group" aria-label="Horarios libres">${sug.map(t=>`<button type="button" class="sug-chip" data-on-click="pickSlot(${t})">${hm(t)}</button>`).join('')}</div>`:'';
+  el.innerHTML=`<div class="assist-lbl">Asistente de agenda · ${esc(fechaCorta(date))}</div>
+    <div class="assist-status ${cls}" role="status">${icon(ic)}<span>${msg}</span></div>
+    <div class="assist-timeline" aria-hidden="true">${busyHtml}${propHtml}</div>
+    <div class="tl-ticks" aria-hidden="true">${ticks.map(t=>`<span>${t}</span>`).join('')}</div>
     ${sugHtml}`;
 }
 function pickSlot(t){
@@ -241,11 +251,13 @@ function renderPagos(){
   const cont=document.getElementById('pagosList');if(!cont)return;
   cont.innerHTML=curPagos.map((p,i)=>`
     <div class="pago-item">
-      <input type="number" class="pago-monto" inputmode="numeric" placeholder="0" value="${p.monto||''}" data-on-input="setPagoMonto(${i},this.value)">
-      <select class="pago-metodo" data-on-change="setPagoMetodo(${i},this.value)">
+      <label class="sr-only" for="pagoMonto${i}">Monto del pago ${i+1}</label>
+      <input type="number" id="pagoMonto${i}" class="pago-monto" inputmode="numeric" placeholder="0" value="${Number(p.monto)||''}" data-on-input="setPagoMonto(${i},this.value)">
+      <label class="sr-only" for="pagoMetodo${i}">Método del pago ${i+1}</label>
+      <select id="pagoMetodo${i}" class="pago-metodo" data-on-change="setPagoMetodo(${i},this.value)">
         ${METODOS.map(m=>`<option value="${m[0]}" ${p.metodo===m[0]?'selected':''}>${m[1]}</option>`).join('')}
       </select>
-      <button type="button" class="pago-del" data-on-click="delPago(${i})">✕</button>
+      <button type="button" class="icon-btn pago-del" aria-label="Quitar pago ${i+1}" data-on-click="delPago(${i})">${icon('trash')}</button>
     </div>`).join('');
   updatePagosResumen();
 }
@@ -263,14 +275,14 @@ function updatePagosResumen(){
   const total=totalACobrar();
   const pagado=curPagos.reduce((s,p)=>s+(Number(p.monto)||0),0);
   const pend=total-pagado;
-  let estado,color;
-  if(pagado<=0){estado='Sin pago';color='var(--red)';}
-  else if(pend>0){estado='Parcial · debe '+fmtMoney(pend);color='#8a6a1e';}
-  else if(pend<0){estado='Cobró '+fmtMoney(Math.abs(pend))+' de más';color='var(--red)';}
-  else {estado='Pagado completo';color='var(--green)';}
+  let estado,cls;
+  if(pagado<=0){estado='Sin pago';cls='t-bad';}
+  else if(pend>0){estado='Parcial · debe '+fmtMoney(pend);cls='t-warn';}
+  else if(pend<0){estado='Cobró '+fmtMoney(Math.abs(pend))+' de más';cls='t-bad';}
+  else {estado='Pagado completo';cls='t-ok';}
   el.innerHTML=`<div class="pr-line"><span>Total a cobrar</span><b>${fmtMoney(total)}</b></div>
-    <div class="pr-line"><span>Cobrado</span><b style="color:var(--green)">${fmtMoney(pagado)}</b></div>
-    <div class="pr-estado" style="color:${color}">${estado}</div>`;
+    <div class="pr-line"><span>Cobrado</span><b class="v-ok">${fmtMoney(pagado)}</b></div>
+    <div class="pr-estado"><span class="tag ${cls}">${estado}</span></div>`;
 }
 function pagosSummary(c){
   const base=Number(c.precio||0);
@@ -291,15 +303,15 @@ function renderCompPreview(){
   const el=document.getElementById('compPreview');
   if(!curComp){el.innerHTML='';return;}
   if(curComp.startsWith('data:')){
-    el.innerHTML=`<img src="${curComp}"><span class="rm" data-on-click="removeComp()">Quitar comprobante</span>`;
+    el.innerHTML=`<img src="${esc(curComp)}" alt="Comprobante seleccionado"><button type="button" class="btn-sm btn-bad-line" data-on-click="removeComp()">${icon('trash')}Quitar comprobante</button>`;
   }else{
-    el.innerHTML=`<span class="comp-link" data-on-click="viewCompRaw('${curComp}')">📎 Ver comprobante actual</span> <span class="rm" data-on-click="removeComp()">Quitar</span>`;
+    el.innerHTML=`<div class="comp-row"><button type="button" class="btn-sm" data-path="${esc(curComp)}" data-on-click="viewCompRaw(this.dataset.path)">${icon('clip')}Ver comprobante actual</button><button type="button" class="btn-sm btn-bad-line" data-on-click="removeComp()">Quitar</button></div>`;
   }
 }
 async function viewCompRaw(path){
   let url=path;
   if(!path.startsWith('http')){try{const {data}=await sb.storage.from('comprobantes').createSignedUrl(path,3600);url=data.signedUrl;}catch(e){console.error(e);}}
-  const w=window.open();if(w)w.document.write('<img src="'+url+'" style="max-width:100%">');
+  const w=window.open();if(w)w.document.write('<img src="'+esc(url)+'" style="max-width:100%">');
 }
 function removeComp(){curComp='';renderCompPreview();}
 function onCompFile(e){
@@ -318,7 +330,7 @@ function onCompFile(e){
   rd.readAsDataURL(f);
   e.target.value='';
 }
-document.getElementById('estadoChips').addEventListener('click',e=>{if(e.target.dataset.e)setEstado(e.target.dataset.e)});
+document.getElementById('estadoChips').addEventListener('click',e=>{const b=e.target.closest('[data-e]');if(b)setEstado(b.dataset.e)});
 
 function openApptSheet(){
   editingId=null;

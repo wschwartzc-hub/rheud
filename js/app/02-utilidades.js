@@ -25,34 +25,37 @@ function fmt12(t){if(!t)return '';let[h,m]=t.split(':').map(Number);const ap=h>=
 function fmtFechaCompleta(fecha,hora){const d=new Date(fecha+'T00:00:00');let s=`${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;if(hora){const t=fmt12(hora);s+=` · ${t.h} ${t.ap}`;}return s;}
 let selectedDate=ymd(new Date());
 
-/* ---------------- NAV ---------------- */
+/* ---------------- NAV ----------------
+   4 pestañas + el botón central «+» (siempre «Nueva cita»). Finanzas y Menú
+   viven dentro de «Más»: con ellas abiertas, la pestaña activa es «Más». */
+const NAV_TAB={agenda:'agenda',citas:'citas',clientas:'clientas',mas:'mas',ventas:'mas',servicios:'mas'};
 function nav(v){
+  const prev=currentView;
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
   document.getElementById('v-'+v).classList.add('active');
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
-  const fab=document.getElementById('fab');
-  const fabLabels={agenda:'Nueva cita',citas:'Nueva cita',clientas:'Clienta',servicios:'Servicio'};
-  fab.style.display=fabLabels[v]?'flex':'none';
-  const fl=document.getElementById('fabLabel');if(fl&&fabLabels[v])fl.textContent=fabLabels[v];
+  const tab=NAV_TAB[v]||v;
+  document.querySelectorAll('.nav button[data-v]').forEach(b=>{
+    const on=b.dataset.v===tab;b.classList.toggle('on',on);
+    if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  });
   currentView=v;
   // Todas las secciones excepto agenda empiezan desde arriba
   if(v!=='agenda')window.scrollTo({top:0,behavior:'instant'});
-  if(v==='ventas')renderVentas();
+  if(v==='ventas')renderFinanzas();
   if(v==='clientas')renderClientas();
   if(v==='servicios')renderServicios();
   if(v==='agenda'){agAutoScroll=true;renderAgenda();}
   if(v==='citas')renderCitas();
+  // Al cambiar de sección el foco va al título (lectores de pantalla y teclado)
+  if(prev!==v){const h=document.querySelector('#v-'+v+' h1');if(h&&document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.nav,.mas-list,.back'))h.focus({preventScroll:true});}
 }
 let currentView='agenda';
-function fabAction(){
-  if(currentView==='clientas')openCliCreateSheet();
-  else if(currentView==='servicios')openSvcSheet();
-  else openApptSheet();
-}
+/* El «+» central siempre crea una cita; se conserva el nombre por compatibilidad. */
+function fabAction(){openApptSheet();}
 
 /* ---------------- GREETING ---------------- */
 function greet(){
+  const el=document.getElementById('greet');if(!el)return;
   const h=new Date().getHours();
-  const s=h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches';
-  document.getElementById('greet').innerHTML=s+', <b>preciosa</b>';
+  el.textContent=h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches';
 }

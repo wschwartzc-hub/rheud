@@ -18,16 +18,17 @@ App de gestión para nail estudio profesional privado. Agenda de citas, control 
 - **Expediente de piel** — por clienta: tipo de piel, fototipo, sensibilidad, alergias, contraindicaciones, objetivo, rutina en casa, notas de evolución fechadas y **fotos antes / después / seguimiento** (bucket privado, URL firmada). Vive en sus propias tablas, sin acceso desde el portal público. Al agendar un facial, la cita muestra el resumen del expediente y los requisitos del servicio.
 - **Finanzas e Insights por rama** — cobrado, servicios y ticket promedio de uñas vs. skin care; **retención** (clientas del periodo anterior que volvieron), **recompra** (atendidas que ya habían venido) y sugerencia de venta cruzada (clientas frecuentes de uñas sin ningún facial).
 
-## 🎨 Diseño (v6)
+## 🎨 Diseño (v7 · Opción C «Spa multiservicio»)
 
-Estética editorial premium, pensada mobile-first:
+Mobile-first, pensado para usarse con una mano en el iPhone:
 
-- **Color:** porcelana (`#F9F4EE`) de fondo, borgoña profundo (`#4A1224`) como color de marca, champán (`#C5A880`) para el botón flotante y acentos, malva (`#A07484`) secundario. Lavanda (`#6E5B9C`) reservada para la futura rama Skin Care.
-- **Tipografía:** Inter en toda la app (v6.3). Títulos y montos en Inter 700 con tracking cerrado; texto y controles en 400–600, números tabulares. Se eligió por legibilidad en pantalla pequeña: la serif de alto contraste de la v6.0 cansaba la vista.
-- **Estructura:** cabecera compacta (logo + estado), pantalla de inicio **Hoy** (siguiente cita, acciones rápidas y agenda del día en lista), 5 tabs — *Hoy · Citas · Clientas · Finanzas · Menú* — donde Finanzas reúne Ingresos, Egresos e Insights. Botón flotante con etiqueta que dice qué crea en cada pantalla.
-- **Componentes:** tarjetas blancas con borde fino y sombra suave (radio 20), segmentos con pastilla blanca, filtros como fila de chips, etiquetas de estado cortas con un color por significado.
+- **Color:** fondo `#FBF9F7`, paneles `#F2EEEA`, tarjetas blancas con borde `#ECE6E1`. Tinta `#231C1F` / `#3E3540` / `#5F565A` (todo texto ≥ 4.5:1). Vino `#4A1224` solo para la acción principal, la selección activa y la marca. Cada rama tiene su color: uñas (rosa `#F9E8EE` / `#C9708E`) y piel (lila `#EEEAF7` / `#8C7BC0`). Estados: ok, aviso y adeudo con fondo suave y texto oscuro. Champán `#C5A880` solo como detalle.
+- **Tipografía:** Manrope 400–800 con números tabulares; campos a 16 px.
+- **Estructura:** cabecera con logo, «En línea» y campana; barra inferior *Hoy · Citas · [+] · Clientas · Más*, con el «+» central (Nueva cita). **Hoy** muestra la agenda por carriles (Mesa de uñas · Cabina facial) con limpieza rayada, línea de «ahora» y huecos libres para agendar. **Más** reúne Finanzas, Menú y premios, Datos del estudio y la sesión.
+- **Iconos:** solo de línea (`js/app/02-iconos.js`); los emojis quedan únicamente en los mensajes de WhatsApp.
+- **Accesibilidad:** etiquetas en todos los campos, hojas como diálogos (foco inicial, foco atrapado, Escape y retorno del foco), estados de pestañas y segmentados con ARIA, foco visible y objetivos táctiles de 44 px.
 
-Los tokens viven en `:root` dentro de `index.html`; cambiar la paleta es editar esas variables.
+Los tokens viven en `:root` dentro de `css/app.css`; cambiar la paleta es editar esas variables.
 
 ## 🚀 Tecnología
 

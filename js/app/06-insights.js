@@ -1,13 +1,6 @@
 /* ---------------- INTELIGENCIA ---------------- */
-let intelPeriod='sem';
-document.getElementById('intelSeg').addEventListener('click',e=>{
-  if(e.target.tagName!=='BUTTON')return;
-  intelPeriod=e.target.dataset.p;
-  document.querySelectorAll('#intelSeg button').forEach(b=>b.classList.toggle('on',b===e.target));
-  if(intelPeriod==='rango')ensureRangeDefaults('iDesde','iHasta');
-  document.getElementById('intelRangePick').style.display=intelPeriod==='rango'?'flex':'none';
-  renderInteligencia();
-});
+/* El periodo lo elige el selector único de Finanzas (finPeriodo) */
+let intelPeriod='mes';
 function atendidasEntre(a,b){return DB.citas.filter(c=>c.estado==='atendida'&&c.fecha>=a&&c.fecha<=b)}
 function sumP(arr){return arr.reduce((s,c)=>s+montoCita(c),0)}
 function bucketsFor(start,end){
@@ -28,7 +21,9 @@ function bucketsFor(start,end){
 function renderInteligencia(){
   const now=new Date();now.setHours(0,0,0,0);const todayKey=ymd(now);
   let start,end,rangeLabel;
-  if(intelPeriod==='sem'){
+  if(intelPeriod==='dia'){
+    start=new Date(now);end=new Date(now);rangeLabel='Hoy';
+  }else if(intelPeriod==='sem'){
     const day=now.getDay(),diff=(day===0?6:day-1);
     start=new Date(now);start.setDate(now.getDate()-diff);end=new Date(now);rangeLabel='Esta semana';
   }else if(intelPeriod==='mes'){
@@ -36,8 +31,8 @@ function renderInteligencia(){
   }else if(intelPeriod==='ano'){
     start=new Date(now.getFullYear(),0,1);end=new Date(now);rangeLabel=String(now.getFullYear());
   }else{
-    start=new Date((document.getElementById('iDesde').value||todayKey)+'T00:00:00');
-    end=new Date((document.getElementById('iHasta').value||todayKey)+'T00:00:00');
+    start=new Date((document.getElementById('vDesde').value||todayKey)+'T00:00:00');
+    end=new Date((document.getElementById('vHasta').value||todayKey)+'T00:00:00');
     if(end<start){const t=start;start=end;end=t;}
     rangeLabel=`${start.getDate()} ${MON[start.getMonth()]} – ${end.getDate()} ${MON[end.getMonth()]}`;
   }
@@ -86,68 +81,69 @@ function renderInteligencia(){
   const dNuevas=pctChange(nuevas,prevNuevas);
   function trendChip(label,now,before,delta,fmtV){
     const v=fmtV?fmtV(now):now;
-    let arrow='',cls='tr-flat',txt='igual';
+    let ic='',cls='tr-flat',txt='igual';
     if(delta!==null){
-      if(delta>0){arrow='▲';cls='tr-up';txt='+'+delta+'%';}
-      else if(delta<0){arrow='▼';cls='tr-down';txt=delta+'%';}
-    }else if(before===0&&now>0){arrow='▲';cls='tr-up';txt='nuevo';}
-    return `<div class="trend"><div class="tr-lbl">${label}</div><div class="tr-val">${v}</div><div class="tr-delta ${cls}">${arrow} ${txt}</div></div>`;
+      if(delta>0){ic=icon('arrowUp');cls='tr-up';txt='+'+delta+'%';}
+      else if(delta<0){ic=icon('arrowDown');cls='tr-down';txt=delta+'%';}
+    }else if(before===0&&now>0){ic=icon('arrowUp');cls='tr-up';txt='nuevo';}
+    return `<div class="trend"><div class="tr-lbl">${label}</div><div class="tr-val">${v}</div><div class="tr-delta ${cls}">${ic}${txt}</div></div>`;
   }
-  const periodoPrevLabel=intelPeriod==='sem'?'semana pasada':(intelPeriod==='mes'?'mes pasado':(intelPeriod==='ano'?'año pasado':'periodo anterior'));
+  const periodoPrevLabel={dia:'ayer',sem:'la semana pasada',mes:'el mes pasado',ano:'el año pasado'}[intelPeriod]||'el periodo anterior';
 
-  // ===== SUGERENCIAS basadas en datos =====
+  // ===== SUGERENCIAS basadas en datos (icono + texto) =====
   const tips=[];
   if(nCitas>0){
-    if(dCitas!==null&&dCitas<=-15)tips.push(`📉 Tus citas bajaron <b>${Math.abs(dCitas)}%</b> vs ${periodoPrevLabel}. Buen momento para una promo o un mensaje a clientas que no han vuelto.`);
-    else if(dCitas!==null&&dCitas>=15)tips.push(`📈 Tus citas subieron <b>${dCitas}%</b> vs ${periodoPrevLabel}. ¡Vas muy bien! Considera asegurar esos horarios pico con anticipación.`);
-    if(dTicket!==null&&dTicket<=-10)tips.push(`💵 Tu ticket promedio bajó <b>${Math.abs(dTicket)}%</b>. Ofrecer un servicio adicional (diseño, retiro) al agendar puede subirlo.`);
-    if(busyDay&&maxDow>0)tips.push(`🗓️ El <b>${busyDay}</b> es tu día más fuerte. Si quieres llenar días flojos, una promo entre semana puede ayudar.`);
-    if(nuevas>0&&recurrentes>0&&recurrentes<nuevas)tips.push(`🔁 Tuviste más clientas nuevas que recurrentes. Una tarjeta de lealtad activa o recordatorio de "ya toca tu mantenimiento" ayuda a que regresen.`);
-    if(porCobrar>0)tips.push(`💰 Tienes <b>${fmtMoney(porCobrar)}</b> por cobrar. Desde Citas → Acciones puedes mandar recordatorio por WhatsApp.`);
-    if(crossSell.length)tips.push(`💆 <b>${crossSell.length} clienta${crossSell.length!==1?'s':''} de uñas</b> con 2+ visitas nunca ${crossSell.length!==1?'han':'ha'} probado un facial (${crossSell.slice(0,3).map(c=>esc(c.nombre.split(' ')[0])).join(', ')}${crossSell.length>3?'…':''}). Un LED de cortesía tras su próxima cita suele convertir.`);
-    if(!tips.length)tips.push(`✨ Todo se ve estable. Sigue registrando tus citas para detectar patrones con más datos.`);
+    if(dCitas!==null&&dCitas<=-15)tips.push(['trendDown',`Tus citas bajaron <b>${Math.abs(dCitas)}%</b> frente a ${periodoPrevLabel}. Buen momento para una promo o un mensaje a clientas que no han vuelto.`]);
+    else if(dCitas!==null&&dCitas>=15)tips.push(['trendUp',`Tus citas subieron <b>${dCitas}%</b> frente a ${periodoPrevLabel}. Asegura esos horarios pico con anticipación.`]);
+    if(dTicket!==null&&dTicket<=-10)tips.push(['money',`Tu ticket promedio bajó <b>${Math.abs(dTicket)}%</b>. Ofrecer un servicio adicional (diseño, retiro) al agendar puede subirlo.`]);
+    if(busyDay&&maxDow>0&&intelPeriod!=='dia')tips.push(['cal',`El <b>${busyDay}</b> es tu día más fuerte. Si quieres llenar días flojos, una promo entre semana puede ayudar.`]);
+    if(nuevas>0&&recurrentes>0&&recurrentes<nuevas)tips.push(['repeat',`Tuviste más clientas nuevas que recurrentes. La tarjeta de lealtad o un recordatorio de «ya toca tu mantenimiento» ayuda a que regresen.`]);
+    if(porCobrar>0)tips.push(['alert',`Tienes <b>${fmtMoney(porCobrar)}</b> por cobrar. En Citas, el botón «Cobrar» o las acciones de la cita mandan el recordatorio por WhatsApp.`]);
+    if(crossSell.length)tips.push(['skin',`<b>${crossSell.length} clienta${crossSell.length!==1?'s':''} de uñas</b> con 2+ visitas nunca ${crossSell.length!==1?'han':'ha'} probado un facial (${crossSell.slice(0,3).map(c=>esc(c.nombre.split(' ')[0])).join(', ')}${crossSell.length>3?'…':''}). Un LED de cortesía tras su próxima cita suele convertir.`]);
+    if(!tips.length)tips.push(['checkCircle',`Todo se ve estable. Sigue registrando tus citas para detectar patrones con más datos.`]);
   }
 
   let frase=[];
   if(nCitas===0){frase.push('Aún no hay servicios atendidos en este periodo. En cuanto marques una cita como <b>atendida</b>, verás todo aquí.');}
   else{
-    frase.push(`Llevas <b>${nCitas} servicio${nCitas!==1?'s':''}</b> por <b>${fmtMoney(ingresos)}</b>${delta!==null?` — ${delta>=0?'▲ '+delta+'% más':'▼ '+Math.abs(delta)+'% menos'} que el periodo anterior`:''}.`);
-    if(topSvc[0])frase.push(`Tu servicio estrella es <b>${topSvc[0].n}</b> (${topSvc[0].count}x).`);
-    if(busyDay)frase.push(`Tu día más fuerte es el <b>${busyDay}</b>.`);
-    if(porCobrar>0)frase.push(`Tienes <b>${fmtMoney(porCobrar)}</b> por cobrar — vale la pena dar seguimiento.`);
+    frase.push(`Llevas <b>${nCitas} servicio${nCitas!==1?'s':''}</b> por <b>${fmtMoney(ingresos)}</b>${delta!==null?` — ${delta>=0?delta+'% más':Math.abs(delta)+'% menos'} que ${periodoPrevLabel}`:''}.`);
+    if(topSvc[0])frase.push(`Tu servicio estrella es <b>${esc(topSvc[0].n)}</b> (${topSvc[0].count} ${topSvc[0].count!==1?'veces':'vez'}).`);
+    if(busyDay&&intelPeriod!=='dia')frase.push(`Tu día más fuerte es el <b>${busyDay}</b>.`);
+    if(porCobrar>0)frase.push(`Tienes <b>${fmtMoney(porCobrar)}</b> por cobrar.`);
   }
 
   const maxBar=Math.max(...buckets.map(b=>sumP(atendidasEntre(b.from,b.to))),1);
   const barsHtml=buckets.map(b=>{const v=sumP(atendidasEntre(b.from,b.to));const h=Math.round((v/maxBar)*100);
     return `<div class="bar-col"><div class="bar-val">${v?('$'+(v>=1000?(v/1000).toFixed(1)+'k':v)):''}</div><div class="bar-track"><div class="bar-fill ${v?'':'zero'}" style="height:${v?Math.max(h,4):4}%"></div></div><div class="bar-lbl">${b.label}</div></div>`;
   }).join('');
+  const ramaTot=rama.nails.rev+rama.skin.rev+(rama.otro?rama.otro.rev:0);
 
   document.getElementById('intelBody').innerHTML=`
-    <div class="insight"><div class="ih">✦ Resumen inteligente</div><p>${frase.join(' ')}</p></div>
-    ${nCitas>0?`<div class="divider">Tendencia vs ${periodoPrevLabel}</div>
+    <div class="insight"><div class="ih">${icon('sparkle')}Resumen</div><p>${frase.join(' ')}</p></div>
+    ${nCitas>0?`<div class="divider"><span>Frente a ${periodoPrevLabel}</span></div>
     <div class="trends">
       ${trendChip('Citas',nCitas,prevNCitas,dCitas)}
       ${trendChip('Ingresos',ingresos,prevIng,delta,fmtMoney)}
       ${trendChip('Ticket prom.',ticket,prevTicket,dTicket,fmtMoney)}
       ${trendChip('Clientas nuevas',nuevas,prevNuevas,dNuevas)}
     </div>`:''}
-    ${tips.length?`<div class="divider">Sugerencias para optimizar</div>
-    <div class="tips">${tips.map(t=>`<div class="tip">${t}</div>`).join('')}</div>`:''}
+    ${tips.length?`<div class="divider"><span>Sugerencias</span></div>
+    <div class="tips">${tips.map(t=>`<div class="tip">${icon(t[0])}<p>${t[1]}</p></div>`).join('')}</div>`:''}
     <div class="kpis">
-      <div class="kpi"><div class="l">Cobrado</div><div class="v" style="color:var(--green)">${fmtMoney(cobrado)}</div></div>
-      <div class="kpi"><div class="l">Por cobrar</div><div class="v" style="color:${porCobrar?'var(--red)':'var(--muted)'}">${fmtMoney(porCobrar)}</div></div>
+      <div class="kpi"><div class="l">Cobrado</div><div class="v v-ok">${fmtMoney(cobrado)}</div></div>
+      <div class="kpi"><div class="l">Por cobrar</div><div class="v ${porCobrar?'v-bad':''}">${fmtMoney(porCobrar)}</div></div>
       <div class="kpi"><div class="l">Servicios</div><div class="v">${nCitas}</div></div>
       <div class="kpi"><div class="l">Ticket promedio</div><div class="v">${fmtMoney(ticket)}</div></div>
     </div>
-    <div class="chartcard"><div class="ct">Ingresos por ${gran}</div><div class="bars">${barsHtml}</div></div>
-    ${hasSkin?`<div class="chartcard rama-intel"><div class="ct">Por rama</div>${['nails','skin'].map(cat=>{const x=rama[cat];const tot=rama.nails.rev+rama.skin.rev+(rama.otro?rama.otro.rev:0);const pct=tot?Math.round(x.rev/tot*100):0;const tk=x.n?Math.round(x.rev/x.n):0;const col=cat==='skin'?'#6A57B8':'#A03F66';return `<div class="rama-row"><div class="rama-top"><span class="rama-dot" style="background:${col}"></span><span class="rama-n">${catLabel(cat)}</span><span class="rama-meta">${x.n} servicio${x.n!==1?'s':''}${tk?` · ticket ${fmtMoney(tk)}`:''}</span><span class="rama-v num">${fmtMoney(x.rev)}</span></div><div class="rama-bar"><div style="width:${pct}%;background:${col}"></div></div></div>`;}).join('')}</div>`:''}
+    <div class="chartcard"><div class="ct">Ingresos por ${gran}</div><div class="bars" role="img" aria-label="Ingresos por ${gran}">${barsHtml}</div></div>
+    ${hasSkin?`<div class="chartcard rama-intel"><div class="ct">Por rama</div>${['nails','skin'].map(cat=>ramaRow(cat,{v:rama[cat].rev,n:rama[cat].n},ramaTot)).join('')}</div>`:''}
     <div class="kpis">
       <div class="kpi"><div class="l">Clientas nuevas</div><div class="v">${nuevas}</div></div>
       <div class="kpi"><div class="l">Recurrentes</div><div class="v">${recurrentes}</div></div>
-      <div class="kpi"><div class="l">Retención</div><div class="v">${retencion===null?'—':retencion+'%'}</div><div class="kpi-sub">${retencion===null?'sin datos del '+periodoPrevLabel:'de las clientas del '+periodoPrevLabel+' volvieron'}</div></div>
-      <div class="kpi"><div class="l">Recompra</div><div class="v">${recompra===null?'—':recompra+'%'}</div><div class="kpi-sub">de las atendidas ya habían venido</div></div>
+      <div class="kpi"><div class="l">Retención</div><div class="v">${retencion===null?'—':retencion+'%'}</div><div class="kpi-sub">${retencion===null?'Sin datos del periodo anterior':'Clientas del periodo anterior que volvieron'}</div></div>
+      <div class="kpi"><div class="l">Recompra</div><div class="v">${recompra===null?'—':recompra+'%'}</div><div class="kpi-sub">Ya habían venido antes</div></div>
     </div>
-    <div class="divider">Servicios más vendidos</div>
-    ${topSvc.length?topSvc.slice(0,5).map((s,i)=>`<div class="rank"><div class="num">${i+1}</div><div class="rn">${s.n}</div><div class="rc"><div class="a">${fmtMoney(s.rev)}</div><div class="b">${s.count} vez${s.count!==1?'es':''}</div></div></div>`).join(''):'<p style="color:var(--muted);font-size:13px;font-weight:300;padding:4px 2px">Sin datos todavía.</p>'}
+    <div class="divider"><span>Servicios más vendidos</span></div>
+    ${topSvc.length?topSvc.slice(0,5).map((s,i)=>`<div class="rank"><div class="num">${i+1}</div><div class="rn">${esc(s.n)}</div><div class="rc"><div class="a">${fmtMoney(s.rev)}</div><div class="b">${s.count} ${s.count!==1?'veces':'vez'}</div></div></div>`).join(''):'<p class="empty-mini">Sin datos todavía.</p>'}
   `;
 }
