@@ -412,7 +412,7 @@
   </div>
   <div class="field"><label>Insumos y máquinas</label><input id="svcInsumos" placeholder="Ej. Máquina Hidrafacial, Suero HA, Panel LED"><small class="field-hint">Separados por coma.</small></div>
   <div class="field"><label>Requisitos para la clienta</label><input id="svcReq" placeholder="Ej. Ficha de piel vigente · sin retinoides 7 días"></div>
-  <div class="field"><label>Precios variables (opcional)</label><input id="svcPrecios" placeholder="Ej. 80, 100, 130" inputmode="numeric"><small class="field-hint">Si este servicio tiene varios precios a elegir, escríbelos separados por coma. Al agendar podrás elegir cuál.</small></div>
+  <div class="field"><label>Precios variables (opcional)</label><input id="svcPrecios" placeholder="Ej. 80 / 100 / 1,300" autocomplete="off" data-on-input="svcPreciosHint()"><small class="field-hint" id="svcPreciosHint">Si tiene varios precios a elegir, sepáralos con / (ej. 80 / 100 / 1,300). Al agendar podrás elegir cuál.</small></div>
   <div class="field"><label>Descripción</label><textarea id="svcDesc" placeholder="Breve descripción del servicio…"></textarea></div>
   <div class="field"><label>¿Qué incluye?</label><textarea id="svcIncl" placeholder="Ej. Limado, cutícula, esmaltado, decoración simple…"></textarea></div>
   <button class="btn btn-primary" data-on-click="saveSvc()">Guardar</button>

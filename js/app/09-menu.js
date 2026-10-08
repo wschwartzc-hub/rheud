@@ -43,23 +43,29 @@ async function saveCortesiaCat(){
   const nombre=document.getElementById('ccNombre').value.trim();
   if(!nombre){toast('Escribe el nombre');return;}
   const obj={negocio_id:NEGOCIO_ID,nombre,descripcion:document.getElementById('ccDesc').value.trim(),vigencia_dias:Number(document.getElementById('ccVigencia').value)||30};
+  const listo=ocupar('cortesiaCat',document.querySelector('#cortesiaCatSheet .btn-primary'),'Guardando…');if(!listo)return;
   try{
-    if(editingCCId){await sb.from('cortesias_catalogo').update(obj).eq('id',editingCCId);
+    if(editingCCId){
+      await guardar(sb.from('cortesias_catalogo').update(obj).eq('id',editingCCId));
       const c=DB.cortesiasCat.find(x=>x.id===editingCCId);if(c){c.nombre=nombre;c.desc=obj.descripcion;c.vigencia=obj.vigencia_dias;}
-    }else{const {data,error}=await sb.from('cortesias_catalogo').insert(obj).select().single();if(error)throw error;DB.cortesiasCat.push(rowToCortesiaCat(data));}
-  }catch(e){toast('Error al guardar');console.error(e);return;}
+    }else ponerEnCache('cortesiasCat',rowToCortesiaCat(await guardar(sb.from('cortesias_catalogo').insert(obj).select().single())));
+  }catch(e){avisarError(e);return;}
+  finally{listo();}
   renderCortesiasCat();closeSheet();toast('Cortesía guardada');
 }
 async function deleteCortesiaCat(){
   if(!editingCCId||!confirm('¿Eliminar esta cortesía del catálogo?'))return;
-  await sb.from('cortesias_catalogo').delete().eq('id',editingCCId);
-  DB.cortesiasCat=DB.cortesiasCat.filter(c=>c.id!==editingCCId);
+  const id=editingCCId;
+  try{await guardar(sb.from('cortesias_catalogo').delete().eq('id',id));}
+  catch(e){avisarError(e,'No se pudo eliminar. Revisa tu conexión.');return;}
+  DB.cortesiasCat=DB.cortesiasCat.filter(c=>c.id!==id);
   renderCortesiasCat();closeSheet();toast('Eliminada');
 }
 /* ============ CORTESÍAS DE CLIENTA ============ */
 function cortesiasDeClienta(cliId){return DB.cortesias.filter(c=>c.clientaId===cliId);}
 function isCortesiaVigente(c){if(c.usada)return false;if(!c.fechaVence)return true;return c.fechaVence>=ymd(new Date());}
-function diasRestantes(c){if(!c.fechaVence)return null;const diff=Math.round((new Date(c.fechaVence+' 00:00:00')-new Date())/86400000);return Math.max(0,diff);}
+/* días por medianoches locales: 'YYYY-MM-DD 00:00:00' daba NaN en Safari y "vence hoy" un día antes */
+function diasRestantes(c){return NUC.diasRestantes(c.fechaVence)}
 function renderCliCortesias(cliId){
   const el=document.getElementById('cliCortesias');if(!el)return;
   const lista=cortesiasDeClienta(cliId);
@@ -106,8 +112,10 @@ async function saveCortesiaCli(){
   const hoy=ymd(new Date());const vence=new Date(hoy+'T00:00:00');vence.setDate(vence.getDate()+vig);
   const picked=document.querySelector('.cc-pick-item.sel');
   const obj={negocio_id:NEGOCIO_ID,clienta_id:openCliId,catalogo_id:picked&&picked.dataset.cc?picked.dataset.cc:null,descripcion:desc,vigencia_dias:vig,fecha_inicio:hoy,fecha_vence:ymd(vence),usada:false,notas:document.getElementById('ccCliNotas').value.trim()};
-  try{const {data,error}=await sb.from('cortesias').insert(obj).select().single();if(error)throw error;DB.cortesias.unshift(rowToCortesia(data));}
-  catch(e){toast('Error al guardar');console.error(e);return;}
+  const listo=ocupar('cortesiaCli',document.querySelector('#cortesiaCliSheet .btn-primary'),'Guardando…');if(!listo)return;
+  try{ponerEnCache('cortesias',rowToCortesia(await guardar(sb.from('cortesias').insert(obj).select().single())),true);}
+  catch(e){avisarError(e);return;}
+  finally{listo();}
   document.getElementById('cortesiaCliSheet').classList.remove('show');
   curSheet='cliSheet';requestAnimationFrame(()=>document.getElementById('cliSheet').classList.add('show'));
   renderCliCortesias(openCliId);toast('Cortesía agregada 🎁');
@@ -115,9 +123,24 @@ async function saveCortesiaCli(){
 async function usarCortesia(id){
   const c=DB.cortesias.find(x=>x.id===id);if(!c)return;
   if(!confirm(`¿Marcar "${c.desc}" como usada?`))return;
-  const hoy=ymd(new Date());c.usada=true;c.fechaUso=hoy;
-  try{await sb.from('cortesias').update({usada:true,fecha_uso:hoy}).eq('id',id);}catch(e){console.error(e);}
+  const hoy=ymd(new Date());
+  try{await guardar(sb.from('cortesias').update({usada:true,fecha_uso:hoy}).eq('id',id));}
+  catch(e){avisarError(e);return;}
+  c.usada=true;c.fechaUso=hoy;
   renderCliCortesias(openCliId);toast('Cortesía marcada como usada ✓');
+}
+/* Una cortesía aplicada a una cita se consume cuando la cita queda atendida y
+   vuelve a estar disponible si la cita se cancela, se borra o se le quita.
+   Se recalcula para las cortesías indicadas a partir de las citas del caché. */
+async function sincronizarCortesias(ids){
+  for(const id of new Set((ids||[]).filter(Boolean))){
+    const cor=DB.cortesias.find(x=>x.id===id);if(!cor)continue;
+    const cita=DB.citas.find(c=>c.cortesiaId===id&&c.estado==='atendida');
+    const usada=!!cita,fecha=cita?(cita.fecha||ymd(new Date())):null;
+    if(cor.usada===usada)continue;
+    try{await guardar(sb.from('cortesias').update({usada,fecha_uso:fecha}).eq('id',id));cor.usada=usada;cor.fechaUso=fecha||'';}
+    catch(e){avisarError(e,'La cita se guardó, pero no se pudo actualizar la cortesía.');}
+  }
 }
 /* ============ CORTESÍA EN FORMULARIO DE CITA ============ */
 let apptCortesiaId=null;
@@ -132,7 +155,8 @@ function renderApptCortesias(){
       `<div class="cc-applied">🎁 <b>${cor?esc(cor.desc):'Cortesía'}</b> aplicada${cor&&cor.usada?' · usada ✓':''}<button data-on-click="selectApptCortesia(null,null);renderApptCortesias()" class="cc-quitar">Quitar</button></div>`;
     return;
   }
-  const vigentes=DB.cortesias.filter(c=>c.clientaId===apptSelectedCliId&&isCortesiaVigente(c));
+  // vigentes y sin apartar en otra cita (se consumen hasta que la cita queda atendida)
+  const vigentes=DB.cortesias.filter(c=>c.clientaId===apptSelectedCliId&&isCortesiaVigente(c)&&!DB.citas.some(x=>x.cortesiaId===c.id&&x.id!==editingId&&x.estado!=='cancelada'));
   if(!vigentes.length){wrap.style.display='none';return;}
   wrap.style.display='block';
   const list=document.getElementById('apptCortesiaList');
@@ -200,14 +224,18 @@ async function addEgreso(){
   const fecha=document.getElementById('egresoFecha').value||ymd(new Date());
   if(!concepto){toast('Escribe el concepto');return;}
   if(!monto){toast('Escribe el monto');return;}
-  try{const {data,error}=await sb.from('egresos').insert({negocio_id:NEGOCIO_ID,fecha,concepto,monto}).select().single();if(error)throw error;DB.egresos.unshift(rowToEgreso(data));}
-  catch(e){toast('Error al guardar');console.error(e);return;}
+  if(monto<0){toast('El monto no puede ser negativo');return;}
+  const listo=ocupar('egreso',document.querySelector('.ef-add'));if(!listo)return;
+  try{ponerEnCache('egresos',rowToEgreso(await guardar(sb.from('egresos').insert({negocio_id:NEGOCIO_ID,fecha,concepto,monto}).select().single())),true);}
+  catch(e){avisarError(e);return;}
+  finally{listo();}
   document.getElementById('egresoConcepto').value='';document.getElementById('egresoMonto').value='';
   renderEgresos();toast('Egreso registrado');
 }
 async function deleteEgreso(id){
   if(!confirm('¿Eliminar este gasto?'))return;
-  try{await sb.from('egresos').delete().eq('id',id);}catch(e){console.error(e);}
+  try{await guardar(sb.from('egresos').delete().eq('id',id));}
+  catch(e){avisarError(e,'No se pudo eliminar. Revisa tu conexión.');return;}
   DB.egresos=DB.egresos.filter(e=>e.id!==id);renderEgresos();toast('Eliminado');
 }
 /* ============ PREMIOS (catálogo) ============ */
@@ -253,22 +281,22 @@ async function savePremio(){
   const nombre=document.getElementById('premioNombre').value.trim();
   if(!nombre){toast('Escribe el nombre del premio');return;}
   const obj={nombre,nivel:curPremioNivel,desc:document.getElementById('premioDesc').value.trim()};
+  const listo=ocupar('premio',document.querySelector('#premioSheet .btn-primary'),'Guardando…');if(!listo)return;
   try{
     if(editingPremioId){
-      await sb.from('premios').update(premioToRow(obj)).eq('id',editingPremioId);
+      await guardar(sb.from('premios').update(premioToRow(obj)).eq('id',editingPremioId));
       const p=DB.premios.find(x=>x.id===editingPremioId);if(p)Object.assign(p,obj);
-    }else{
-      const {data,error}=await sb.from('premios').insert(premioToRow(obj)).select().single();
-      if(error)throw error;
-      DB.premios.push(rowToPremio(data));
-    }
-  }catch(e){toast('Error al guardar premio');console.error(e);return;}
+    }else ponerEnCache('premios',rowToPremio(await guardar(sb.from('premios').insert(premioToRow(obj)).select().single())));
+  }catch(e){avisarError(e,'No se pudo guardar el premio. Revisa tu conexión.');return;}
+  finally{listo();}
   renderPremios();closeSheet();toast('Premio guardado');
 }
 async function deletePremio(){
   if(!editingPremioId)return;
   if(!confirm('¿Eliminar este premio?'))return;
-  try{await sb.from('premios').delete().eq('id',editingPremioId);}catch(e){console.error(e);}
-  DB.premios=DB.premios.filter(p=>p.id!==editingPremioId);
+  const id=editingPremioId;
+  try{await guardar(sb.from('premios').delete().eq('id',id));}
+  catch(e){avisarError(e,'No se pudo eliminar el premio. Revisa tu conexión.');return;}
+  DB.premios=DB.premios.filter(p=>p.id!==id);
   renderPremios();closeSheet();toast('Premio eliminado');
 }
