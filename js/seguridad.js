@@ -267,7 +267,7 @@
       g.setAttribute('aria-modal', 'true');
       g.setAttribute('aria-labelledby', 'mfaGateTitulo');
       g.innerHTML = `<div class="mfa-card">
-          <img class="mfa-logo" src="assets/logo.png" alt="Rhēud Beauty">
+          <img class="mfa-logo" src="assets/logo.svg" alt="Rhēud Beauty">
           <span class="ntf-ic">${svg(ICONOS.escudo)}</span>
           <h2 id="mfaGateTitulo">Verificación en dos pasos</h2>
           <p>Escribe el código de 6 dígitos que aparece en tu app de códigos.</p>

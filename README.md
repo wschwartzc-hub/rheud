@@ -65,7 +65,8 @@ Se activa en cada dispositivo por separado. Si se borra la app de la pantalla de
 │   ├── push.js                # Suscripción Web Push (campana)
 │   ├── seguridad.js           # Verificación en dos pasos (TOTP)
 │   └── portal.js              # Portal de la clienta (solo RPC portal_cita / portal_cita_codigo)
-├── assets/                    # Logo e íconos
+├── assets/                    # Logo (logo.svg) e íconos de la app
+├── marca/                     # Kit de marca: logotipo en SVG/PNG, ícono, foto de perfil (ver LEEME)
 ├── vendor/                    # supabase-js, html5-qrcode, qrcodejs
 ├── supabase/
 │   ├── migrations/            # Cambios de base de datos, en orden
