@@ -1,0 +1,21 @@
+# Cabeceras de Netlify (https://docs.netlify.com/routing/headers/)
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Portal de la clienta: solo scripts propios y conexión a Supabase.
+/portal.html
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src https://wrplznjgravcnxkzfarn.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+/portal
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src https://wrplznjgravcnxkzfarn.supabase.co; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+
+# Librerías con versión en la ruta: se pueden guardar en caché para siempre.
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=604800
