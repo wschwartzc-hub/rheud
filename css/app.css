@@ -783,3 +783,26 @@ b,strong{font-weight:800}
 .t-pers{background:var(--panel);color:var(--ink);border:1px dashed var(--line2)}
 .tl-busy.pers{background:repeating-linear-gradient(135deg,var(--line2) 0 4px,var(--panel) 4px 8px)}
 .empty-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+
+/* ===== Bandeja de avisos (la campana) ===== */
+.ib-num{position:absolute;top:3px;right:1px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;border:2px solid var(--bg);background:var(--wine);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center}
+.av-barra{display:flex;justify-content:flex-end;margin:-8px 0 2px}
+.av-dia{margin:14px 2px 6px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.av{display:flex;align-items:flex-start;gap:12px;width:100%;padding:12px;margin:0 0 6px;border:1px solid var(--line);border-radius:16px;background:var(--bg);text-align:left}
+.av.nueva{background:var(--card);border-color:var(--line2);box-shadow:inset 3px 0 0 var(--wine)}
+.av:active{background:var(--panel)}
+.av-ic{flex:none;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--panel);color:var(--wine)}
+.av-ic.t-evento{color:var(--ink2)}
+.av-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.av-t{font-size:15px;font-weight:700;color:var(--ink)}
+.av.nueva .av-t{font-weight:800}
+.av-c{font-size:14px;line-height:1.4;color:var(--ink2)}
+.av-h{margin-top:2px;font-size:12px;font-weight:600;color:var(--muted)}
+.av-dot{flex:none;width:10px;height:10px;margin-top:6px;border-radius:50%;background:var(--wine)}
+.av-push{display:flex;align-items:center;gap:12px;padding:12px;margin:0 0 10px;border-radius:16px;background:var(--panel)}
+.av-push .av-ic{background:var(--card)}
+.av-push-tx{flex:1;min-width:0}
+.av-push-tx b{display:block;font-size:14px}
+.av-push-tx small{display:block;font-size:13px;color:var(--muted)}
+.av-vacio{max-width:300px;font-size:14px;line-height:1.5}
+.acc-hint{display:block;font-size:13px;color:var(--muted)}

@@ -12,12 +12,30 @@
   // cambiarla también en sw.js.
   const VAPID_PUBLICA = 'BAd_ntg7CVK5fkBBpbAD8rLlznVl27BJku_aKsYERCY4Z2_pwu9GSsCgytUXsEvgED7jOqzfr64xnNocAjgJpaw';
   const FUNCION = 'rheud-push';
-  const PREFS_DEFAULT = { recordatorio: true, cambios: true, resumen: true, confirmar: true };
+  /* Ajustes de avisos de cada persona (tabla notif_prefs). Valen para la
+     bandeja de la campana y para el push de todos sus dispositivos. */
+  const PREFS_DEFAULT = {
+    recordatorio: true, recordatorio_min: 30, cambios: true,
+    resumen: true, resumen_hora: '08:00', confirmar: true, confirmar_hora: '18:00',
+  };
+  const CAMPOS = Object.keys(PREFS_DEFAULT);
+  const MINUTOS = [10, 15, 30, 45, 60, 90, 120, 180];
+  // horas cada 30 min: el servidor revisa cada 15 min
+  const horas = (desde, hasta) => {
+    const out = [];
+    for (let m = desde * 60; m <= hasta * 60; m += 30) out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+    return out;
+  };
+  const fmtMin = (m) => (m < 60 ? `${m} min` : (m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`));
+  const fmtHora = (h) => { const [a, b] = String(h).split(':').map(Number); return `${a}:${String(b).padStart(2, '0')}`; };
   const TIPOS = [
-    { k: 'recordatorio', t: 'Recordatorio de cita', d: '30 minutos antes de cada cita.' },
-    { k: 'cambios', t: 'Citas nuevas o cambios', d: 'Cuando se agenda, mueve o cancela una cita desde otro dispositivo.' },
-    { k: 'resumen', t: 'Resumen del día', d: 'A las 8:00: tus citas de hoy y lo que esperas cobrar.' },
-    { k: 'confirmar', t: 'Confirmar citas de mañana', d: 'A las 18:00, si quedan citas de mañana sin confirmar.' },
+    { k: 'recordatorio', t: 'Recordatorio de cita', d: (p) => `${fmtMin(p.recordatorio_min)} antes de cada cita y de tus eventos personales con aviso.`,
+      campo: 'recordatorio_min', etiqueta: 'Cuánto antes', opciones: MINUTOS.map((m) => [m, `${fmtMin(m)} antes`]) },
+    { k: 'cambios', t: 'Citas nuevas o cambios', d: () => 'Cuando otra persona del estudio agenda, mueve o cancela una cita.' },
+    { k: 'resumen', t: 'Resumen del día', d: (p) => `A las ${fmtHora(p.resumen_hora)}: tus citas de hoy y lo que esperas cobrar.`,
+      campo: 'resumen_hora', etiqueta: 'A qué hora', opciones: horas(5, 12).map((h) => [h, fmtHora(h)]) },
+    { k: 'confirmar', t: 'Confirmar citas de mañana', d: (p) => `A las ${fmtHora(p.confirmar_hora)}, si quedan citas de mañana sin confirmar.`,
+      campo: 'confirmar_hora', etiqueta: 'A qué hora', opciones: horas(12, 22).map((h) => [h, fmtHora(h)]) },
   ];
   const ETIQUETAS = {
     activadas: 'Activadas',
@@ -43,7 +61,6 @@
     ajustes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     chevron: '<path d="m9 6 6 6-6 6"/>',
   };
-  const ICONO_TIPO = { recordatorio: 'reloj', cambios: 'cambio', resumen: 'sol', confirmar: 'check' };
 
   /* ---------------- entorno ---------------- */
 
@@ -293,7 +310,7 @@
     try { await guardar(sub); } catch (e) { console.warn('No se pudo sincronizar la suscripción push:', e); }
   }
 
-  /* ---------------- hoja #notifSheet ---------------- */
+  /* ---------------- hoja #notifSheet: ajustes de notificaciones ---------------- */
 
   let hoja = null;
   let prefs = { ...PREFS_DEFAULT };
@@ -306,8 +323,12 @@
     hoja.setAttribute('role', 'dialog');
     hoja.setAttribute('aria-modal', 'true');
     hoja.setAttribute('aria-labelledby', 'notifTitulo');
-    hoja.innerHTML = '<div class="grab"></div><h3 id="notifTitulo">Notificaciones</h3>' +
+    hoja.innerHTML = '<div class="grab"></div><h3 id="notifTitulo">Ajustes de notificaciones</h3>' +
       '<div class="ntf-cuerpo" id="notifCuerpo" aria-live="polite"></div>' +
+      '<h4 class="ntf-sub">Qué avisos recibir</h4>' +
+      '<div class="ntf-togs" id="notifPrefs"></div>' +
+      '<p class="ntf-nota">Los avisos también quedan en la campana de la app, aunque este dispositivo no tenga las notificaciones activadas.</p>' +
+      '<div id="notifAcciones"></div>' +
       '<button type="button" class="btn btn-line" data-ntf="cerrar">Cerrar</button>';
     const toastEl = document.getElementById('toast');
     if (toastEl && toastEl.parentNode === document.body) document.body.insertBefore(hoja, toastEl);
@@ -325,7 +346,7 @@
         <li><span class="ntf-ic">${svg(ICONOS.compartir)}</span><span class="ntf-tx">Toca <b>Compartir</b> ${svg(ICONOS.compartir, 'aj-svg-mini')} en la barra del navegador. Si no lo ves, toca primero <b>Más</b> ${svg(ICONOS.mas, 'aj-svg-mini')}.</span></li>
         <li><span class="ntf-ic">${svg(ICONOS.agregar)}</span><span class="ntf-tx">Elige <b>Agregar a pantalla de inicio</b> (desliza hacia abajo si no aparece). Si ves <b>Abrir como app web</b>, déjalo activado y toca <b>Agregar</b>.</span></li>
         <li><span class="ntf-ic">${svg(ICONOS.app)}</span><span class="ntf-tx">Abre <b>Rhēud</b> desde el nuevo icono e inicia sesión otra vez: la app instalada tiene su propia sesión.</span></li>
-        <li><span class="ntf-ic">${svg(ICONOS.campana)}</span><span class="ntf-tx">Ahí entra a <b>Notificaciones</b> y toca <b>Activar notificaciones</b>.</span></li>
+        <li><span class="ntf-ic">${svg(ICONOS.campana)}</span><span class="ntf-tx">Ahí entra a <b>Más</b> → <b>Notificaciones</b> y toca <b>Activar notificaciones</b>.</span></li>
       </ol>
       <p class="ntf-nota">Necesitas iOS 16.4 o más reciente.${otroNavegador ? ' Si en este navegador no aparece la opción, abre esta página en Safari.' : ''}</p>`;
   }
@@ -354,39 +375,50 @@
   }
 
   function htmlDesactivadas() {
-    const lista = TIPOS.map((t) => `<li>${svg(ICONOS[ICONO_TIPO[t.k]])}<span><b>${t.t}</b><small>${t.d}</small></span></li>`).join('');
-    return `<p class="ntf-intro">Recibe avisos en este dispositivo aunque la app esté cerrada:</p>
-      <ul class="ntf-lista">${lista}</ul>
+    return `<div class="ntf-estado neutro">${svg(ICONOS.campanaNo)}<span>Desactivadas en este dispositivo<small>Recibe los avisos aunque la app esté cerrada.</small></span></div>
       <button type="button" class="btn btn-primary" data-ntf="activar">Activar notificaciones</button>
-      <p class="ntf-nota">${esIOS() ? 'Tu iPhone te pedirá permiso: toca <b>Permitir</b>.' : 'El navegador te pedirá permiso: elige <b>Permitir</b>.'} Después podrás elegir qué avisos recibir.</p>`;
+      <p class="ntf-nota">${esIOS() ? 'Tu iPhone te pedirá permiso: toca <b>Permitir</b>.' : 'El navegador te pedirá permiso: elige <b>Permitir</b>.'}</p>`;
   }
 
   function htmlActivadas() {
-    const togs = TIPOS.map((t) => `<label class="ntf-tog"><span class="ntf-tog-tx"><b>${t.t}</b><small>${t.d}</small></span>` +
-      `<input type="checkbox" role="switch" data-pref="${t.k}"${prefs[t.k] !== false ? ' checked' : ''} disabled><span class="ntf-sw" aria-hidden="true"></span></label>`).join('');
-    return `<div class="ntf-estado ok">${svg(ICONOS.check)}<span>Activadas en este dispositivo<small>${nombreDispositivo()}</small></span></div>
-      <div class="ntf-togs">${togs}</div>
-      <button type="button" class="btn btn-line" data-ntf="probar">Enviar notificación de prueba</button>
-      <button type="button" class="btn btn-ghost aj-peligro" data-ntf="desactivar">Desactivar en este dispositivo</button>`;
+    return `<div class="ntf-estado ok">${svg(ICONOS.check)}<span>Activadas en este dispositivo<small>${nombreDispositivo()}</small></span></div>`;
+  }
+
+  /* interruptor por tipo + su ajuste (cuánto antes / a qué hora) */
+  function htmlPrefs() {
+    return TIPOS.map((t) => {
+      const on = prefs[t.k] !== false;
+      const extra = t.campo ? `<div class="ntf-extra"${on ? '' : ' hidden'}><label for="ntf-${t.campo}">${t.etiqueta}</label>
+          <select id="ntf-${t.campo}" data-pref-val="${t.campo}">${t.opciones.map(([v, txt]) =>
+            `<option value="${v}"${String(prefs[t.campo]) === String(v) ? ' selected' : ''}>${txt}</option>`).join('')}${
+            t.opciones.some(([v]) => String(v) === String(prefs[t.campo])) ? '' : `<option value="${prefs[t.campo]}" selected>${t.campo === 'recordatorio_min' ? fmtMin(prefs[t.campo]) + ' antes' : fmtHora(prefs[t.campo])}</option>`}</select></div>` : '';
+      return `<div class="ntf-pref"><label class="ntf-tog"><span class="ntf-tog-tx"><b>${t.t}</b><small id="ntf-d-${t.k}">${t.d(prefs)}</small></span>` +
+        `<input type="checkbox" role="switch" data-pref="${t.k}"${on ? ' checked' : ''}><span class="ntf-sw" aria-hidden="true"></span></label>${extra}</div>`;
+    }).join('');
   }
 
   async function cargarPrefs() {
-    const c = cliente();
-    const sub = await suscripcionActual();
-    if (!c || !sub) return;
+    const c = cliente(), neg = negocio(), u = await usuaria();
+    if (!c || !neg || !u) return;
     try {
-      const { data, error } = await c.from('push_subs').select('prefs').eq('endpoint', sub.endpoint).maybeSingle();
+      const { data, error } = await c.from('notif_prefs').select('*').eq('negocio_id', neg).eq('user_id', u.id).maybeSingle();
       if (error) throw error;
-      if (data && data.prefs) prefs = { ...PREFS_DEFAULT, ...data.prefs };
-      else { prefs = { ...PREFS_DEFAULT }; await guardar(sub); }
+      prefs = { ...PREFS_DEFAULT };
+      if (data) CAMPOS.forEach((k) => { if (data[k] != null) prefs[k] = data[k]; });
     } catch (e) {
-      console.warn('No se pudieron leer las preferencias:', e);
+      console.warn('No se pudieron leer los ajustes de avisos:', e);
     }
-    if (!hoja) return;
-    hoja.querySelectorAll('input[data-pref]').forEach((i) => {
-      i.checked = prefs[i.dataset.pref] !== false;
-      i.disabled = false;
-    });
+    const cont = hoja && hoja.querySelector('#notifPrefs');
+    if (cont) cont.innerHTML = htmlPrefs();
+  }
+
+  async function guardarPrefs() {
+    const c = cliente(), neg = negocio(), u = await usuaria();
+    if (!c || !neg || !u) throw new Error('Inicia sesión para cambiar los avisos.');
+    const fila = { user_id: u.id, negocio_id: neg };
+    CAMPOS.forEach((k) => { fila[k] = prefs[k]; });
+    const { error } = await c.from('notif_prefs').upsert(fila, { onConflict: 'user_id,negocio_id' });
+    if (error) throw error;
   }
 
   async function pintar() {
@@ -399,7 +431,14 @@
     else if (est === 'no-soportado') c.innerHTML = htmlNoSoportado();
     else if (est === 'bloqueadas') c.innerHTML = htmlBloqueadas();
     else if (est === 'desactivadas') c.innerHTML = htmlDesactivadas();
-    else { c.innerHTML = htmlActivadas(); cargarPrefs(); }
+    else c.innerHTML = htmlActivadas();
+    const acc = hoja.querySelector('#notifAcciones');
+    if (acc) acc.innerHTML = est === 'activadas'
+      ? '<button type="button" class="btn btn-line" data-ntf="probar">Enviar notificación de prueba</button>' +
+        '<button type="button" class="btn btn-ghost aj-peligro" data-ntf="desactivar">Desactivar en este dispositivo</button>'
+      : '';
+    const pr = hoja.querySelector('#notifPrefs');
+    if (pr && !pr.innerHTML) pr.innerHTML = htmlPrefs();
     return est;
   }
 
@@ -411,6 +450,7 @@
   async function abrir() {
     crearHoja();
     await pintar();
+    cargarPrefs();
     if (typeof window.showSheet === 'function') window.showSheet('notifSheet');
     else hoja.classList.add('show');
   }
@@ -459,30 +499,33 @@
     }
   }
 
+  /* cambia un interruptor o un ajuste y lo guarda; si falla, regresa como estaba */
   async function alCambiar(e) {
-    const inp = e.target.closest('input[data-pref]');
-    if (!inp) return;
-    const c = cliente();
-    const sub = await suscripcionActual();
-    if (!c || !sub) return;
+    const tog = e.target.closest('input[data-pref]');
+    const sel = e.target.closest('select[data-pref-val]');
+    if (!tog && !sel) return;
     const anterior = { ...prefs };
-    prefs = { ...prefs, [inp.dataset.pref]: inp.checked };
-    inp.disabled = true;
+    if (tog) prefs = { ...prefs, [tog.dataset.pref]: tog.checked };
+    else {
+      const k = sel.dataset.prefVal;
+      prefs = { ...prefs, [k]: k === 'recordatorio_min' ? Number(sel.value) : sel.value };
+    }
+    const el = tog || sel;
+    el.disabled = true;
     try {
-      const { data, error } = await c.from('push_subs').update({ prefs }).eq('endpoint', sub.endpoint).select('id');
-      if (error) throw error;
-      if (!data || !data.length) {
-        await guardar(sub);
-        const r = await c.from('push_subs').update({ prefs }).eq('endpoint', sub.endpoint);
-        if (r.error) throw r.error;
-      }
+      await guardarPrefs();
     } catch (err) {
       console.error(err);
       prefs = anterior;
-      inp.checked = prefs[inp.dataset.pref] !== false;
       avisar('No se guardó. Revisa tu conexión.');
     } finally {
-      inp.disabled = false;
+      el.disabled = false;
+      const cont = hoja.querySelector('#notifPrefs');
+      if (cont) {
+        cont.innerHTML = htmlPrefs();
+        const mismo = cont.querySelector(tog ? `input[data-pref="${tog.dataset.pref}"]` : `select[data-pref-val="${sel.dataset.prefVal}"]`);
+        if (mismo) mismo.focus({ preventScroll: true });
+      }
     }
   }
 
@@ -509,18 +552,27 @@
 
   /* ---------------- abrir desde una notificación ---------------- */
 
+  const PARAMS_DESTINO = ['abrir', 'cita', 'evento', 'n'];
   function manejarDestino(url) {
     let u;
     try { u = new URL(url || location.href, location.href); } catch (_) { return; }
-    if (u.searchParams.get('abrir') !== 'confirmar') return;
+    const q = u.searchParams;
+    if (!PARAMS_DESTINO.some((k) => q.has(k))) return;
     // Si la app sigue en el login o cargando, espera a que esté lista.
     cuandoAppLista(() => {
-      if (typeof window.openConfirmaciones !== 'function') return;
-      try { window.openConfirmaciones(); } catch (e) { console.error(e); }
+      const av = window.RheudAvisos;
+      try {
+        if (q.get('n') && av) av.marcarLeida(q.get('n'));
+        const destino = { cita: q.get('cita'), evento: q.get('evento'), confirmar: q.get('abrir') === 'confirmar' };
+        if (av && (destino.cita || destino.evento || destino.confirmar)) av.irA(destino);
+        else if (destino.confirmar && typeof window.openConfirmaciones === 'function') window.openConfirmaciones();
+      } catch (e) { console.error(e); }
     });
   }
 
+  /* el número del ícono de la app es el de avisos sin leer (js/app/17-avisos.js) */
   function limpiarBadge() {
+    if (window.RheudAvisos) { window.RheudAvisos.refrescarBadge(); return; }
     if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
   }
 
@@ -559,12 +611,13 @@
     limpiarBadge();
     sincronizar();
     estado().then(reflejarEstado);
-    if (/[?&]abrir=/.test(location.search)) {
+    if (/[?&](abrir|cita|evento|n)=/.test(location.search)) {
       manejarDestino(location.href);
       try {
-        const u = new URL(location.href);
-        u.searchParams.delete('abrir');
-        history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+        // a mano: URLSearchParams convertiría "?app" en "?app="
+        const resto = location.search.replace(/^\?/, '').split('&')
+          .filter((x) => x && !PARAMS_DESTINO.includes(x.split('=')[0])).join('&');
+        history.replaceState(history.state, '', location.pathname + (resto ? '?' + resto : '') + location.hash);
       } catch (_) { /* sin history */ }
     }
   });

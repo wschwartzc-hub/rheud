@@ -373,7 +373,7 @@ function renderLista(){
     const r=evRango(e);
     const tags=['<span class="tag t-pers">Personal</span>'];
     if(!e.bloquea)tags.push('<span class="tag t-soft">No aparta horario</span>');
-    if(e.recordar&&e.hora)tags.push('<span class="tag t-soft">Aviso 30 min antes</span>');
+    if(e.recordar&&e.hora)tags.push('<span class="tag t-soft">Con aviso</span>');
     return `<button type="button" class="tl tl-pers" data-on-click="editEvento('${e.id}')">
       <span class="tm">${r?hm(r.s):'Todo'}<small>${r?hm(r.e):'el día'}</small></span>
       <span class="bar"></span>

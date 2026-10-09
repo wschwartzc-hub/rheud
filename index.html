@@ -49,7 +49,7 @@
     <img class="logo" src="assets/logo.svg" alt="Rhēud Beauty">
     <div class="tb-right">
       <span class="sb-conn" id="sbConn" role="status"><span class="sb-conndot" aria-hidden="true"></span><span id="sbConnTxt">—</span></span>
-      <button type="button" id="btnNotif" class="icon-btn" aria-label="Notificaciones" data-on-click="abrirNotificaciones()"><span data-icon="bell"></span></button>
+      <button type="button" id="btnNotif" class="icon-btn" aria-label="Notificaciones" data-on-click="abrirNotificaciones()"><span data-icon="bell"></span><span class="ib-num" id="notifNum" aria-hidden="true" hidden></span></button>
     </div>
     <!-- reloj, clima y versión: los siguen escribiendo las funciones de arranque; no se muestran en la cabecera C -->
     <span id="sbClock" hidden></span><span id="sbWeather" hidden></span><span id="sbVer" hidden></span>
@@ -388,6 +388,15 @@
   <button type="button" class="btn btn-ghost" id="apptDelBtn" style="display:none" data-on-click="deleteAppt()">Eliminar cita</button>
 </div>
 
+<!-- HOJA: BANDEJA DE AVISOS (la campana; los ajustes viven en Más › Notificaciones) -->
+<div class="sheet" id="avisosSheet" role="dialog" aria-modal="true" aria-labelledby="avisosTitulo">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sheet-head"><h2 id="avisosTitulo">Notificaciones</h2><button type="button" class="icon-btn" aria-label="Ajustes de notificaciones" data-on-click="abrirAjustesAvisos()"><span data-icon="gear"></span></button><button type="button" class="sheet-x" aria-label="Cerrar" data-sheet-close data-on-click="closeSheet()"><span data-icon="x"></span></button></div>
+  <div class="av-barra"><button type="button" class="link-btn" id="avisosTodo" hidden data-on-click="marcarTodasLeidas()">Marcar todo como leído</button></div>
+  <div id="avisosPush"></div>
+  <div id="avisosLista" aria-live="polite"></div>
+</div>
+
 <!-- HOJA: EVENTO PERSONAL (no es cita: no cuenta en totales, cobros ni estadísticas) -->
 <div class="sheet" id="eventoSheet" role="dialog" aria-modal="true" aria-labelledby="evSheetTitle">
   <div class="grab" aria-hidden="true"></div>
@@ -405,7 +414,7 @@
     <div class="field"><label for="evHoraFin">A</label><input type="time" id="evHoraFin" data-on-change="renderEventoAviso()"></div>
   </div>
   <div class="acc-check"><input type="checkbox" id="evBloquea" checked data-on-change="renderEventoAviso()"><label for="evBloquea">Apartar este horario: no se sugieren citas encima</label></div>
-  <div class="acc-check" id="evRecordarWrap"><input type="checkbox" id="evRecordar" checked><label for="evRecordar">Avisarme 30 min antes</label></div>
+  <div class="acc-check" id="evRecordarWrap"><input type="checkbox" id="evRecordar" checked><label for="evRecordar">Avisarme antes de que empiece <small class="acc-hint">con el tiempo de tu recordatorio de citas (Más › Notificaciones)</small></label></div>
   <div id="evAviso"></div>
   <div class="field"><label for="evNotas">Notas (opcional)</label><textarea id="evNotas" maxlength="2000" placeholder="Dirección, qué llevar…"></textarea></div>
   <button type="button" class="btn btn-primary" id="evSaveBtn" data-on-click="saveEvento()">Guardar evento</button>
@@ -789,6 +798,7 @@
 <script src="js/app/14-mas.js"></script>
 <script src="js/app/15-accesibilidad.js"></script>
 <script src="js/app/16-eventos.js"></script>
+<script src="js/app/17-avisos.js"></script>
 <script src="js/push.js"></script>
 <script src="js/seguridad.js"></script>
 </body>

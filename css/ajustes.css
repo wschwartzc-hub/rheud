@@ -94,3 +94,14 @@
 .mfa-card .field { text-align: left; }
 .mfa-sep { margin-top: 14px !important; }
 .ntf-cuerpo .btn + .ntf-nota { margin-top: 10px; }
+
+/* Ajustes por tipo de aviso: interruptor + cuánto antes / a qué hora */
+.ntf-sub { margin: 20px 0 2px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--aj-tenue); }
+.ntf-pref { border-bottom: 1px solid var(--aj-borde); }
+.ntf-pref .ntf-tog { border-bottom: 0; }
+.ntf-extra { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 0 12px; }
+.ntf-extra[hidden] { display: none; }
+.ntf-extra label { font-size: 14px; color: var(--aj-tenue); }
+.ntf-extra select { min-height: 44px; padding: 0 12px; border: 1px solid var(--aj-borde); border-radius: 12px; background: #fff; color: var(--aj-tinta); font: inherit; font-size: 16px; }
+.ntf-extra select:disabled, .ntf-tog input:disabled + .ntf-sw { opacity: .55; }
+#notifAcciones .btn { margin-top: 10px; }

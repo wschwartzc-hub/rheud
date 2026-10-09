@@ -3,7 +3,11 @@
    'YYYY-MM-DD' y hora 'HH:MM' locales. */
 
 export const ZONA = 'America/Monterrey';
-export const PREFS_DEFAULT = Object.freeze({ recordatorio: true, cambios: true, resumen: true, confirmar: true });
+/* Ajustes de avisos de cada persona (tabla notif_prefs); sin fila, estos. */
+export const PREFS_DEFAULT = Object.freeze({
+  recordatorio: true, recordatorio_min: 30, cambios: true,
+  resumen: true, resumen_hora: '08:00', confirmar: true, confirmar_hora: '18:00',
+});
 export const URL_APP = '/?app';
 
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -121,11 +125,26 @@ export function refRecordatorio(c) {
 
 export function msgRecordatorio(c, nombre) {
   return {
-    title: `Cita en ${c.faltan != null ? c.faltan : 30} min`,
+    title: `Cita en ${fmtFaltan(c.faltan != null ? c.faltan : 30)}`,
     body: unirPartes(fmtHora(c.hora), nombreCorto(nombre), serviciosTexto(c.items)),
     tag: `cita-${c.id}`,
-    url: URL_APP,
+    url: urlCita(c.id),
   };
+}
+
+/* 30 → '30 min', 60 → '1 h', 90 → '1 h 30 min' */
+export function fmtFaltan(min) {
+  const m = Math.max(0, Math.round(Number(min) || 0));
+  if (m < 60) return `${m} min`;
+  return m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`;
+}
+
+export function urlCita(id) { return `${URL_APP}&cita=${encodeURIComponent(id)}`; }
+export function urlEvento(id) { return `${URL_APP}&evento=${encodeURIComponent(id)}`; }
+/* La notificación lleva el id del aviso de la bandeja para marcarlo leído. */
+export function urlConAviso(url, id) {
+  const u = String(url || URL_APP);
+  return `${u}${u.includes('?') ? '&' : '?'}n=${encodeURIComponent(id)}`;
 }
 
 /* Eventos personales: avisan solo a quien los creó. */
@@ -136,10 +155,10 @@ export function refRecordatorioEvento(e) {
 export function msgRecordatorioEvento(e) {
   const t = String((e && e.titulo) || '').trim() || 'Evento personal';
   return {
-    title: `En ${e.faltan != null ? e.faltan : 30} min: ${t.length > 60 ? t.slice(0, 59) + '…' : t}`,
+    title: `En ${fmtFaltan(e.faltan != null ? e.faltan : 30)}: ${t.length > 60 ? t.slice(0, 59) + '…' : t}`,
     body: `${fmtHora(e.hora)} · Evento personal`,
     tag: `evento-${e.id}`,
-    url: URL_APP,
+    url: urlEvento(e.id),
   };
 }
 
@@ -199,7 +218,7 @@ export function tipoCambio(op, antes, cita, hoy) {
 export function msgCambio(tipo, cita, antes, nombre, hoy) {
   const quien = nombreCorto(nombre);
   const cuando = `${fmtDia(cita.fecha, hoy)} ${fmtHora(cita.hora)}`.trim();
-  const base = { tag: `cita-${cita.id}`, url: URL_APP };
+  const base = { tag: `cita-${cita.id}`, url: urlCita(cita.id) };
   switch (tipo) {
     case 'nueva':
       return { ...base, title: 'Cita nueva', body: unirPartes(cuando, quien, serviciosTexto(cita.items)) };
@@ -224,10 +243,37 @@ export function msgPrueba() {
 
 /* ---------------- suscripciones ---------------- */
 
-/* Todos los tipos vienen activados: solo se omite si la usuaria lo apagó. */
-export function quiere(sub, tipo) {
-  const p = sub && sub.prefs && typeof sub.prefs === 'object' ? sub.prefs : {};
-  return p[tipo] !== false;
+/* Ajustes de una persona: lo guardado (fila de notif_prefs) sobre los de
+   fábrica, con valores fuera de rango corregidos. */
+export function prefsCon(fila) {
+  const f = fila && typeof fila === 'object' ? fila : {};
+  const sino = (v, d) => (typeof v === 'boolean' ? v : d);
+  const hora = (v, d) => (horaAMin(v) != null && /^\d{2}:\d{2}$/.test(String(v)) ? String(v) : d);
+  const min = Number(f.recordatorio_min);
+  return {
+    recordatorio: sino(f.recordatorio, PREFS_DEFAULT.recordatorio),
+    recordatorio_min: Number.isFinite(min) ? Math.min(240, Math.max(5, Math.round(min))) : PREFS_DEFAULT.recordatorio_min,
+    cambios: sino(f.cambios, PREFS_DEFAULT.cambios),
+    resumen: sino(f.resumen, PREFS_DEFAULT.resumen),
+    resumen_hora: hora(f.resumen_hora, PREFS_DEFAULT.resumen_hora),
+    confirmar: sino(f.confirmar, PREFS_DEFAULT.confirmar),
+    confirmar_hora: hora(f.confirmar_hora, PREFS_DEFAULT.confirmar_hora),
+  };
+}
+
+/* Minutos [desde, hasta] antes de la cita en los que toca avisar. Las corridas
+   son cada 5 min; 10 min de margen cubren una corrida atrasada (el aviso no se
+   repite: la bandeja guarda uno por persona y cita). */
+export function ventanaRecordatorio(min) {
+  const m = Math.max(5, Number(min) || PREFS_DEFAULT.recordatorio_min);
+  return [m - 9, m + 1];
+}
+
+/* ¿Ya es la hora elegida (y no han pasado más de `margen` minutos)? Así, si la
+   persona cambia la hora a una que ya pasó hace rato, no le llega tarde. */
+export function horaLlego(hora, minAhora, margen = 120) {
+  const m = horaAMin(hora);
+  return m != null && minAhora >= m && minAhora < m + margen;
 }
 
 /* Solo se envía a servicios push conocidos (evita que una fila manipulada
