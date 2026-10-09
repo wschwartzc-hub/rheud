@@ -7,8 +7,10 @@
 //  · El service worker llama a {tarea:'renovar'} cuando el navegador cambia la
 //    suscripción; la prueba de propiedad es conocer el endpoint anterior.
 //
-// Tareas: recordatorios de citas y eventos personales (cada 5 min), resumen (7:55), confirmar (17:55),
-// cambio (trigger de citas), probar, renovar.
+// Tareas: recordatorios de citas y eventos personales (cada 5 min), resumen y
+// confirmar (cada 15 min, a la hora que eligió cada persona), cambio (trigger de
+// citas), probar, renovar. Cada aviso queda en la bandeja (tabla notificaciones)
+// de la persona y además llega por push a sus dispositivos.
 //
 // Web Push (RFC 8291 aes128gcm + VAPID RFC 8292) está implementado con
 // WebCrypto en webpush.mjs: sin dependencias de Node y probado con el vector
@@ -18,10 +20,9 @@ import { createClient } from '@supabase/supabase-js';
 import { enviarPush } from './webpush.mjs';
 import * as L from './logica.mjs';
 
-type Prefs = Record<string, boolean>;
 type Sub = {
   id: string; negocio_id: string; user_id: string; endpoint: string;
-  p256dh: string; auth: string; prefs: Prefs | null; fallos: number | null;
+  p256dh: string; auth: string; fallos: number | null;
 };
 type Vapid = { publicKey: string; privateKey: string; subject: string };
 type Config = { vapid: Vapid; secreto: string };
@@ -40,7 +41,7 @@ const admin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
 
-const SUB_COLS = 'id, negocio_id, user_id, endpoint, p256dh, auth, prefs, fallos';
+const SUB_COLS = 'id, negocio_id, user_id, endpoint, p256dh, auth, fallos';
 const MAX_FALLOS = 30; // fallos seguidos (no 404/410) antes de dar por muerta una suscripción
 
 /* ---------------- configuración (Vault) ---------------- */
@@ -65,24 +66,30 @@ async function config(): Promise<Config> {
 
 /* ---------------- datos ---------------- */
 
-async function negociosConSubs(): Promise<string[]> {
-  const { data, error } = await admin.from('push_subs').select('negocio_id');
+type Prefs = {
+  recordatorio: boolean; recordatorio_min: number; cambios: boolean;
+  resumen: boolean; resumen_hora: string; confirmar: boolean; confirmar_hora: string;
+};
+type Miembro = { user_id: string; prefs: Prefs };
+
+/* Negocios con alguien adentro (miembros). */
+async function negociosActivos(): Promise<string[]> {
+  const { data, error } = await admin.from('miembros').select('negocio_id').not('user_id', 'is', null);
   if (error) throw error;
-  return [...new Set((data ?? []).map((r: { negocio_id: string }) => r.negocio_id))];
+  return [...new Set((data ?? []).map((r: { negocio_id: string }) => r.negocio_id).filter(Boolean))];
 }
 
-/* Suscripciones de un negocio que quieren `tipo`, solo de usuarias que siguen
-   siendo miembros (si quitan a alguien del estudio deja de recibir avisos). */
-async function subsDe(negocio: string, tipo: string, excepto: string | null = null): Promise<Sub[]> {
-  const [s, m] = await Promise.all([
-    admin.from('push_subs').select(SUB_COLS).eq('negocio_id', negocio),
+/* Miembros del negocio con sus ajustes de avisos (o los de fábrica). */
+async function miembrosDe(negocio: string): Promise<Miembro[]> {
+  const [m, p] = await Promise.all([
     admin.from('miembros').select('user_id').eq('negocio_id', negocio),
+    admin.from('notif_prefs').select('*').eq('negocio_id', negocio),
   ]);
-  if (s.error) throw s.error;
   if (m.error) throw m.error;
-  const miembros = new Set((m.data ?? []).map((r: { user_id: string }) => r.user_id));
-  return ((s.data ?? []) as Sub[]).filter((x) =>
-    miembros.has(x.user_id) && x.user_id !== excepto && L.quiere(x, tipo));
+  if (p.error) throw p.error;
+  const prefs = new Map((p.data ?? []).map((r: Record<string, unknown>) => [r.user_id as string, r]));
+  const ids = [...new Set((m.data ?? []).map((r: { user_id: string | null }) => r.user_id).filter((x): x is string => !!x))];
+  return ids.map((id) => ({ user_id: id, prefs: L.prefsCon(prefs.get(id)) as Prefs }));
 }
 
 async function nombresDe(ids: (string | null)[]): Promise<Map<string, string>> {
@@ -91,19 +98,6 @@ async function nombresDe(ids: (string | null)[]): Promise<Map<string, string>> {
   const { data, error } = await admin.from('clientas').select('id, nombre').in('id', unicos);
   if (error) throw error;
   return new Map((data ?? []).map((r: { id: string; nombre: string }) => [r.id, r.nombre]));
-}
-
-/* Registra (tipo, ref) en push_log; false si ya se había enviado. */
-async function reclamar(negocio: string, tipo: string, ref: string): Promise<boolean> {
-  const { data, error } = await admin.from('push_log')
-    .upsert({ negocio_id: negocio, tipo, ref }, { onConflict: 'tipo,ref', ignoreDuplicates: true })
-    .select('id');
-  if (error) throw error;
-  return (data?.length ?? 0) > 0;
-}
-
-async function soltar(tipo: string, ref: string) {
-  await admin.from('push_log').delete().eq('tipo', tipo).eq('ref', ref);
 }
 
 /* ---------------- envío ---------------- */
@@ -137,79 +131,121 @@ async function enviarATodas(subs: Sub[], msg: Mensaje, vapid: Vapid, op: Opcione
   return out;
 }
 
+/* Guarda el aviso en la bandeja de cada destinataria (una sola vez por
+   persona, tipo y ref) y lo manda por push a sus dispositivos. Quien ya lo
+   tenía no lo vuelve a recibir, así que las corridas repetidas no duplican. */
+async function notificar(
+  negocio: string, usuarias: string[], tipo: string, ref: string, msg: Mensaje,
+  extra: { cita_id?: string; evento_id?: string }, vapid: Vapid, op: Opciones,
+): Promise<{ nuevas: number; enviadas: number }> {
+  if (!usuarias.length) return { nuevas: 0, enviadas: 0 };
+  const filas = usuarias.map((u) => ({
+    negocio_id: negocio, user_id: u, tipo, ref,
+    titulo: msg.title.slice(0, 200), cuerpo: (msg.body ?? '').slice(0, 1000), url: msg.url ?? L.URL_APP, ...extra,
+  }));
+  const { data, error } = await admin.from('notificaciones')
+    .upsert(filas, { onConflict: 'user_id,tipo,ref', ignoreDuplicates: true })
+    .select('id, user_id');
+  if (error) throw error;
+  const nuevas = (data ?? []) as { id: string; user_id: string }[];
+  if (!nuevas.length) return { nuevas: 0, enviadas: 0 };
+  const { data: subs, error: e2 } = await admin.from('push_subs').select(SUB_COLS)
+    .eq('negocio_id', negocio).in('user_id', nuevas.map((n) => n.user_id));
+  if (e2) throw e2;
+  let enviadas = 0;
+  for (const n of nuevas) {
+    const suyas = ((subs ?? []) as Sub[]).filter((s) => s.user_id === n.user_id);
+    if (!suyas.length) continue;
+    // al tocar la notificación, la app marca este aviso como leído
+    const r = await enviarATodas(suyas, { ...msg, url: L.urlConAviso(msg.url ?? L.URL_APP, n.id) }, vapid, op);
+    enviadas += r.enviadas;
+  }
+  return { nuevas: nuevas.length, enviadas };
+}
+
 /* ---------------- tareas programadas ---------------- */
 
+/* Cada 5 min. Cada persona recibe el recordatorio con su anticipación
+   (recordatorio_min); la ventana de 10 min cubre una corrida que se atrase. */
 async function recordatorios(vapid: Vapid) {
   const ahora = L.ahoraLocal(new Date());
   const fechas = [ahora.fecha, L.fechaMas(ahora.fecha, 1)];
-  const out = { citas: 0, eventos: 0, enviadas: 0 };
-  for (const negocio of await negociosConSubs()) {
-    const subs = await subsDe(negocio, 'recordatorio');
-    if (!subs.length) continue;
-    const { data, error } = await admin.from('citas')
-      .select('id, clienta_id, items, fecha, hora, estado')
-      .eq('negocio_id', negocio).eq('estado', 'agendada').in('fecha', fechas).is('deleted_at', null);
-    if (error) throw error;
-    const proximas = L.citasEnVentana(data ?? [], ahora, 25, 35) as Cita[];
-    const nombres = proximas.length ? await nombresDe(proximas.map((c) => c.clienta_id)) : new Map();
-    for (const c of proximas) {
-      const ref = L.refRecordatorio(c);
-      if (!(await reclamar(negocio, 'recordatorio', ref))) continue;
-      const r = await enviarATodas(subs, L.msgRecordatorio(c, nombres.get(c.clienta_id ?? '')), vapid,
-        { ttl: 30 * 60, urgencia: 'high' });
-      // Si no llegó a ningún dispositivo por un error temporal, la siguiente
-      // corrida (5 min después, aún dentro de la ventana) lo reintenta.
-      if (!r.enviadas && r.fallidas) await soltar('recordatorio', ref);
-      out.citas++;
-      out.enviadas += r.enviadas;
+  const out = { citas: 0, eventos: 0, nuevas: 0, enviadas: 0 };
+  const op: Opciones = { ttl: 30 * 60, urgencia: 'high' };
+  for (const negocio of await negociosActivos()) {
+    const miembros = await miembrosDe(negocio);
+    if (!miembros.length) continue;
+    const [ci, ev] = await Promise.all([
+      admin.from('citas').select('id, clienta_id, items, fecha, hora, estado')
+        .eq('negocio_id', negocio).eq('estado', 'agendada').in('fecha', fechas).is('deleted_at', null),
+      admin.from('eventos').select('id, creado_por, titulo, fecha, hora')
+        .eq('negocio_id', negocio).eq('recordar', true).neq('hora', '').in('fecha', fechas).is('deleted_at', null),
+    ]);
+    if (ci.error) throw ci.error;
+    if (ev.error) throw ev.error;
+
+    // citas: agrupa por cita a quienes les toca avisar en esta corrida
+    const porCita = new Map<string, { c: Cita; usuarias: string[] }>();
+    for (const m of miembros) {
+      if (!m.prefs.recordatorio) continue;
+      const [desde, hasta] = L.ventanaRecordatorio(m.prefs.recordatorio_min);
+      for (const c of L.citasEnVentana(ci.data ?? [], ahora, desde, hasta) as Cita[]) {
+        const g = porCita.get(c.id) ?? { c, usuarias: [] };
+        g.usuarias.push(m.user_id);
+        porCita.set(c.id, g);
+      }
+    }
+    const nombres = porCita.size ? await nombresDe([...porCita.values()].map((g) => g.c.clienta_id)) : new Map();
+    for (const { c, usuarias } of porCita.values()) {
+      const r = await notificar(negocio, usuarias, 'recordatorio', L.refRecordatorio(c),
+        L.msgRecordatorio(c, nombres.get(c.clienta_id ?? '')), { cita_id: c.id }, vapid, op);
+      out.citas++; out.nuevas += r.nuevas; out.enviadas += r.enviadas;
     }
 
-    // Eventos personales con aviso: solo a los dispositivos de quien los creó.
-    const ev = await admin.from('eventos')
-      .select('id, creado_por, titulo, fecha, hora')
-      .eq('negocio_id', negocio).eq('recordar', true).neq('hora', '').in('fecha', fechas).is('deleted_at', null);
-    if (ev.error) throw ev.error;
-    const evProximos = L.citasEnVentana((ev.data ?? []).map((e: Record<string, unknown>) => ({ ...e, estado: 'agendada' })), ahora, 25, 35);
-    for (const e of evProximos as Array<{ id: string; creado_por: string | null; titulo: string; fecha: string; hora: string; faltan: number }>) {
-      const mias = subs.filter((s) => s.user_id === e.creado_por);
-      if (!mias.length) continue;
-      const ref = L.refRecordatorioEvento(e);
-      if (!(await reclamar(negocio, 'recordatorio', ref))) continue;
-      const r = await enviarATodas(mias, L.msgRecordatorioEvento(e), vapid, { ttl: 30 * 60, urgencia: 'high' });
-      if (!r.enviadas && r.fallidas) await soltar('recordatorio', ref);
-      out.eventos++;
-      out.enviadas += r.enviadas;
+    // eventos personales: solo a quien lo creó, con su anticipación
+    const evs = (ev.data ?? []).map((e: Record<string, unknown>) => ({ ...e, estado: 'agendada' }));
+    for (const m of miembros) {
+      const mios = evs.filter((e: Record<string, unknown>) => e.creado_por === m.user_id);
+      if (!mios.length) continue;
+      const [desde, hasta] = L.ventanaRecordatorio(m.prefs.recordatorio_min);
+      for (const e of L.citasEnVentana(mios, ahora, desde, hasta) as Array<{ id: string; titulo: string; fecha: string; hora: string; faltan: number }>) {
+        const r = await notificar(negocio, [m.user_id], 'evento', L.refRecordatorioEvento(e),
+          L.msgRecordatorioEvento(e), { evento_id: e.id }, vapid, op);
+        out.eventos++; out.nuevas += r.nuevas; out.enviadas += r.enviadas;
+      }
     }
   }
   return out;
 }
 
+/* Cada 15 min: a quien ya le llegó su hora del resumen (y no lo ha recibido hoy). */
 async function resumen(vapid: Vapid) {
-  const hoy = L.ahoraLocal(new Date()).fecha;
-  const out = { negocios: 0, enviadas: 0 };
-  for (const negocio of await negociosConSubs()) {
-    const subs = await subsDe(negocio, 'resumen');
-    if (!subs.length) continue;
-    const ref = `${negocio}:${hoy}`;
-    if (!(await reclamar(negocio, 'resumen', ref))) continue;
+  const ahora = L.ahoraLocal(new Date());
+  const out = { negocios: 0, nuevas: 0, enviadas: 0 };
+  for (const negocio of await negociosActivos()) {
+    const miembros = await miembrosDe(negocio);
+    const usuarias = miembros.filter((m) => m.prefs.resumen && L.horaLlego(m.prefs.resumen_hora, ahora.min)).map((m) => m.user_id);
+    if (!usuarias.length) continue;
     const { data, error } = await admin.from('citas')
       .select('id, fecha, hora, estado, precio, descuento_monto')
-      .eq('negocio_id', negocio).eq('fecha', hoy).neq('estado', 'cancelada').is('deleted_at', null);
-    if (error) { await soltar('resumen', ref); throw error; }
-    const r = await enviarATodas(subs, L.msgResumen(data ?? []), vapid, { ttl: 4 * 3600, topic: 'resumen' });
-    if (!r.enviadas && r.fallidas) await soltar('resumen', ref);
-    out.negocios++;
-    out.enviadas += r.enviadas;
+      .eq('negocio_id', negocio).eq('fecha', ahora.fecha).neq('estado', 'cancelada').is('deleted_at', null);
+    if (error) throw error;
+    const r = await notificar(negocio, usuarias, 'resumen', ahora.fecha, L.msgResumen(data ?? []), {}, vapid,
+      { ttl: 4 * 3600, topic: 'resumen' });
+    out.negocios++; out.nuevas += r.nuevas; out.enviadas += r.enviadas;
   }
   return out;
 }
 
+/* Cada 15 min: a quien ya le llegó su hora, si quedan citas de mañana sin confirmar. */
 async function confirmar(vapid: Vapid) {
-  const manana = L.fechaMas(L.ahoraLocal(new Date()).fecha, 1) as string;
-  const out = { negocios: 0, enviadas: 0 };
-  for (const negocio of await negociosConSubs()) {
-    const subs = await subsDe(negocio, 'confirmar');
-    if (!subs.length) continue;
+  const ahora = L.ahoraLocal(new Date());
+  const manana = L.fechaMas(ahora.fecha, 1) as string;
+  const out = { negocios: 0, nuevas: 0, enviadas: 0 };
+  for (const negocio of await negociosActivos()) {
+    const miembros = await miembrosDe(negocio);
+    const usuarias = miembros.filter((m) => m.prefs.confirmar && L.horaLlego(m.prefs.confirmar_hora, ahora.min)).map((m) => m.user_id);
+    if (!usuarias.length) continue;
     const { data, error } = await admin.from('citas')
       .select('id, clienta_id, fecha, hora, estado, confirmada_at')
       .eq('negocio_id', negocio).eq('fecha', manana).eq('estado', 'agendada').is('confirmada_at', null)
@@ -217,19 +253,15 @@ async function confirmar(vapid: Vapid) {
     if (error) throw error;
     const citas = (data ?? []) as Cita[];
     if (!citas.length) continue;
-    const ref = `${negocio}:${manana}`;
-    if (!(await reclamar(negocio, 'confirmar', ref))) continue;
     const msg = L.msgConfirmar(citas, await nombresDe(citas.map((c) => c.clienta_id)));
     if (!msg) continue;
-    const r = await enviarATodas(subs, msg, vapid, { ttl: 6 * 3600, topic: 'confirmar' });
-    if (!r.enviadas && r.fallidas) await soltar('confirmar', ref);
-    out.negocios++;
-    out.enviadas += r.enviadas;
+    const r = await notificar(negocio, usuarias, 'confirmar', manana, msg, {}, vapid, { ttl: 6 * 3600, topic: 'confirmar' });
+    out.negocios++; out.nuevas += r.nuevas; out.enviadas += r.enviadas;
   }
   return out;
 }
 
-/* Trigger de citas: avisa a las OTRAS usuarias del negocio. */
+/* Trigger de citas: avisa a las OTRAS personas del estudio. */
 async function cambio(body: Record<string, unknown>, vapid: Vapid) {
   if (!L.esUuid(body.cita_id)) return { omitido: 'cita_id inválido' };
   const { data: cita, error } = await admin.from('citas')
@@ -242,12 +274,13 @@ async function cambio(body: Record<string, unknown>, vapid: Vapid) {
   const tipo = L.tipoCambio(body.op, antes, cita, hoy);
   if (!tipo) return { omitido: 'sin cambio que avisar' };
   const autor = L.esUuid(body.autor) ? body.autor as string : null;
-  const subs = await subsDe(cita.negocio_id, 'cambios', autor);
-  if (!subs.length) return { enviadas: 0 };
+  const usuarias = (await miembrosDe(cita.negocio_id)).filter((m) => m.prefs.cambios && m.user_id !== autor).map((m) => m.user_id);
+  if (!usuarias.length) return { nuevas: 0 };
   const nombre = (await nombresDe([cita.clienta_id])).get(cita.clienta_id ?? '');
   const msg = L.msgCambio(tipo, cita, antes ?? cita, nombre, hoy);
   if (!msg) return { omitido: 'sin mensaje' };
-  return await enviarATodas(subs, msg, vapid, { ttl: 6 * 3600 });
+  return await notificar(cita.negocio_id, usuarias, 'cambios', `${cita.id}:${tipo}:${Date.now()}`, msg,
+    { cita_id: cita.id }, vapid, { ttl: 6 * 3600 });
 }
 
 /* ---------------- llamadas desde la app / el service worker ---------------- */
@@ -262,7 +295,14 @@ async function probar(req: Request, body: Record<string, unknown>, vapid: Vapid)
   const { data: subs, error: e2 } = await q;
   if (e2) throw e2;
   if (!subs?.length) return [404, { error: 'Este dispositivo no está registrado', enviadas: 0 }];
-  return [200, await enviarATodas(subs as Sub[], L.msgPrueba(), vapid, { ttl: 300, urgencia: 'high' })];
+  const s0 = (subs as Sub[])[0];
+  const msg = L.msgPrueba();
+  // también queda en la bandeja, para ver que la campana funciona
+  const { data: fila } = await admin.from('notificaciones')
+    .insert({ negocio_id: s0.negocio_id, user_id: data.user.id, tipo: 'prueba', ref: String(Date.now()), titulo: msg.title, cuerpo: msg.body, url: msg.url })
+    .select('id').maybeSingle();
+  const url = fila ? L.urlConAviso(msg.url, fila.id) : msg.url;
+  return [200, await enviarATodas(subs as Sub[], { ...msg, url }, vapid, { ttl: 300, urgencia: 'high' })];
 }
 
 async function renovar(body: Record<string, unknown>): Promise<[number, unknown]> {

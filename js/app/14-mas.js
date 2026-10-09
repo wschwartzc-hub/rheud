@@ -1,7 +1,8 @@
 /* ---------------- MÁS: notificaciones y datos del estudio ---------------- */
 /* La campana de la cabecera. RheudPush lo agrega el módulo de notificaciones
    (PWA); mientras no exista, se explica cómo activarlas. */
-function abrirNotificaciones(){ if(window.RheudPush&&RheudPush.abrir) RheudPush.abrir(); else toast('Notificaciones disponibles al instalar la app'); }
+/* la campana abre la bandeja de avisos (js/app/17-avisos.js); los ajustes están en Más › Notificaciones */
+function abrirNotificaciones(){ abrirAvisos(); }
 
 /* Datos del estudio que ve la clienta en su portal (Cómo llegar / Escribir) */
 async function openEstudioSheet(){

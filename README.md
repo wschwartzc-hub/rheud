@@ -33,13 +33,20 @@ Los tokens viven en `:root` dentro de `css/app.css`; cambiar la paleta es editar
 
 ## 🔔 Notificaciones (iPhone y Android)
 
-La app avisa en el celular: **recordatorio 30 min antes** de cada cita, **resumen del día** hacia las 8:00, **citas de mañana sin confirmar** hacia las 18:00 y **cambios** (cita nueva, movida, cancelada o reactivada) hechos por otra persona del estudio. Cada tipo se puede apagar por dispositivo.
+La **campana** de la cabecera es la bandeja de avisos: muestra el número de avisos sin leer y, al tocarla, la lista agrupada por día. Tocar un aviso abre la cita, el evento o «Confirmar mañana». Los avisos son:
 
-En iPhone (iOS 16.4 o más reciente) las notificaciones solo funcionan con la app instalada:
+- **Recordatorio** antes de cada cita (y de los eventos personales con aviso): de 10 min a 3 h antes, a elección.
+- **Resumen del día**, a la hora elegida (5:00–12:00; de fábrica 8:00).
+- **Citas de mañana sin confirmar**, a la hora elegida (12:00–22:00; de fábrica 18:00).
+- **Cambios** (cita nueva, movida, cancelada o reactivada) hechos por otra persona del estudio.
+
+Los ajustes son de cada persona y valen en todos sus dispositivos: **Más › Notificaciones** (o el engrane dentro de la campana). Los avisos quedan en la campana aunque el dispositivo no tenga activadas las notificaciones; además llegan como notificación del sistema en cada dispositivo donde se activen.
+
+En iPhone (iOS 16.4 o más reciente) las notificaciones del sistema solo funcionan con la app instalada:
 
 1. Abrir la app en **Safari** → botón Compartir → **Agregar a pantalla de inicio**.
 2. Abrir Rhēud **desde el ícono** de la pantalla de inicio e iniciar sesión otra vez (la app instalada no comparte la sesión de Safari).
-3. Tocar la **campana** de la cabecera → *Activar notificaciones* → Permitir. Llega un aviso de prueba.
+3. **Más › Notificaciones** → *Activar notificaciones* → Permitir. Llega un aviso de prueba.
 
 Se activa en cada dispositivo por separado. Si se borra la app de la pantalla de inicio hay que volver a activarla.
 
@@ -60,10 +67,10 @@ Se activa en cada dispositivo por separado. Si se borra la app de la pantalla de
 ├── _headers                   # Cabeceras de Netlify (CSP, caché)
 ├── css/app.css, css/ajustes.css
 ├── js/
-│   ├── app/00-…16-*.js        # App por módulos, en orden de carga (eventos, datos, agenda, citas…, eventos personales)
+│   ├── app/00-…17-*.js        # App por módulos, en orden de carga (eventos, datos, agenda, citas…, eventos personales, bandeja de avisos)
 │   ├── nucleo.js              # Funciones puras (fechas, huecos de agenda, insights) — con tests
 │   ├── pagos.js               # Cálculo de pagos, saldos y descuentos — con tests
-│   ├── push.js                # Suscripción Web Push (campana)
+│   ├── push.js                # Ajustes de notificaciones y suscripción Web Push
 │   ├── seguridad.js           # Verificación en dos pasos (TOTP)
 │   └── portal.js              # Portal de la clienta (solo RPC portal_cita / portal_cita_codigo)
 ├── assets/                    # Logo (logo.svg) e íconos de la app
@@ -106,6 +113,7 @@ Proyecto `wrplznjgravcnxkzfarn`. Las migraciones de `supabase/migrations` se apl
 | `20261008_20_push` | Suscripciones push, trigger de citas y trabajos de pg_cron |
 | `20261008_21_mfa` | Expedientes y fotos de piel piden verificación en dos pasos si la usuaria la activó |
 | `20261008_30_eventos` | Eventos personales (tabla `eventos` aparte de `citas`) y su recordatorio en el aviso de 30 min |
+| `20261009_40_bandeja_avisos` | Bandeja de avisos (`notificaciones`), ajustes por persona (`notif_prefs`: anticipación y horas) y trabajos cada 5/15 min |
 
 **Notificaciones:** la Edge Function `rheud-push` se despliega con `verify_jwt = false` porque se autentica sola (secreto de Vault para pg_cron y el trigger; JWT de la usuaria para el aviso de prueba). Las claves VAPID y el secreto viven en Vault (`rheud_vapid_public`, `rheud_vapid_private`, `rheud_vapid_subject`, `rheud_push_cron_secret`); los pasos para crearlos están al inicio de `20261008_20_push.sql`. Si se cambia la clave pública, actualizar también `VAPID_PUBLICA` en `js/push.js`.
 

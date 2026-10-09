@@ -317,7 +317,7 @@ test('msgCambio: textos de cita nueva, movida y cancelada', () => {
   const hoy = '2026-10-08';
   const cita = { id: 'x', fecha: '2026-10-09', hora: '12:00', estado: 'agendada', items: [{ n: 'Hidrafacial' }] };
   assert.deepEqual(L.msgCambio('nueva', cita, null, 'Regina Salinas', hoy),
-    { tag: 'cita-x', url: '/?app', title: 'Cita nueva', body: 'Mañana 12:00 PM · Regina S. · Hidrafacial' });
+    { tag: 'cita-x', url: '/?app&cita=x', title: 'Cita nueva', body: 'Mañana 12:00 PM · Regina S. · Hidrafacial' });
   assert.equal(L.msgCambio('movida', cita, { fecha: '2026-10-09', hora: '10:30' }, 'Regina Salinas', hoy).body,
     'Regina S.: Mañana 10:30 AM → 12:00 PM');
   assert.equal(L.msgCambio('movida', { ...cita, fecha: '2026-10-15' }, { fecha: '2026-10-09', hora: '10:30' }, 'Regina Salinas', hoy).body,
@@ -363,10 +363,47 @@ test('igualesTiempoConstante', async () => {
   assert.equal(await L.igualesTiempoConstante(undefined, 'x'), false);
 });
 
-test('preferencias por suscripción', () => {
-  assert.equal(L.quiere({ prefs: { recordatorio: false } }, 'recordatorio'), false);
-  assert.equal(L.quiere({ prefs: { recordatorio: false } }, 'resumen'), true);
-  assert.equal(L.quiere({ prefs: null }, 'cambios'), true);
+test('ajustes por persona: lo guardado sobre los de fábrica, corrigiendo valores raros', () => {
+  assert.deepEqual(L.prefsCon(undefined), { ...L.PREFS_DEFAULT });
+  const p = L.prefsCon({ recordatorio: false, recordatorio_min: 60, resumen_hora: '07:30', confirmar_hora: '20:00' });
+  assert.equal(p.recordatorio, false);
+  assert.equal(p.recordatorio_min, 60);
+  assert.equal(p.resumen_hora, '07:30');
+  assert.equal(p.confirmar_hora, '20:00');
+  assert.equal(p.cambios, true);
+  assert.equal(L.prefsCon({ recordatorio_min: 1000 }).recordatorio_min, 240);
+  assert.equal(L.prefsCon({ recordatorio_min: 'x' }).recordatorio_min, 30);
+  assert.equal(L.prefsCon({ resumen_hora: '25:00' }).resumen_hora, '08:00');
+  assert.equal(L.prefsCon({ confirmar_hora: '9:00' }).confirmar_hora, '18:00');
+});
+
+test('ventana del recordatorio y hora elegida', () => {
+  assert.deepEqual(L.ventanaRecordatorio(30), [21, 31]);
+  assert.deepEqual(L.ventanaRecordatorio(120), [111, 121]);
+  // una cita a las 10:30 con aviso 1 h antes: entra a las 9:30, no a las 9:15 ni a las 9:45
+  const cita = [{ id: 'c', estado: 'agendada', fecha: '2026-10-09', hora: '10:30' }];
+  // hora de Monterrey = UTC−6
+  const en = (h, m) => L.citasEnVentana(cita, L.ahoraLocal(new Date(Date.UTC(2026, 9, 9, h + 6, m))), ...L.ventanaRecordatorio(60)).length;
+  assert.equal(en(9, 15), 0);
+  assert.equal(en(9, 30), 1);
+  assert.equal(en(9, 45), 0);
+  // resumen a las 8:00: a las 7:55 no; de 8:00 a 9:59 sí; a las 10:00 ya no
+  assert.equal(L.horaLlego('08:00', 7 * 60 + 55), false);
+  assert.equal(L.horaLlego('08:00', 8 * 60), true);
+  assert.equal(L.horaLlego('08:00', 9 * 60 + 59), true);
+  assert.equal(L.horaLlego('08:00', 10 * 60), false);
+  assert.equal(L.horaLlego('xx', 600), false);
+});
+
+test('enlaces de los avisos: abren la cita o el evento y marcan el aviso leído', () => {
+  assert.equal(L.urlCita('c1'), '/?app&cita=c1');
+  assert.equal(L.urlEvento('e1'), '/?app&evento=e1');
+  assert.equal(L.urlConAviso('/?app&cita=c1', 'n9'), '/?app&cita=c1&n=n9');
+  assert.equal(L.urlConAviso('/', 'n9'), '/?n=n9');
+  assert.equal(L.fmtFaltan(30), '30 min');
+  assert.equal(L.fmtFaltan(60), '1 h');
+  assert.equal(L.fmtFaltan(90), '1 h 30 min');
+  assert.equal(L.msgRecordatorio({ id: 'c1', fecha: '2026-10-09', hora: '10:30', faltan: 60 }, 'Ana Torres').title, 'Cita en 1 h');
 });
 
 test('las migraciones v7 (20261008_2x) no usan DROP: la herramienta que las aplica se detiene', () => {

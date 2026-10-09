@@ -135,6 +135,8 @@ async function startApp(){
   const sv=document.getElementById('signoutVer');if(sv)sv.textContent='Rhēud Beauty v'+APP_VERSION;
   greet();renderAgenda();
   subscribeRealtime();
+  // la bandeja (17-avisos.js) puede cargar después: si aún no está, arranca sola
+  if(typeof iniciarAvisos==='function')iniciarAvisos();
   startClock();
   initWeather();
   updateConn();
@@ -224,6 +226,7 @@ let recargando=null;
 function recargarTodo(){
   if(recargando)return recargando;
   recargando=cargarTablas().then(repintarVista,e=>console.error('recarga',e)).finally(()=>{recargando=null;});
+  if(typeof cargarAvisos==='function')cargarAvisos();
   return recargando;
 }
 

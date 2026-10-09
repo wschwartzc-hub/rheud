@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Rhēud · Foto del esquema de producción (solo referencia, NO ejecutar)
 -- Generado desde el catálogo de Postgres del proyecto wrplznjgravcnxkzfarn el
--- 2026-10-08, después de aplicar todas las migraciones de supabase/migrations.
+-- 2026-10-09, después de aplicar todas las migraciones de supabase/migrations.
 -- Solo incluye las tablas de Rhēud del esquema public (el proyecto también
 -- aloja las tablas casita_*, que no son de esta app).
 --
@@ -36,8 +36,10 @@
 --                 + "mfa expedientes" (restrictiva: pide verificación en dos
 --                   pasos si la usuaria la activó)
 --
--- pg_cron: rheud_push_recordatorios */5 · rheud_push_resumen 55 13 ·
---          rheud_push_confirmar 55 23 · rheud_push_limpieza 17 9 (UTC)
+-- pg_cron: rheud_push_recordatorios */5 · rheud_push_resumen */15 ·
+--          rheud_push_confirmar 7,22,37,52 · rheud_push_limpieza 17 9 (UTC)
+--          (resumen y confirmar: la función avisa a cada quien a su hora,
+--          según notif_prefs)
 -- Vault:   rheud_vapid_public · rheud_vapid_private · rheud_vapid_subject ·
 --          rheud_push_cron_secret (los valores no van en el repo)
 -- Edge Function: rheud-push (verify_jwt = false, se autentica sola)
@@ -355,6 +357,64 @@ create policy "editar mi negocio" on public.negocios as permissive for update to
   with check ((id IN ( SELECT mis_negocios() AS mis_negocios)));
 create policy "ver mi negocio" on public.negocios as permissive for select to authenticated
   using ((id IN ( SELECT mis_negocios() AS mis_negocios)));
+
+-- notif_prefs (ajustes de avisos de cada persona; sin fila = los de fábrica)
+create table public.notif_prefs (
+  user_id uuid not null default auth.uid(),
+  negocio_id uuid not null,
+  recordatorio boolean not null default true,
+  recordatorio_min integer not null default 30,
+  cambios boolean not null default true,
+  resumen boolean not null default true,
+  resumen_hora text not null default '08:00'::text,
+  confirmar boolean not null default true,
+  confirmar_hora text not null default '18:00'::text,
+  updated_at timestamp with time zone not null default now(),
+  constraint notif_prefs_pkey PRIMARY KEY (user_id, negocio_id),
+  constraint notif_prefs_negocio_id_fkey FOREIGN KEY (negocio_id) REFERENCES negocios(id) ON DELETE CASCADE,
+  constraint notif_prefs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  constraint notif_prefs_confirmar_hora_check CHECK ((confirmar_hora ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text)),
+  constraint notif_prefs_recordatorio_min_check CHECK (((recordatorio_min >= 5) AND (recordatorio_min <= 240))),
+  constraint notif_prefs_resumen_hora_check CHECK ((resumen_hora ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text))
+);
+alter table public.notif_prefs enable row level security;
+CREATE INDEX notif_prefs_negocio_idx ON public.notif_prefs USING btree (negocio_id);
+create policy "mis ajustes de avisos" on public.notif_prefs as permissive for all to authenticated
+  using (((user_id = ( SELECT auth.uid() AS uid)) AND (negocio_id IN ( SELECT mis_negocios() AS mis_negocios))))
+  with check (((user_id = ( SELECT auth.uid() AS uid)) AND (negocio_id IN ( SELECT mis_negocios() AS mis_negocios))));
+CREATE TRIGGER trg_notif_prefs_touch BEFORE UPDATE ON public.notif_prefs FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
+
+-- notificaciones (bandeja de la campana; escribe solo la Edge Function, la app lee y marca leida_at)
+create table public.notificaciones (
+  id uuid not null default gen_random_uuid(),
+  negocio_id uuid not null,
+  user_id uuid not null,
+  tipo text not null,
+  ref text not null,
+  titulo text not null,
+  cuerpo text not null default ''::text,
+  url text not null default '/?app'::text,
+  cita_id uuid,
+  evento_id uuid,
+  created_at timestamp with time zone not null default now(),
+  leida_at timestamp with time zone,
+  constraint notificaciones_pkey PRIMARY KEY (id),
+  constraint notificaciones_user_id_tipo_ref_key UNIQUE (user_id, tipo, ref),
+  constraint notificaciones_negocio_id_fkey FOREIGN KEY (negocio_id) REFERENCES negocios(id) ON DELETE CASCADE,
+  constraint notificaciones_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  constraint notificaciones_cuerpo_check CHECK ((length(cuerpo) <= 1000)),
+  constraint notificaciones_tipo_check CHECK ((tipo = ANY (ARRAY['recordatorio'::text, 'evento'::text, 'cambios'::text, 'resumen'::text, 'confirmar'::text, 'prueba'::text]))),
+  constraint notificaciones_titulo_check CHECK ((length(titulo) <= 200)),
+  constraint notificaciones_url_check CHECK (((url ~~ '/%'::text) AND (length(url) <= 300)))
+);
+alter table public.notificaciones enable row level security;
+CREATE INDEX notificaciones_negocio_idx ON public.notificaciones USING btree (negocio_id);
+CREATE INDEX notificaciones_user_fecha_idx ON public.notificaciones USING btree (user_id, created_at DESC);
+create policy "marcar mis avisos" on public.notificaciones as permissive for update to authenticated
+  using (((user_id = ( SELECT auth.uid() AS uid)) AND (negocio_id IN ( SELECT mis_negocios() AS mis_negocios))))
+  with check (((user_id = ( SELECT auth.uid() AS uid)) AND (negocio_id IN ( SELECT mis_negocios() AS mis_negocios))));
+create policy "ver mis avisos" on public.notificaciones as permissive for select to authenticated
+  using (((user_id = ( SELECT auth.uid() AS uid)) AND (negocio_id IN ( SELECT mis_negocios() AS mis_negocios))));
 
 -- premios
 create table public.premios (
